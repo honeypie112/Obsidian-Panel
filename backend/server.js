@@ -20,7 +20,7 @@ const io = socketIO(server, {
     cors: {
         origin: process.env.NODE_ENV === 'production'
             ? false
-            : 'http://localhost:5173',
+            : '*', // Allow all origins in development
         methods: ['GET', 'POST'],
     },
 });
@@ -47,6 +47,15 @@ io.on('connection', (socket) => {
     socket.on('joinServer', (serverId) => {
         socket.join(serverId);
         console.log(`Client ${socket.id} joined server room: ${serverId}`);
+
+        // Send buffered logs to the joining client
+        const logs = serverManager.getLogs(serverId);
+        if (logs.length > 0) {
+            // Join all logs into a single string or send individually
+            // Sending individually is safer for the current frontend implementation
+            const combinedLogs = logs.map(log => log.data).join('');
+            socket.emit('console', { type: 'stdout', data: combinedLogs });
+        }
     });
 
     socket.on('leaveServer', (serverId) => {
@@ -85,6 +94,16 @@ process.on('SIGINT', () => {
     console.log('\nShutting down gracefully...');
     serverManager.cleanup();
     process.exit(0);
+});
+
+// Global error handlers to prevent crashes
+process.on('uncaughtException', (err) => {
+    console.error('❌ Uncaught Exception:', err);
+    // Don't exit immediately, try to keep running if possible, or at least log it
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
 const PORT = process.env.PORT || 3000;

@@ -1,3 +1,4 @@
+const pty = require('node-pty');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs').promises;
@@ -8,22 +9,92 @@ class ServerManager {
     constructor(io) {
         this.io = io;
         this.processes = new Map(); // serverId -> process
+        this.logs = new Map(); // serverId -> Array<{type, data}>
         this.statsInterval = null;
         this.startStatsMonitoring();
-        this.syncDatabaseState();
+        this.recoverRunningServers();
     }
 
-    async syncDatabaseState() {
-        // Reset all servers to offline on startup (in case of crash/restart)
+    async recoverRunningServers() {
+        console.log('🔄 Attempting to recover running servers...');
         try {
-            await Server.updateMany(
-                { status: { $in: ['online', 'starting', 'stopping'] } },
-                { status: 'offline', pid: null }
-            );
-            console.log('✅ Synced server states to database');
+            const onlineServers = await Server.find({ status: { $in: ['online', 'starting'] } });
+
+            for (const server of onlineServers) {
+                if (server.pid) {
+                    try {
+                        // Check if process is actually running
+                        process.kill(server.pid, 0);
+
+                        console.log(`✅ Found running server ${server.name} (PID: ${server.pid}). Recovering...`);
+
+                        // Create a "recovered" process object
+                        // We can't restore stdin (commands), but we can monitor and stop it
+                        const recoveredProcess = {
+                            pid: server.pid,
+                            killed: false,
+                            stdin: null, // Cannot write to stdin of recovered process
+                            stdout: null,
+                            stderr: null,
+                            recovered: true // Flag to indicate this is a recovered process
+                        };
+
+                        this.processes.set(server._id.toString(), recoveredProcess);
+
+                        // Restore log streaming using 'tail'
+                        this.streamLogsFromFile(server._id.toString(), server.directory);
+
+                    } catch (e) {
+                        // Process not found
+                        console.log(`⚠️ Server ${server.name} (PID: ${server.pid}) is not running. Marking as offline.`);
+                        server.status = 'offline';
+                        server.pid = null;
+                        server.activePlayers = 0;
+                        await server.save();
+                        this.io.to(server._id.toString()).emit('serverStatus', { status: 'offline', serverId: server._id });
+                    }
+                } else {
+                    // No PID, mark offline
+                    server.status = 'offline';
+                    await server.save();
+                }
+            }
         } catch (error) {
-            console.error('❌ Failed to sync database state:', error);
+            console.error('❌ Failed to recover servers:', error);
         }
+    }
+
+    streamLogsFromFile(serverId, serverDir) {
+        const logPath = path.join(serverDir, 'logs', 'latest.log');
+
+        // Check if log file exists
+        fs.access(logPath)
+            .then(() => {
+                // Spawn tail process to follow log file
+                const tail = spawn('tail', ['-f', '-n', '100', logPath]);
+
+                tail.stdout.on('data', (data) => {
+                    this.addToLog(serverId, 'stdout', data.toString());
+                });
+
+                tail.stderr.on('data', (data) => {
+                    // tail errors
+                    console.error(`[Tail ${serverId}] Error:`, data.toString());
+                });
+
+                tail.on('error', (error) => {
+                    console.error(`[Tail ${serverId}] Failed to spawn tail process:`, error);
+                });
+
+                // Store tail process to kill it later
+                const proc = this.processes.get(serverId);
+                if (proc) {
+                    proc.tailProcess = tail;
+                }
+            })
+            .catch(() => {
+                console.log(`[Server ${serverId}] No log file found at ${logPath}`);
+            });
     }
 
     async startServer(serverId) {
@@ -61,16 +132,24 @@ class ServerManager {
             const eulaPath = path.join(server.directory, 'eula.txt');
             await fs.writeFile(eulaPath, 'eula=true');
 
-            // Spawn Minecraft server process
-            const javaProcess = spawn('java', [
-                `-Xmx${server.memory}M`,
-                `-Xms${server.memory}M`,
+            // Spawn Minecraft server process using node-pty
+            const javaProcess = pty.spawn('java', [
+                `-Xmx1024M`, // Temporarily forced to 1024M for debugging
+                `-Xms1024M`,
                 '-jar',
                 'server.jar',
                 'nogui',
                 `--port=${server.port}`,
             ], {
+                name: 'xterm-color',
+                cols: 80,
+                rows: 24,
                 cwd: server.directory,
+                env: {
+                    ...process.env,
+                    TERM: 'xterm-256color',
+                    HOME: server.directory
+                }
             });
 
             this.processes.set(serverId, javaProcess);
@@ -79,37 +158,24 @@ class ServerManager {
             server.pid = javaProcess.pid;
             server.status = 'online';
             await server.save();
+            this.io.to(serverId).emit('serverStatus', { status: 'online', serverId });
 
-            // Handle stdout
-            javaProcess.stdout.on('data', (data) => {
+            // Handle output (stdout and stderr are merged in pty)
+            javaProcess.on('data', (data) => {
                 const output = data.toString();
-                this.io.to(serverId).emit('console', { type: 'stdout', data: output });
+                // Debug: Print server output to backend console
+                process.stdout.write(`[MC-${serverId}] ${output}`);
+
+                this.addToLog(serverId, 'stdout', output);
 
                 // Parse player count from logs
                 this.parsePlayerCount(serverId, output);
             });
 
-            // Handle stderr
-            javaProcess.stderr.on('data', (data) => {
-                const output = data.toString();
-                this.io.to(serverId).emit('console', { type: 'stderr', data: output });
-                console.error(`[Server ${serverId}] Error:`, output);
-            });
-
-            // Handle process errors
-            javaProcess.on('error', async (error) => {
-                console.error(`Server ${serverId} process error:`, error);
-                this.io.to(serverId).emit('console', {
-                    type: 'stderr',
-                    data: `\n❌ Failed to start server: ${error.message}\nPlease ensure Java is installed and server.jar exists.\n`
-                });
-
-                const srv = await Server.findById(serverId);
-                if (srv) {
-                    srv.status = 'offline';
-                    srv.pid = null;
-                    await srv.save();
-                }
+            // Handle pty errors
+            javaProcess.on('error', (err) => {
+                console.error(`[Server ${serverId}] PTY Error:`, err);
+                this.addToLog(serverId, 'stderr', `\n❌ PTY Error: ${err.message}\n`);
             });
 
             // Handle process exit
@@ -119,10 +185,7 @@ class ServerManager {
 
                 // Emit exit message to console
                 if (code !== 0) {
-                    this.io.to(serverId).emit('console', {
-                        type: 'stderr',
-                        data: `\n❌ Server exited with code ${code}\nCommon issues:\n- server.jar is missing (use "Download Server JAR" button)\n- Java is not installed\n- Not enough memory allocated\n- Check console output above for errors\n`
-                    });
+                    this.addToLog(serverId, 'stderr', `\n❌ Server exited with code ${code}\nCommon issues:\n- server.jar is missing (use "Download Server JAR" button)\n- Java is not installed\n- Not enough memory allocated\n- Check console output above for errors\n`);
                 }
 
                 const srv = await Server.findById(serverId);
@@ -133,7 +196,7 @@ class ServerManager {
                     await srv.save();
                 }
 
-                this.io.to(serverId).emit('serverStatus', { status: 'offline' });
+                this.io.to(serverId).emit('serverStatus', { status: 'offline', serverId });
             });
 
             return { success: true, message: 'Server started successfully' };
@@ -149,8 +212,8 @@ class ServerManager {
 
     async stopServer(serverId) {
         try {
-            const process = this.processes.get(serverId);
-            if (!process) {
+            const proc = this.processes.get(serverId);
+            if (!proc) {
                 throw new Error('Server not running');
             }
 
@@ -158,13 +221,38 @@ class ServerManager {
             server.status = 'stopping';
             await server.save();
 
-            // Send stop command to Minecraft server
-            process.stdin.write('stop\n');
+            // Stop tail process if exists
+            if (proc.tailProcess) {
+                proc.tailProcess.kill();
+            }
+
+            if (proc.recovered) {
+                // Recovered process: no stdin, use signals
+                console.log(`Stopping recovered server ${serverId} (PID: ${proc.pid}) via SIGTERM`);
+                try {
+                    process.kill(proc.pid, 'SIGTERM');
+                } catch (e) {
+                    console.error('Failed to kill process:', e);
+                }
+            } else {
+                // Normal process: send stop command
+                // node-pty process has .write() method directly
+                if (typeof proc.write === 'function') {
+                    proc.write('stop\n');
+                } else if (proc.stdin) {
+                    // Fallback for standard child_process if ever mixed
+                    proc.stdin.write('stop\n');
+                }
+            }
 
             // Force kill after 30 seconds if still running
             setTimeout(() => {
                 if (this.processes.has(serverId)) {
-                    process.kill('SIGKILL');
+                    try {
+                        process.kill(proc.pid, 'SIGKILL');
+                    } catch (e) {
+                        // ignore if already dead
+                    }
                 }
             }, 30000);
 
@@ -176,17 +264,29 @@ class ServerManager {
 
     async sendCommand(serverId, command) {
         try {
-            const process = this.processes.get(serverId);
-            if (!process) {
+            const proc = this.processes.get(serverId);
+            if (!proc) {
                 throw new Error('Server not running');
             }
 
-            process.stdin.write(command + '\n');
+            if (proc.recovered) {
+                throw new Error('Cannot send commands to a recovered server. Please restart the server to regain full control.');
+            }
+
+            // node-pty uses .write()
+            if (typeof proc.write === 'function') {
+                proc.write(command + '\n');
+            } else if (proc.stdin) {
+                proc.stdin.write(command + '\n');
+            }
+
             return { success: true, message: 'Command sent' };
         } catch (error) {
             throw error;
         }
     }
+
+    // ... (parsePlayerCount and updatePlayerCount remain same) ...
 
     parsePlayerCount(serverId, logLine) {
         // Match patterns like "Player joined" or "Player left"
@@ -203,9 +303,13 @@ class ServerManager {
         // In production, parse "list" command output
         // For now, send list command and handle response
         try {
-            const process = this.processes.get(serverId);
-            if (process) {
-                process.stdin.write('list\n');
+            const proc = this.processes.get(serverId);
+            if (proc && !proc.recovered) {
+                if (typeof proc.write === 'function') {
+                    proc.write('list\n');
+                } else if (proc.stdin) {
+                    proc.stdin.write('list\n');
+                }
             }
         } catch (error) {
             console.error('Error updating player count:', error);
@@ -215,13 +319,22 @@ class ServerManager {
     startStatsMonitoring() {
         // Update CPU/RAM stats every 5 seconds
         this.statsInterval = setInterval(async () => {
-            for (const [serverId, process] of this.processes.entries()) {
+            for (const [serverId, proc] of this.processes.entries()) {
                 try {
                     const server = await Server.findById(serverId);
-                    if (!server || !process.pid) continue;
+                    if (!server || !proc.pid) continue;
+
+                    // Check if process is still alive
+                    try {
+                        process.kill(proc.pid, 0);
+                    } catch (e) {
+                        // Process is dead
+                        this.handleProcessExit(serverId, proc, 1); // Treat as unexpected exit
+                        continue;
+                    }
 
                     // Get real CPU and RAM usage using pidusage
-                    const stats = await pidusage(process.pid);
+                    const stats = await pidusage(proc.pid);
 
                     // CPU percentage (0-100)
                     server.cpuUsage = Math.min(stats.cpu, 100);
@@ -240,11 +353,57 @@ class ServerManager {
                 } catch (error) {
                     // Process might not exist yet or has exited
                     if (error.code !== 'ENOENT') {
-                        console.error('Stats update error:', error);
+                        console.error(`[Stats Error] Server ${serverId}:`, error);
                     }
                 }
             }
         }, 5000);
+    }
+
+    addToLog(serverId, type, data) {
+        if (!this.logs.has(serverId)) {
+            this.logs.set(serverId, []);
+        }
+
+        const serverLogs = this.logs.get(serverId);
+        serverLogs.push({ type, data });
+
+        // Keep last 200 lines
+        if (serverLogs.length > 200) {
+            serverLogs.shift();
+        }
+
+        this.io.to(serverId).emit('console', { type, data });
+    }
+
+    getLogs(serverId) {
+        return this.logs.get(serverId) || [];
+    }
+
+    async handleProcessExit(serverId, proc, code) {
+        console.log(`Server ${serverId} exited with code ${code}`);
+        this.processes.delete(serverId);
+
+        if (proc.tailProcess) {
+            proc.tailProcess.kill();
+        }
+
+        // Emit exit message to console
+        if (code !== 0 && code !== null) { // null code usually means killed by signal
+            this.addToLog(serverId, 'stderr', `\n❌ Server exited with code ${code}\n`);
+        } else {
+            this.addToLog(serverId, 'stdout', `\nℹ️ Server stopped.\n`);
+        }
+
+        const srv = await Server.findById(serverId);
+        if (srv) {
+            srv.status = 'offline';
+            srv.pid = null;
+            srv.activePlayers = 0;
+            await srv.save();
+        }
+
+        this.io.to(serverId).emit('serverStatus', { status: 'offline', serverId });
     }
 
     cleanup() {
@@ -253,8 +412,20 @@ class ServerManager {
         }
 
         // Stop all servers gracefully
-        for (const [serverId, process] of this.processes.entries()) {
-            process.stdin.write('stop\n');
+        for (const [serverId, proc] of this.processes.entries()) {
+            if (proc.tailProcess) {
+                proc.tailProcess.kill();
+            }
+
+            if (proc.recovered) {
+                try { process.kill(proc.pid, 'SIGTERM'); } catch (e) { }
+            } else {
+                if (typeof proc.write === 'function') {
+                    proc.write('stop\n');
+                } else if (proc.stdin) {
+                    proc.stdin.write('stop\n');
+                }
+            }
         }
     }
 }

@@ -233,6 +233,7 @@ router.delete('/:serverId', authMiddleware, async (req, res) => {
 // Update server settings (version, memory, etc.)
 router.put('/:serverId/settings', authMiddleware, async (req, res) => {
     try {
+        console.log('Received settings update request:', req.body);
         const { version, memory, name } = req.body;
         const server = await Server.findById(req.params.serverId);
 
