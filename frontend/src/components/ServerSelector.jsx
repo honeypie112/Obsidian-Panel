@@ -52,13 +52,23 @@ const ServerSelector = ({ selectedServer, onServerChange }) => {
 
             socket.on('serverStatus', (data) => {
                 if (data.serverId) {
-                    setServers(prevServers =>
-                        prevServers.map(server =>
+                    setServers(prevServers => {
+                        const updatedServers = prevServers.map(server =>
                             server._id === data.serverId
                                 ? { ...server, status: data.status }
                                 : server
-                        )
-                    );
+                        );
+
+                        // If the updated server is the currently selected one, notify parent
+                        if (selectedServer && selectedServer._id === data.serverId) {
+                            const updatedServer = updatedServers.find(s => s._id === data.serverId);
+                            if (updatedServer) {
+                                onServerChange(updatedServer);
+                            }
+                        }
+
+                        return updatedServers;
+                    });
                 }
             });
 

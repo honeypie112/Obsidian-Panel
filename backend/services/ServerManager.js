@@ -334,7 +334,9 @@ class ServerManager {
                     }
 
                     // Get real CPU and RAM usage using pidusage
+                    console.log(`[Stats] Monitoring PID ${proc.pid} for server ${serverId}`);
                     const stats = await pidusage(proc.pid);
+                    console.log(`[Stats] Raw stats for ${serverId}:`, stats);
 
                     // CPU percentage (0-100)
                     server.cpuUsage = Math.min(stats.cpu, 100);
@@ -351,10 +353,7 @@ class ServerManager {
                         players: server.activePlayers,
                     });
                 } catch (error) {
-                    // Process might not exist yet or has exited
-                    if (error.code !== 'ENOENT') {
-                        console.error(`[Stats Error] Server ${serverId}:`, error);
-                    }
+                    console.error(`[Stats Error] Server ${serverId} (PID ${proc?.pid}):`, error);
                 }
             }
         }, 5000);

@@ -18,10 +18,25 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
     cors: {
-        origin: process.env.NODE_ENV === 'production'
-            ? false
-            : '*', // Allow all origins in development
+        origin: (origin, callback) => {
+            // Allow requests with no origin (like mobile apps or curl requests)
+            if (!origin) return callback(null, true);
+
+            // Allow any localhost origin (for development with varying ports)
+            if (origin.match(/^http:\/\/localhost:\d+$/) || origin.match(/^http:\/\/127\.0\.0\.1:\d+$/)) {
+                return callback(null, true);
+            }
+
+            // Production domains would go here
+            if (process.env.NODE_ENV === 'production') {
+                // Add production domains here
+                return callback(new Error('Not allowed by CORS'));
+            }
+
+            callback(null, true);
+        },
         methods: ['GET', 'POST'],
+        credentials: true
     },
 });
 
