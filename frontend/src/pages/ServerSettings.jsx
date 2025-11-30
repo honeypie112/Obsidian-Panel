@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useToast } from '../context/ToastContext';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { Server, Trash2, Save } from 'lucide-react';
 import axios from 'axios';
@@ -27,6 +28,8 @@ const ServerSettings = () => {
         }
     }, [selectedServer]);
 
+    const { success, error } = useToast();
+
     const handleSave = async () => {
         if (!selectedServer) return;
 
@@ -42,26 +45,30 @@ const ServerSettings = () => {
                 }
             );
 
-            alert('Settings saved successfully!');
+            success('Settings saved successfully!');
             setSelectedServer(response.data.server);
-        } catch (error) {
-            console.error('Failed to save settings:', error);
-            alert('Failed to save settings');
+        } catch (err) {
+            console.error('Failed to save settings:', err);
+            error(err.response?.data?.error || 'Failed to save settings');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDelete = async () => {
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
+
+    const handleDelete = () => {
         if (!selectedServer) return;
+        setShowDeleteModal(true);
+        setDeleteConfirmationText('');
+    };
 
+    const confirmDelete = async () => {
         const confirmText = `DELETE ${selectedServer.name}`;
-        const userInput = prompt(
-            `⚠️ WARNING: This will permanently delete the server and ALL its files!\n\nType "${confirmText}" to confirm:`
-        );
 
-        if (userInput !== confirmText) {
-            alert('Deletion cancelled - text did not match');
+        if (deleteConfirmationText !== confirmText) {
+            error('Confirmation text does not match');
             return;
         }
 
@@ -73,13 +80,13 @@ const ServerSettings = () => {
                 },
             });
 
-            alert('Server deleted successfully');
+            success('Server deleted successfully');
             setSelectedServer(null);
             navigate('/dashboard');
-            window.location.reload(); // Refresh to update server list
-        } catch (error) {
-            console.error('Failed to delete server:', error);
-            alert('Failed to delete server');
+            window.location.reload();
+        } catch (err) {
+            console.error('Failed to delete server:', err);
+            error('Failed to delete server');
             setDeleting(false);
         }
     };
@@ -209,6 +216,57 @@ const ServerSettings = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+                    <div className="delete-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="delete-modal-header">
+                            <div className="warning-icon">
+                                <Trash2 size={24} />
+                            </div>
+                            <h2>Delete Server?</h2>
+                        </div>
+
+                        <div className="delete-modal-content">
+                            <p className="warning-text">
+                                This action cannot be undone. This will permanently delete
+                                <strong> {selectedServer.name} </strong>
+                                and all associated files, worlds, and data.
+                            </p>
+
+                            <div className="confirmation-input-group">
+                                <label>
+                                    Please type <code>DELETE {selectedServer.name}</code> to confirm:
+                                </label>
+                                <input
+                                    type="text"
+                                    value={deleteConfirmationText}
+                                    onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                                    placeholder={`DELETE ${selectedServer.name}`}
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+
+                        <div className="delete-modal-actions">
+                            <button
+                                className="cancel-btn"
+                                onClick={() => setShowDeleteModal(false)}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="confirm-delete-btn"
+                                onClick={confirmDelete}
+                                disabled={deleteConfirmationText !== `DELETE ${selectedServer.name}` || deleting}
+                            >
+                                {deleting ? 'Deleting...' : 'Delete Permanently'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

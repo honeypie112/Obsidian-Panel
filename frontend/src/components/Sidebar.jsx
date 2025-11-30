@@ -15,7 +15,6 @@ const Sidebar = () => {
     const menuItems = [
         { path: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
         { path: '/dashboard/console', icon: Terminal, label: 'Console' },
-        { path: '/dashboard/players', icon: Users, label: 'Players' },
         { path: '/dashboard/files', icon: FolderOpen, label: 'File Manager' },
     ];
 

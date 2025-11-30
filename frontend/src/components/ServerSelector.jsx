@@ -32,6 +32,41 @@ const ServerSelector = ({ selectedServer, onServerChange }) => {
         setShowCreateModal(false);
     };
 
+    // Listen for server status updates
+    useEffect(() => {
+        const socketUrl = process.env.NODE_ENV === 'production'
+            ? window.location.origin
+            : 'http://localhost:3000';
+
+        // We use a separate socket for the selector to ensure it's always listening
+        // In a larger app, this should be in a global context
+        import('socket.io-client').then(({ io }) => {
+            const socket = io(socketUrl);
+
+            socket.on('connect', () => {
+                // Join all server rooms to get updates
+                servers.forEach(server => {
+                    socket.emit('joinServer', server._id);
+                });
+            });
+
+            socket.on('serverStatus', (data) => {
+                if (data.serverId) {
+                    setServers(prevServers =>
+                        prevServers.map(server =>
+                            server._id === data.serverId
+                                ? { ...server, status: data.status }
+                                : server
+                        )
+                    );
+                }
+            });
+
+            // Clean up
+            return () => socket.disconnect();
+        });
+    }, [servers.length]); // Re-run if server list changes (e.g. new server created)
+
     const currentServer = servers.find(s => s._id === selectedServer?._id) || selectedServer;
 
     return (

@@ -36,7 +36,7 @@ const Dashboard = () => {
                 </div>
 
                 <div className="dashboard-content">
-                    <Outlet context={{ selectedServer }} />
+                    <Outlet context={{ selectedServer, setSelectedServer }} />
                 </div>
             </div>
         </div>

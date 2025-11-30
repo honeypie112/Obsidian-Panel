@@ -1,168 +1,269 @@
+/* Console Page Layout */
 .console-page {
-    animation: fadeIn 0.3s ease-out;
-    height: calc(100vh - 120px);
+    height: calc(100vh - 100px);
     display: flex;
     flex-direction: column;
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
 }
 
 .console-header {
-    margin-bottom: 24px;
+    margin-bottom: 20px;
+    flex-shrink: 0;
 }
 
 .console-header h1 {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 700;
     color: var(--text-primary);
     margin-bottom: 4px;
 }
 
-.console-container {
+.server-name {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    background-color: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+}
+
+.connection-status.connected {
+    color: var(--console-green);
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+.connection-status.disconnected {
+    color: var(--console-red);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: currentColor;
+    box-shadow: 0 0 8px currentColor;
+}
+
+/* Console Window */
+.console-window {
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 0;
+    background-color: #0d0d0d;
+    /* Darker background for console */
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
     overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
 }
 
 .console-output {
     flex: 1;
-    padding: 24px;
+    padding: 20px;
     overflow-y: auto;
-    font-family: 'Courier New', monospace;
-    background-color: #0a0a0a;
-    border-bottom: 1px solid var(--border-color);
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #e5e7eb;
+    scroll-behavior: smooth;
 }
 
+/* Scrollbar Styling */
+.console-output::-webkit-scrollbar {
+    width: 10px;
+}
+
+.console-output::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+.console-output::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 5px;
+    border: 2px solid #1a1a1a;
+}
+
+.console-output::-webkit-scrollbar-thumb:hover {
+    background: #444;
+}
+
+/* Console Lines */
 .console-line {
     display: flex;
     gap: 12px;
-    padding: 4px 0;
-    font-size: 13px;
-    line-height: 1.5;
-}
-
-.console-prefix {
-    color: var(--text-muted);
-    user-select: none;
-}
-
-.console-text {
-    flex: 1;
+    word-break: break-all;
     white-space: pre-wrap;
-    word-break: break-word;
 }
 
-.console-stdout .console-text {
-    color: #a8dadc;
+.console-line .timestamp {
+    color: #6b7280;
+    font-size: 12px;
+    user-select: none;
+    flex-shrink: 0;
+    min-width: 65px;
 }
 
-.console-stderr .console-text {
-    color: #ef476f;
-}
-
-.console-input .console-text {
-    color: #06ffa5;
+.console-line.input .content {
+    color: #10b981;
+    /* Green for user input */
     font-weight: 600;
+}
+
+.console-line.input .content::before {
+    content: "> ";
+    color: #10b981;
+}
+
+.console-line.stderr .content {
+    color: #ef4444;
+    /* Red for errors */
+}
+
+/* ANSI Colors */
+:root {
+    --console-black: #000000;
+    --console-red: #ef4444;
+    --console-green: #22c55e;
+    --console-yellow: #eab308;
+    --console-blue: #3b82f6;
+    --console-magenta: #d946ef;
+    --console-cyan: #06b6d4;
+    --console-white: #f3f4f6;
+    --console-gray: #6b7280;
+    --console-lightred: #f87171;
+    --console-lightgreen: #4ade80;
+    --console-lightyellow: #fde047;
+    --console-lightblue: #60a5fa;
+    --console-lightmagenta: #e879f9;
+    --console-lightcyan: #22d3ee;
+}
+
+/* Input Area */
+.console-input-area {
+    padding: 16px;
+    background-color: #1a1a1a;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.input-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background-color: #0d0d0d;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 4px;
+    transition: border-color 0.2s;
+}
+
+.input-wrapper:focus-within {
+    border-color: var(--accent-blue);
+}
+
+.input-wrapper input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    padding: 8px 12px;
+    outline: none;
+}
+
+.input-wrapper input:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.ai-btn {
+    background: transparent;
+    border: none;
+    color: var(--accent-purple);
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ai-btn:hover:not(:disabled) {
+    background-color: rgba(168, 85, 247, 0.1);
+    transform: scale(1.1);
+}
+
+.ai-btn.loading {
+    animation: pulse 1.5s infinite;
+}
+
+.ai-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.send-btn {
+    background-color: var(--accent-blue);
+    border: none;
+    color: white;
+    padding: 0 20px;
+    height: 42px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.send-btn:hover:not(:disabled) {
+    background-color: #2563eb;
+    transform: translateY(-1px);
+}
+
+.send-btn:disabled {
+    background-color: #333;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+
+    100% {
+        opacity: 1;
+    }
 }
 
 .console-empty {
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: var(--text-muted);
-    gap: 8px;
-}
-
-.console-hint {
-    font-size: 13px;
-    color: var(--text-muted);
-}
-
-.console-input-container {
-    padding: 20px 24px;
-    background-color: var(--bg-card);
-    border-top: 1px solid var(--border-color);
-}
-
-.console-input-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background-color: #0a0a0a;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    margin-bottom: 12px;
-    transition: all 0.2s ease;
-}
-
-.console-input-wrapper:focus-within {
-    border-color: var(--accent-blue);
-}
-
-.input-prefix {
-    color: var(--accent-green);
-    font-family: 'Courier New', monospace;
-    font-weight: 600;
-    user-select: none;
-}
-
-.console-input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    color: var(--text-primary);
-    font-family: 'Courier New', monospace;
-    font-size: 14px;
-    outline: none;
-}
-
-.console-input::placeholder {
-    color: var(--text-muted);
-}
-
-.console-actions {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-}
-
-.ai-assist-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    background-color: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    color: var(--text-secondary);
-    font-size: 14px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-}
-
-.ai-assist-btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, var(--accent-purple), #7c3aed);
-    border-color: var(--accent-purple);
-    color: white;
-}
-
-.send-btn {
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
-    border: none;
-    border-radius: 6px;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-}
-
-.send-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+    color: #666;
+    font-style: italic;
 }

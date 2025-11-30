@@ -8,6 +8,7 @@ import './Overview.css';
 
 const Overview = () => {
     const { selectedServer } = useOutletContext();
+    const [serverStatus, setServerStatus] = useState(selectedServer?.status || 'offline');
     const [stats, setStats] = useState({
         cpu: 0,
         ram: 0,
@@ -17,6 +18,7 @@ const Overview = () => {
 
     useEffect(() => {
         if (!selectedServer) return;
+        setServerStatus(selectedServer.status);
 
         const socketUrl = process.env.NODE_ENV === 'production'
             ? window.location.origin
@@ -32,22 +34,29 @@ const Overview = () => {
             setStats(data);
         });
 
+        socket.on('serverStatus', (data) => {
+            setServerStatus(data.status);
+        });
+
         return () => {
             socket.emit('leaveServer', selectedServer._id);
             socket.disconnect();
         };
-    }, [selectedServer]);
+    }, [selectedServer?._id]);
 
     const handleStartServer = async () => {
         try {
+            setServerStatus('starting');
             await axios.put(`/api/servers/${selectedServer._id}/start`);
         } catch (error) {
             console.error('Failed to start server:', error);
+            setServerStatus('offline');
         }
     };
 
     const handleStopServer = async () => {
         try {
+            setServerStatus('stopping');
             await axios.put(`/api/servers/${selectedServer._id}/stop`);
         } catch (error) {
             console.error('Failed to stop server:', error);
@@ -63,7 +72,7 @@ const Overview = () => {
         );
     }
 
-    const isRunning = selectedServer.status === 'online';
+    const isRunning = serverStatus === 'online' || serverStatus === 'starting';
 
     return (
         <div className="overview-page">
@@ -82,8 +91,13 @@ const Overview = () => {
                     <button
                         className={`server-control-btn ${isRunning ? 'stop' : 'start'}`}
                         onClick={isRunning ? handleStopServer : handleStartServer}
+                        disabled={serverStatus === 'starting' || serverStatus === 'stopping'}
                     >
-                        {isRunning ? (
+                        {serverStatus === 'starting' ? (
+                            'Starting...'
+                        ) : serverStatus === 'stopping' ? (
+                            'Stopping...'
+                        ) : isRunning ? (
                             <>
                                 <Square size={18} />
                                 Stop Server
@@ -117,19 +131,12 @@ const Overview = () => {
                     progress={stats.ram}
                 />
 
-                <StatCard
-                    title="Active Players"
-                    value={stats.players}
-                    subtitle={`${selectedServer.maxPlayers} Slots Max`}
-                    icon={Users}
-                    color="green"
-                    progress={(stats.players / selectedServer.maxPlayers) * 100}
-                />
+
             </div>
 
             <div className="activity-card card">
                 <div className="activity-header">
-                    <Clock size={20} />
+                    <Users size={20} />
                     <h2>Recent Activity</h2>
                 </div>
 
@@ -142,7 +149,7 @@ const Overview = () => {
                         activities.map((activity, index) => (
                             <div key={index} className="activity-item">
                                 <div className="activity-icon">
-                                    <Clock size={16} />
+                                    <Play size={16} />
                                 </div>
                                 <div className="activity-info">
                                     <div className="activity-title">{activity.title}</div>

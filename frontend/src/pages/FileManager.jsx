@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import { useToast } from '../context/ToastContext';
 import { FolderOpen, File, Upload, Download, Edit, Trash2, PackageOpen } from 'lucide-react';
 import axios from 'axios';
 import './FileManager.css';
 
 const FileManager = () => {
     const { selectedServer } = useOutletContext();
+    const { success, error } = useToast();
     const [files, setFiles] = useState([]);
     const [currentPath, setCurrentPath] = useState('/');
     const [uploading, setUploading] = useState(false);
@@ -57,9 +59,9 @@ const FileManager = () => {
             fetchFiles();
             // Reset file input
             e.target.value = '';
-        } catch (error) {
-            console.error('Upload failed:', error);
-            alert('Upload failed: ' + (error.response?.data?.error || error.message));
+        } catch (err) {
+            console.error('Upload failed:', err);
+            error('Upload failed: ' + (err.response?.data?.error || err.message));
         } finally {
             setUploading(false);
             setUploadProgress(0);
@@ -80,8 +82,9 @@ const FileManager = () => {
             document.body.appendChild(link);
             link.click();
             link.remove();
-        } catch (error) {
-            console.error('Download failed:', error);
+        } catch (err) {
+            console.error('Download failed:', err);
+            error('Failed to download file');
         }
     };
 
@@ -92,9 +95,11 @@ const FileManager = () => {
             await axios.delete(`/api/files/${selectedServer._id}/delete`, {
                 params: { path: filePath },
             });
+            success('File deleted successfully');
             fetchFiles();
-        } catch (error) {
-            console.error('Delete failed:', error);
+        } catch (err) {
+            console.error('Delete failed:', err);
+            error('Failed to delete file');
         }
     };
 
@@ -120,9 +125,9 @@ const FileManager = () => {
                 file: filePath,
                 content: response.data.content,
             });
-        } catch (error) {
-            console.error('Failed to read file:', error);
-            alert('Failed to open file for editing');
+        } catch (err) {
+            console.error('Failed to read file:', err);
+            error('Failed to open file for editing');
         }
     };
 
@@ -138,11 +143,11 @@ const FileManager = () => {
             });
 
             setEditModal({ open: false, file: null, content: '' });
-            alert('File saved successfully');
+            success('File saved successfully');
             fetchFiles();
-        } catch (error) {
-            console.error('Failed to save file:', error);
-            alert('Failed to save file');
+        } catch (err) {
+            console.error('Failed to save file:', err);
+            error('Failed to save file');
         }
     };
 
@@ -158,11 +163,11 @@ const FileManager = () => {
                 },
             });
 
-            alert(response.data.message);
+            success(response.data.message);
             fetchFiles(); // Refresh file list
-        } catch (error) {
-            console.error('Extract failed:', error);
-            alert(error.response?.data?.error || 'Failed to extract ZIP file');
+        } catch (err) {
+            console.error('Extract failed:', err);
+            error(err.response?.data?.error || 'Failed to extract ZIP file');
         }
     };
 
@@ -172,11 +177,11 @@ const FileManager = () => {
         setDownloadingJar(true);
         try {
             const response = await axios.post(`/api/servers/${selectedServer._id}/download-jar`);
-            alert(response.data.message);
+            success(response.data.message);
             fetchFiles(); // Refresh file list
-        } catch (error) {
-            console.error('Download JAR failed:', error);
-            alert(error.response?.data?.error || 'Failed to download server JAR');
+        } catch (err) {
+            console.error('Download JAR failed:', err);
+            error(err.response?.data?.error || 'Failed to download server JAR');
         } finally {
             setDownloadingJar(false);
         }
