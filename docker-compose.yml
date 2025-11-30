@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: minecraft-panel-db
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: minecraft-panel
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - minecraft-network
+    ports:
+      - "27017:27017"
+
+  panel:
+    build: .
+    container_name: minecraft-panel
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/minecraft-panel
+      - MONGO_DB_NAME=minecraft-panel
+      - JWT_SECRET=${JWT_SECRET:-change-this-secret-key}
+      - PORT=3000
+      - NODE_ENV=production
+      - MC_SERVER_BASE_PATH=/app/servers
+      - MC_PORT_RANGE_START=25565
+      - MC_PORT_RANGE_END=25575
+      - MC_DEFAULT_MEMORY=2048
+    ports:
+      - "3000:3000"
+      - "25565-25575:25565-25575"
+    volumes:
+      - server_data:/app/servers
+    networks:
+      - minecraft-network
+
+volumes:
+  mongodb_data:
+    driver: local
+  server_data:
+    driver: local
+
+networks:
+  minecraft-network:
+    driver: bridge

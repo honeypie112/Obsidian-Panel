@@ -1,0 +1,32 @@
+.players-page {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.players-header {
+    margin-bottom: 24px;
+}
+
+.players-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.players-container {
+    padding: 48px;
+}
+
+.players-empty {
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.players-empty p:first-child {
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.players-hint {
+    font-size: 14px;
+}
