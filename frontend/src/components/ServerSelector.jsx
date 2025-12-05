@@ -36,7 +36,7 @@ const ServerSelector = ({ selectedServer, onServerChange }) => {
     useEffect(() => {
         const socketUrl = process.env.NODE_ENV === 'production'
             ? window.location.origin
-            : 'http://localhost:3000';
+            : 'http://localhost:5000';
 
         // We use a separate socket for the selector to ensure it's always listening
         // In a larger app, this should be in a global context

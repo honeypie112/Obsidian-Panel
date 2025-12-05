@@ -134,12 +134,12 @@ class ServerManager {
 
             // Spawn Minecraft server process using node-pty
             const javaProcess = pty.spawn('java', [
-                `-Xmx1024M`, // Temporarily forced to 1024M for debugging
-                `-Xms1024M`,
+                `-Xmx${server.memory}M`,
+                `-Xms${server.memory}M`,
                 '-jar',
                 'server.jar',
                 'nogui',
-                `--port=${server.port}`,
+                `--port=${server.javaPort}`,
             ], {
                 name: 'xterm-color',
                 cols: 80,

@@ -96,11 +96,11 @@ const CreateServerModal = ({ isOpen, onClose, onServerCreated }) => {
                                 name="port"
                                 value={formData.port}
                                 onChange={handleChange}
-                                min="25565"
-                                max="25575"
+                                min="1"
+                                max="65535"
                                 required
                             />
-                            <small>Range: 25565-25575</small>
+                            <small>Any port (avoid 5000, 5173, 27017)</small>
                         </div>
 
                         <div className="form-group">

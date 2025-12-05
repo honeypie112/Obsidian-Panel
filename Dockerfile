@@ -14,9 +14,9 @@ FROM node:18-bullseye
 
 # Install Java for Minecraft servers
 RUN apt-get update && \
-    apt-get install -y openjdk-17-jre-headless && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+  apt-get install -y openjdk-17-jre-headless && \
+  apt-get clean && \
+  rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -35,17 +35,15 @@ RUN mkdir -p /app/servers
 # Set environment variables
 ENV NODE_ENV=production
 ENV MC_SERVER_BASE_PATH=/app/servers
-ENV PORT=3000
-
-# Expose ports
-# 3000 for web interface
-# 25565-25575 for Minecraft servers
-EXPOSE 3000
-EXPOSE 25565-25575
+ENV PORT=5000
+EXPOSE 5000
+EXPOSE 25565
+EXPOSE 19132/udp
+EXPOSE 5060
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
-  CMD node -e "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD node -e "require('http').get('http://localhost:5000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start server
 CMD ["node", "server.js"]

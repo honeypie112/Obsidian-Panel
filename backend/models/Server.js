@@ -5,10 +5,20 @@ const ServerSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    port: {
+    javaPort: {
         type: Number,
         required: true,
-        unique: true,
+        default: 25565,
+    },
+    bedrockPort: {
+        type: Number,
+        required: true,
+        default: 19132,
+    },
+    voipPort: {
+        type: Number,
+        required: true,
+        default: 5060,
     },
     version: {
         type: String,

@@ -18,10 +18,10 @@ const Console = () => {
     useEffect(() => {
         if (!selectedServer) return;
 
-        // Connect to Socket.IO (use same origin in production, localhost:3000 in dev)
+        // Connect to Socket.IO (use same origin in production, localhost:5000 in dev)
         const socketUrl = process.env.NODE_ENV === 'production'
             ? window.location.origin
-            : 'http://localhost:3000';
+            : 'http://localhost:5000';
 
         const socket = io(socketUrl, {
             transports: ['websocket', 'polling'], // Try websocket first, fallback to polling

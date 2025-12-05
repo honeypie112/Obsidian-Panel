@@ -22,7 +22,7 @@ const Overview = () => {
 
         const socketUrl = process.env.NODE_ENV === 'production'
             ? window.location.origin
-            : 'http://localhost:3000';
+            : 'http://localhost:5000';
 
         const socket = io(socketUrl);
 
@@ -66,8 +66,8 @@ const Overview = () => {
     if (!selectedServer) {
         return (
             <div className="no-server">
-                <h2>No Server Selected</h2>
-                <p>Please select a server from the dropdown above</p>
+                <h2>Loading Server...</h2>
+                <p>Please wait while the server information is being loaded</p>
             </div>
         );
     }
@@ -80,7 +80,7 @@ const Overview = () => {
                 <div>
                     <h1>{selectedServer.name}</h1>
                     <p className="server-info">
-                        Port: {selectedServer.port} | Version: {selectedServer.version || 'Unknown'}
+                        Java Port: {selectedServer.javaPort || 25565} | Bedrock Port: {selectedServer.bedrockPort || 19132} | VoIP Port: {selectedServer.voipPort || 5060} | Version: {selectedServer.version || 'Unknown'}
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>

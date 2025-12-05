@@ -47,11 +47,31 @@ function App() {
                                 </PrivateRoute>
                             }
                         >
-                            <Route index element={<Overview />} />
-                            <Route path="console" element={<Console />} />
-                            <Route path="files" element={<FileManager />} />
-                            <Route path="settings" element={<Settings />} />
-                            <Route path="server-settings" element={<ServerSettings />} />
+                            <Route index element={
+                                <PrivateRoute>
+                                    <Overview />
+                                </PrivateRoute>
+                            } />
+                            <Route path="console" element={
+                                <PrivateRoute>
+                                    <Console />
+                                </PrivateRoute>
+                            } />
+                            <Route path="files" element={
+                                <PrivateRoute>
+                                    <FileManager />
+                                </PrivateRoute>
+                            } />
+                            <Route path="settings" element={
+                                <PrivateRoute>
+                                    <Settings />
+                                </PrivateRoute>
+                            } />
+                            <Route path="server-settings" element={
+                                <PrivateRoute>
+                                    <ServerSettings />
+                                </PrivateRoute>
+                            } />
                         </Route>
 
                         <Route path="/" element={<Navigate to="/dashboard" />} />

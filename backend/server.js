@@ -5,7 +5,7 @@ const socketIO = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const connectDB = require('./config/db');
-const createDefaultAdmin = require('./config/createDefaultAdmin');
+const { createDefaultAdmin, createDefaultServer } = require('./config/createDefaultAdmin');
 const ServerManager = require('./services/ServerManager');
 
 // Import routes
@@ -40,10 +40,11 @@ const io = socketIO(server, {
     },
 });
 
-// Connect to MongoDB and create default admin
+// Connect to MongoDB and create defaults
 (async () => {
     await connectDB();
     await createDefaultAdmin();
+    await createDefaultServer();
 })();
 
 // Middleware
@@ -91,10 +92,10 @@ app.use('/api/ai', aiRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.join(__dirname, '../frontend/dist')));
+    app.use(express.static(path.join(__dirname, './frontend/dist')));
 
     app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+        res.sendFile(path.join(__dirname, './frontend/dist/index.html'));
     });
 }
 
@@ -121,7 +122,7 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
     console.log(`

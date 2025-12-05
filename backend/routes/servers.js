@@ -31,73 +31,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
     }
 });
 
-// Create new server
-router.post('/', authMiddleware, async (req, res) => {
-    try {
-        const { name, port, version, memory } = req.body;
-
-        // Check if port is already in use
-        const existingServer = await Server.findOne({ port });
-        if (existingServer) {
-            return res.status(400).json({ error: 'Port already in use' });
-        }
-
-        // Validate port range
-        const minPort = parseInt(process.env.MC_PORT_RANGE_START) || 25565;
-        const maxPort = parseInt(process.env.MC_PORT_RANGE_END) || 25575;
-
-        if (port < minPort || port > maxPort) {
-            return res.status(400).json({
-                error: `Port must be between ${minPort} and ${maxPort}`
-            });
-        }
-
-        // Create server directory
-        const serverDir = path.join(
-            process.env.MC_SERVER_BASE_PATH || './servers',
-            `server_${port}`
-        );
-
-        await fs.mkdir(serverDir, { recursive: true });
-
-        const server = new Server({
-            name,
-            port,
-            version: version || '1.20.4',
-            memory: memory || parseInt(process.env.MC_DEFAULT_MEMORY) || 2048,
-            directory: serverDir,
-        });
-
-        await server.save();
-
-        // Auto-download PurpurMC server JAR
-        try {
-            const jarPath = path.join(serverDir, 'server.jar');
-            const downloadUrl = `https://api.purpurmc.org/v2/purpur/${server.version}/latest/download`;
-
-            console.log(`Downloading PurpurMC ${server.version} for server ${server.name}...`);
-            const response = await axios.get(downloadUrl, { responseType: 'stream' });
-            const writer = require('fs').createWriteStream(jarPath);
-
-            response.data.pipe(writer);
-
-            await new Promise((resolve, reject) => {
-                writer.on('finish', resolve);
-                writer.on('error', reject);
-            });
-
-            console.log(`✅ Downloaded server.jar for ${server.name}`);
-        } catch (downloadError) {
-            console.error('Failed to download server JAR:', downloadError.message);
-            // Don't fail server creation if download fails
-        }
-
-        res.status(201).json(server);
-    } catch (error) {
-        console.error('Create server error:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
+// Create server endpoint removed - single server mode only
 
 // Start server
 router.put('/:id/start', authMiddleware, async (req, res) => {
@@ -172,63 +106,7 @@ router.post('/:id/download-jar', authMiddleware, async (req, res) => {
     }
 });
 
-// Delete server
-router.delete('/:id', authMiddleware, async (req, res) => {
-    try {
-        const server = await Server.findById(req.params.id);
-        if (!server) {
-            return res.status(404).json({ error: 'Server not found' });
-        }
-
-        // Check if server is running
-        if (server.status !== 'offline') {
-            return res.status(400).json({ error: 'Cannot delete running server' });
-        }
-
-        // Delete server directory (optional, be careful!)
-        // await fs.rm(server.directory, { recursive: true, force: true });
-
-        await Server.findByIdAndDelete(req.params.id);
-        res.json({ message: 'Server deleted successfully' });
-    } catch (error) {
-        console.error('Delete server error:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// Delete server
-router.delete('/:serverId', authMiddleware, async (req, res) => {
-    try {
-        const server = await Server.findById(req.params.serverId);
-        if (!server) {
-            return res.status(404).json({ error: 'Server not found' });
-        }
-
-        // Stop server if running
-        const serverManager = req.app.get('serverManager');
-        try {
-            await serverManager.stopServer(req.params.serverId);
-        } catch (err) {
-            // Server might not be running, ignore
-        }
-
-        // Delete server directory
-        const fs = require('fs').promises;
-        try {
-            await fs.rm(server.directory, { recursive: true, force: true });
-        } catch (err) {
-            console.error('Failed to delete server directory:', err);
-        }
-
-        // Delete from database
-        await Server.findByIdAndDelete(req.params.serverId);
-
-        res.json({ message: 'Server deleted successfully' });
-    } catch (error) {
-        console.error('Delete server error:', error);
-        res.status(500).json({ error: 'Failed to delete server' });
-    }
-});
+// Delete server endpoint removed - single server mode only
 
 // Update server settings (version, memory, etc.)
 router.put('/:serverId/settings', authMiddleware, async (req, res) => {

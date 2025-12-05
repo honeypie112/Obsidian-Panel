@@ -1,0 +1,40 @@
+FROM node:18-bullseye
+
+# Install Java for Minecraft
+RUN apt-get update && \
+    apt-get install -y openjdk-17-jre-headless && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# --- Install PM2 ---
+RUN npm install -g pm2 serve
+
+# --- Build Frontend ---
+COPY frontend/package*.json ./frontend/
+RUN cd frontend && npm install
+COPY frontend ./frontend
+RUN cd frontend && npm run build
+
+# --- Install Backend ---
+COPY backend/package*.json ./backend/
+RUN cd backend && npm install --production
+COPY backend ./backend
+
+# --- Create Servers directory ---
+RUN mkdir -p /app/servers
+
+ENV NODE_ENV=production
+ENV MC_SERVER_BASE_PATH=/app/servers
+ENV PORT=5000
+
+# Expose ports
+EXPOSE 5000
+EXPOSE 25565
+EXPOSE 19132/udp
+EXPOSE 5060
+
+# --- Start both frontend and backend ---
+CMD pm2 start /app/backend/server.js --name backend && \
+    pm2 start "serve -s /app/frontend/dist -l 3000" --name frontend && \
+    pm2 logs
