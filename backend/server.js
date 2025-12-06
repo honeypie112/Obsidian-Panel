@@ -1,137 +1,51 @@
-require('dotenv').config();
 const express = require('express');
-const http = require('http');
-const socketIO = require('socket.io');
+const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path');
-const connectDB = require('./config/db');
-const { createDefaultAdmin, createDefaultServer } = require('./config/createDefaultAdmin');
-const ServerManager = require('./services/ServerManager');
+const http = require('http');
+const { Server } = require('socket.io');
+require('dotenv').config({ path: '../.env' }); // Load from root .env
 
-// Import routes
 const authRoutes = require('./routes/auth');
-const serverRoutes = require('./routes/servers');
-const fileRoutes = require('./routes/files');
-const aiRoutes = require('./routes/ai');
+// const serverRoutes = require('./routes/server'); // To be implemented
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server, {
+const io = new Server(server, {
     cors: {
-        origin: (origin, callback) => {
-            // Allow requests with no origin (like mobile apps or curl requests)
-            if (!origin) return callback(null, true);
-
-            // Allow any localhost origin (for development with varying ports)
-            if (origin.match(/^http:\/\/localhost:\d+$/) || origin.match(/^http:\/\/127\.0\.0\.1:\d+$/)) {
-                return callback(null, true);
-            }
-
-            // Production domains would go here
-            if (process.env.NODE_ENV === 'production') {
-                // Add production domains here
-                return callback(new Error('Not allowed by CORS'));
-            }
-
-            callback(null, true);
-        },
-        methods: ['GET', 'POST'],
-        credentials: true
-    },
+        origin: "*", // Allow all for now, restrict in production
+        methods: ["GET", "POST"]
+    }
 });
-
-// Connect to MongoDB and create defaults
-(async () => {
-    await connectDB();
-    await createDefaultAdmin();
-    await createDefaultServer();
-})();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// Initialize ServerManager
-const serverManager = new ServerManager(io);
-app.set('serverManager', serverManager);
+// Database Connection
+mongoose.connect(process.env.MONGO_URI, {
+    dbName: process.env.MONGO_DB_NAME
+})
+    .then(() => console.log('MongoDB Connected'))
+    .catch(err => console.log(err));
 
-// Socket.IO connection handling
+// Routes
+app.use('/api/auth', authRoutes);
+// app.use('/api/server', serverRoutes);
+
+// Socket.io
 io.on('connection', (socket) => {
-    console.log('Client connected:', socket.id);
-
-    socket.on('joinServer', (serverId) => {
-        socket.join(serverId);
-        console.log(`Client ${socket.id} joined server room: ${serverId}`);
-
-        // Send buffered logs to the joining client
-        const logs = serverManager.getLogs(serverId);
-        if (logs.length > 0) {
-            // Join all logs into a single string or send individually
-            // Sending individually is safer for the current frontend implementation
-            const combinedLogs = logs.map(log => log.data).join('');
-            socket.emit('console', { type: 'stdout', data: combinedLogs });
-        }
-    });
-
-    socket.on('leaveServer', (serverId) => {
-        socket.leave(serverId);
-        console.log(`Client ${socket.id} left server room: ${serverId}`);
-    });
+    console.log('New client connected:', socket.id);
 
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
     });
 });
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/servers', serverRoutes);
-app.use('/api/files', fileRoutes);
-app.use('/api/ai', aiRoutes);
-
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.join(__dirname, './frontend/dist')));
-
-    app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, './frontend/dist/index.html'));
-    });
-}
-
-// Error handling
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ error: 'Something went wrong!' });
-});
-
-// Graceful shutdown
-process.on('SIGINT', () => {
-    console.log('\nShutting down gracefully...');
-    serverManager.cleanup();
-    process.exit(0);
-});
-
-// Global error handlers to prevent crashes
-process.on('uncaughtException', (err) => {
-    console.error('❌ Uncaught Exception:', err);
-    // Don't exit immediately, try to keep running if possible, or at least log it
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-});
+// Export io to be used in other files
+app.set('io', io);
 
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
-    console.log(`
-╔══════════════════════════════════════════╗
-║   🎮 Minecraft Server Panel Started    ║
-╠══════════════════════════════════════════╣
-║   Port: ${PORT}                            ║
-║   Mode: ${process.env.NODE_ENV || 'development'}
-║   URL:  http://localhost:${PORT}         ║
-╚══════════════════════════════════════════╝
-  `);
+    console.log(`Server running on port ${PORT}`);
 });

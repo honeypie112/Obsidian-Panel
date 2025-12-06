@@ -1,86 +1,43 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { ToastProvider } from './context/ToastContext';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { ServerProvider } from './context/ServerContext';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
+import Register from './pages/Register';
+import DashboardLayout from './components/DashboardLayout';
 import Overview from './pages/Overview';
+import PrivateRoute from './components/PrivateRoute';
+
 import Console from './pages/Console';
-import FileManager from './pages/FileManager';
-import Settings from './pages/Settings';
+import Files from './pages/Files';
 import ServerSettings from './pages/ServerSettings';
-import './index.css';
-
-const PrivateRoute = ({ children }) => {
-    const { isAuthenticated, loading } = useAuth();
-
-    if (loading) {
-        return (
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100vh',
-                color: 'white'
-            }}>
-                Loading...
-            </div>
-        );
-    }
-
-    return isAuthenticated ? children : <Navigate to="/login" />;
-};
+import GeneralSettings from './pages/GeneralSettings';
 
 function App() {
-    return (
-        <AuthProvider>
-            <ToastProvider>
-                <BrowserRouter>
-                    <Routes>
-                        <Route path="/login" element={<Login />} />
+  return (
+    <AuthProvider>
+      <ServerProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-                        <Route
-                            path="/dashboard"
-                            element={
-                                <PrivateRoute>
-                                    <Dashboard />
-                                </PrivateRoute>
-                            }
-                        >
-                            <Route index element={
-                                <PrivateRoute>
-                                    <Overview />
-                                </PrivateRoute>
-                            } />
-                            <Route path="console" element={
-                                <PrivateRoute>
-                                    <Console />
-                                </PrivateRoute>
-                            } />
-                            <Route path="files" element={
-                                <PrivateRoute>
-                                    <FileManager />
-                                </PrivateRoute>
-                            } />
-                            <Route path="settings" element={
-                                <PrivateRoute>
-                                    <Settings />
-                                </PrivateRoute>
-                            } />
-                            <Route path="server-settings" element={
-                                <PrivateRoute>
-                                    <ServerSettings />
-                                </PrivateRoute>
-                            } />
-                        </Route>
+            <Route element={<PrivateRoute />}>
+              <Route element={<DashboardLayout />}>
+                <Route path="/" element={<Overview />} />
+                <Route path="/console" element={<Console />} />
+                <Route path="/files" element={<Files />} />
+                <Route path="/server-settings" element={<ServerSettings />} />
+                <Route path="/general-settings" element={<GeneralSettings />} />
+              </Route>
+            </Route>
 
-                        <Route path="/" element={<Navigate to="/dashboard" />} />
-                        <Route path="*" element={<Navigate to="/dashboard" />} />
-                    </Routes>
-                </BrowserRouter>
-            </ToastProvider>
-        </AuthProvider>
-    );
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </Router>
+      </ServerProvider>
+    </AuthProvider>
+  );
 }
 
 export default App;

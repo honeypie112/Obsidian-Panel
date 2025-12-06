@@ -1,35 +1,22 @@
 {
     "name": "obsidian-panel-backend",
-    "version": "0.2.1",
-    "description": "Backend for Minecraft Server Hosting Panel",
+    "version": "1.0.0",
+    "description": "Backend for Obsidian Panel",
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
         "dev": "nodemon server.js"
     },
-    "keywords": [
-        "minecraft",
-        "server",
-        "hosting",
-        "panel"
-    ],
-    "author": "",
-    "license": "MIT",
     "dependencies": {
-        "adm-zip": "^0.5.10",
-        "axios": "^1.6.2",
         "bcryptjs": "^2.4.3",
         "cors": "^2.8.5",
         "dotenv": "^16.3.1",
         "express": "^4.18.2",
         "jsonwebtoken": "^9.0.2",
-        "mongoose": "^8.0.0",
-        "multer": "^1.4.5-lts.1",
-        "node-pty": "^1.0.0",
-        "pidusage": "^3.0.2",
-        "socket.io": "^4.6.0"
+        "mongoose": "^8.0.3",
+        "socket.io": "^4.7.2"
     },
     "devDependencies": {
-        "nodemon": "^3.0.1"
+        "nodemon": "^3.0.2"
     }
 }

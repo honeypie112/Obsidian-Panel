@@ -1,139 +1,113 @@
 const express = require('express');
+const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const router = express.Router();
+const auth = require('../middleware/auth');
 
-// Login
-router.post('/login', async (req, res) => {
+// @route   POST api/auth/register
+// @desc    Register a user
+// @access  Public (for now, or restricted if admin exists)
+router.post('/register', async (req, res) => {
+    const { username, password } = req.body;
+
     try {
-        const { username, password } = req.body;
-
-        // Find user
-        const user = await User.findOne({ username });
-        if (!user) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+        let user = await User.findOne({ username });
+        if (user) {
+            return res.status(400).json({ message: 'User already exists' });
         }
 
-        // Check password
+        // Check if any user exists to determine role
+        const count = await User.countDocuments();
+        const role = count === 0 ? 'admin' : 'user';
+
+        user = new User({
+            username,
+            password,
+            role
+        });
+
+        await user.save();
+
+        const payload = {
+            id: user.id,
+            role: user.role
+        };
+
+        jwt.sign(
+            payload,
+            process.env.JWT_SECRET,
+            { expiresIn: '5d' },
+            (err, token) => {
+                if (err) throw err;
+                res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
+            }
+        );
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
+// @route   POST api/auth/login
+// @desc    Authenticate user & get token
+// @access  Public
+router.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    try {
+        let user = await User.findOne({ username });
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid Credentials' });
+        }
+
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(400).json({ message: 'Invalid Credentials' });
         }
 
-        // Generate token
-        const token = jwt.sign(
-            { userId: user._id, username: user.username },
+        const payload = {
+            id: user.id,
+            role: user.role
+        };
+
+        jwt.sign(
+            payload,
             process.env.JWT_SECRET,
-            { expiresIn: '7d' }
+            { expiresIn: '5d' },
+            (err, token) => {
+                if (err) throw err;
+                res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
+            }
         );
-
-        res.json({
-            token,
-            user: {
-                id: user._id,
-                username: user.username,
-                role: user.role,
-            },
-        });
-    } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ error: 'Server error' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
     }
 });
 
-// Register (only if no users exist)
-router.post('/register', async (req, res) => {
+// @route   GET api/auth/me
+// @desc    Get current user
+// @access  Private
+router.get('/me', auth, async (req, res) => {
     try {
-        const { username, password } = req.body;
-
-        // Check if any users exist
-        const userCount = await User.countDocuments();
-        if (userCount > 0) {
-            return res.status(403).json({ error: 'Registration disabled' });
-        }
-
-        // Create first admin user
-        const user = new User({ username, password, role: 'admin' });
-        await user.save();
-
-        // Generate token
-        const token = jwt.sign(
-            { userId: user._id, username: user.username },
-            process.env.JWT_SECRET,
-            { expiresIn: '7d' }
-        );
-
-        res.status(201).json({
-            token,
-            user: {
-                id: user._id,
-                username: user.username,
-                role: user.role,
-            },
-        });
-    } catch (error) {
-        console.error('Registration error:', error);
-        res.status(500).json({ error: 'Server error' });
+        const user = await User.findById(req.user.id).select('-password');
+        res.json(user);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
     }
 });
 
-// Verify token
-router.get('/verify', async (req, res) => {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-
-    if (!token) {
-        return res.status(401).json({ error: 'No token provided' });
-    }
-
+// @route   GET api/auth/has-admin
+// @desc    Check if any admin exists
+// @access  Public
+router.get('/has-admin', async (req, res) => {
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.userId).select('-password');
-
-        if (!user) {
-            return res.status(401).json({ error: 'User not found' });
-        }
-
-        res.json({ user });
-    } catch (error) {
-        res.status(401).json({ error: 'Invalid token' });
-    }
-});
-
-// Change password
-const authMiddleware = require('../middleware/auth');
-
-router.post('/change-password', authMiddleware, async (req, res) => {
-    try {
-        const { currentPassword, newPassword } = req.body;
-
-        if (!currentPassword || !newPassword) {
-            return res.status(400).json({ error: 'Current and new password are required' });
-        }
-
-        if (newPassword.length < 6) {
-            return res.status(400).json({ error: 'New password must be at least 6 characters' });
-        }
-
-        // Find user
-        const user = await User.findById(req.user.id);
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        // Verify current password
-        const isMatch = await user.comparePassword(currentPassword);
-        if (!isMatch) {
-            return res.status(401).json({ error: 'Current password is incorrect' });
-        }
-
-        // Update password (will be hashed by pre-save hook)
-        user.password = newPassword;
-        await user.save();
-
-        res.json({ message: 'Password changed successfully' });
-    } catch (error) {
-        console.error('Change password error:', error);
-        res.status(500).json({ error: 'Server error' });
+        const count = await User.countDocuments({ role: 'admin' });
+        res.json({ hasAdmin: count > 0 });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
     }
 });
 

@@ -1,33 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck } from 'lucide-react';
+import { Shield, UserPlus } from 'lucide-react';
 
-const Login = () => {
+const Register = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const { login, hasAdmin, checkHasAdmin } = useAuth();
+    const { register, checkHasAdmin } = useAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
-        const verifyAdmin = async () => {
-            const adminExists = await checkHasAdmin();
-            if (!adminExists) {
-                navigate('/register');
+        const checkStatus = async () => {
+            const hasAdmin = await checkHasAdmin();
+            if (hasAdmin) {
+                navigate('/login');
             }
         };
-        verifyAdmin();
+        checkStatus();
     }, [checkHasAdmin, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setIsLoading(true);
         setError('');
-        const result = await login(username, password);
+
+        if (password !== confirmPassword) {
+            setError("Passwords do not match");
+            return;
+        }
+
+        if (password.length < 6) {
+            setError("Password must be at least 6 characters");
+            return;
+        }
+
+        setIsLoading(true);
+        const result = await register(username, password);
         if (result.success) {
-            navigate('/');
+            navigate('/login');
         } else {
             setError(result.error);
         }
@@ -42,10 +54,10 @@ const Login = () => {
 
                 <div className="flex flex-col items-center mb-8">
                     <div className="w-12 h-12 bg-obsidian-accent/10 rounded-full flex items-center justify-center mb-4 text-obsidian-accent border border-obsidian-accent/20">
-                        <ShieldCheck size={24} />
+                        <UserPlus size={24} />
                     </div>
-                    <h1 className="text-2xl font-bold text-white">Obsidian Panel</h1>
-                    <p className="text-obsidian-muted text-sm">Sign in to manage your servers</p>
+                    <h1 className="text-2xl font-bold text-white">Setup Admin Account</h1>
+                    <p className="text-obsidian-muted text-sm">Create the owner account for this panel</p>
                 </div>
 
                 {error && (
@@ -59,20 +71,33 @@ const Login = () => {
                         <label className="block text-xs font-medium text-obsidian-muted mb-1 uppercase tracking-wider">Username</label>
                         <input
                             type="text"
+                            required
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             className="w-full bg-obsidian-bg border border-obsidian-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-obsidian-accent focus:ring-1 focus:ring-obsidian-accent transition-all"
-                            placeholder="Enter username"
+                            placeholder="Choose a username"
                         />
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-obsidian-muted mb-1 uppercase tracking-wider">Password</label>
                         <input
                             type="password"
+                            required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="w-full bg-obsidian-bg border border-obsidian-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-obsidian-accent focus:ring-1 focus:ring-obsidian-accent transition-all"
-                            placeholder="Enter password"
+                            placeholder="Choose a password"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-obsidian-muted mb-1 uppercase tracking-wider">Confirm Password</label>
+                        <input
+                            type="password"
+                            required
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className="w-full bg-obsidian-bg border border-obsidian-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-obsidian-accent focus:ring-1 focus:ring-obsidian-accent transition-all"
+                            placeholder="Confirm password"
                         />
                     </div>
                     <button
@@ -80,16 +105,12 @@ const Login = () => {
                         disabled={isLoading}
                         className="w-full bg-obsidian-accent hover:bg-obsidian-accent-hover text-white font-medium py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                     >
-                        {isLoading ? 'Signing in...' : 'Sign In'}
+                        {isLoading ? 'Creating Account...' : 'Create Admin Account'}
                     </button>
                 </form>
-
-                <div className="mt-6 text-center text-xs text-obsidian-muted">
-                    <p>Protected System</p>
-                </div>
             </div>
         </div>
     );
 };
 
-export default Login;
+export default Register;

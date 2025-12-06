@@ -1,0 +1,45 @@
+import React from 'react';
+import { useServer } from '../context/ServerContext';
+import { useAuth } from '../context/AuthContext';
+import { User, Server as ServerIcon } from 'lucide-react';
+
+const TopBar = () => {
+    const { server, updateServer } = useServer();
+    const { user } = useAuth();
+
+    return (
+        <div className="h-16 bg-obsidian-surface/50 backdrop-blur-md border-b border-obsidian-border flex items-center justify-between px-6 sticky top-0 z-10">
+            {/* Server Status Indicator */}
+            <div className="flex items-center space-x-3 px-3 py-2 rounded-lg bg-white/5 border border-obsidian-border group focus-within:border-obsidian-accent/50 transition-colors">
+                <div className={`w-2 h-2 rounded-full ${server?.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <input
+                    type="text"
+                    value={server?.name || ''}
+                    onChange={(e) => updateServer({ name: e.target.value })}
+                    className="bg-transparent border-none focus:ring-0 text-sm font-medium text-white p-0 w-32 focus:w-48 transition-all placeholder-obsidian-muted"
+                    placeholder="Server Name"
+                />
+                {server && (
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${server.status === 'online' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                        {server.status}
+                    </span>
+                )}
+            </div>
+
+            {/* User Profile */}
+            <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-3">
+                    <div className="text-right hidden sm:block">
+                        <p className="text-sm font-medium text-white">{user?.name}</p>
+                        <p className="text-xs text-obsidian-muted capitalize">{user?.role}</p>
+                    </div>
+                    <div className="w-9 h-9 bg-obsidian-accent rounded-full flex items-center justify-center text-white font-bold shadow-lg shadow-obsidian-accent/20">
+                        {user?.name?.charAt(0) || <User size={18} />}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default TopBar;

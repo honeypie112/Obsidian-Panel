@@ -1,75 +1,66 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import axios from 'axios';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { mockApi } from '../utils/mockApi';
 
 const AuthContext = createContext(null);
 
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error('useAuth must be used within AuthProvider');
-    }
-    return context;
-};
-
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
+    const [token, setToken] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [token, setToken] = useState(localStorage.getItem('token'));
+    const [hasAdmin, setHasAdmin] = useState(false);
 
     useEffect(() => {
-        if (token) {
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            verifyToken();
-        } else {
-            setLoading(false);
-        }
-    }, [token]);
+        const initAuth = async () => {
+            const adminExists = await mockApi.hasAdmin();
+            setHasAdmin(adminExists);
 
-    const verifyToken = async () => {
-        try {
-            const response = await axios.get('/api/auth/verify');
-            setUser(response.data.user);
-        } catch (error) {
-            console.error('Token verification failed:', error);
-            logout();
-        } finally {
+            // No longer simulating token validation from localStorage
+            // if (token) {
+            //     // Simulate validating token / fetching user profile
+            //     setUser({ name: 'Admin User', role: 'admin' });
+            // }
             setLoading(false);
+        };
+        initAuth();
+    }, []); // Removed token from dependency array as it's no longer initialized from localStorage
+
+    const register = async (username, password) => {
+        try {
+            await mockApi.register(username, password);
+            setHasAdmin(true);
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
         }
+    };
+
+    const checkHasAdmin = async () => {
+        return await mockApi.hasAdmin();
     };
 
     const login = async (username, password) => {
         try {
-            const response = await axios.post('/api/auth/login', { username, password });
-            const { token, user } = response.data;
-
-            localStorage.setItem('token', token);
-            setToken(token);
-            setUser(user);
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
+            const data = await mockApi.login(username, password);
+            setToken(data.token);
+            setUser(data.user);
+            // localStorage.setItem('obsidian_token', data.token); // Removed localStorage call
             return { success: true };
         } catch (error) {
-            return {
-                success: false,
-                error: error.response?.data?.error || 'Login failed'
-            };
+            return { success: false, error: error.message };
         }
     };
 
     const logout = () => {
-        localStorage.removeItem('token');
         setToken(null);
         setUser(null);
-        delete axios.defaults.headers.common['Authorization'];
+        // localStorage.removeItem('obsidian_token'); // Removed localStorage call
     };
 
-    const value = {
-        user,
-        login,
-        logout,
-        loading,
-        isAuthenticated: !!user,
-    };
-
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider value={{ user, token, login, logout, register, checkHasAdmin, hasAdmin, loading }}>
+            {children}
+        </AuthContext.Provider>
+    );
 };
+
+export const useAuth = () => useContext(AuthContext);

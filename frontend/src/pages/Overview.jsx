@@ -1,165 +1,115 @@
-import React, { useEffect, useState } from 'react';
-import { useOutletContext, Link } from 'react-router-dom';
-import { Play, Square, Wrench, Users, Cpu, HardDrive } from 'lucide-react';
+import React, { useState } from 'react';
+import { useServer } from '../context/ServerContext';
 import StatCard from '../components/StatCard';
-import axios from 'axios';
-import { io } from 'socket.io-client';
-import './Overview.css';
+import PowerControls from '../components/PowerControls';
+import { Cpu, HardDrive, MemoryStick } from 'lucide-react';
 
 const Overview = () => {
-    const { selectedServer } = useOutletContext();
-    const [serverStatus, setServerStatus] = useState(selectedServer?.status || 'offline');
-    const [stats, setStats] = useState({
-        cpu: 0,
-        ram: 0,
-        players: 0,
-    });
-    const [activities, setActivities] = useState([]);
+    const { server, updateServer } = useServer();
 
-    useEffect(() => {
-        if (!selectedServer) return;
-        setServerStatus(selectedServer.status);
+    // Mock state updates for simulation
+    const [serverState, setServerState] = useState(server?.status || 'offline');
 
-        const socketUrl = process.env.NODE_ENV === 'production'
-            ? window.location.origin
-            : 'http://localhost:5000';
-
-        const socket = io(socketUrl);
-
-        socket.on('connect', () => {
-            socket.emit('joinServer', selectedServer._id);
-        });
-
-        socket.on('stats', (data) => {
-            setStats(data);
-        });
-
-        socket.on('serverStatus', (data) => {
-            setServerStatus(data.status);
-        });
-
-        return () => {
-            socket.emit('leaveServer', selectedServer._id);
-            socket.disconnect();
-        };
-    }, [selectedServer?._id]);
-
-    const handleStartServer = async () => {
-        try {
-            setServerStatus('starting');
-            await axios.put(`/api/servers/${selectedServer._id}/start`);
-        } catch (error) {
-            console.error('Failed to start server:', error);
-            setServerStatus('offline');
+    // Sync local state with context when server changes
+    React.useEffect(() => {
+        if (server) {
+            setServerState(server.status);
         }
+    }, [server]);
+
+    const handleStart = async () => {
+        setServerState('starting');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        setServerState('online');
+        updateServer({ status: 'online' });
     };
 
-    const handleStopServer = async () => {
-        try {
-            setServerStatus('stopping');
-            await axios.put(`/api/servers/${selectedServer._id}/stop`);
-        } catch (error) {
-            console.error('Failed to stop server:', error);
-        }
+    const handleStop = async () => {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setServerState('offline');
+        updateServer({ status: 'offline' });
     };
 
-    if (!selectedServer) {
-        return (
-            <div className="no-server">
-                <h2>Loading Server...</h2>
-                <p>Please wait while the server information is being loaded</p>
-            </div>
-        );
-    }
+    const handleRestart = async () => {
+        await handleStop();
+        await handleStart();
+    };
 
-    const isRunning = serverStatus === 'online' || serverStatus === 'starting';
+    // Simulate fluctuating stats
+    const [stats, setStats] = useState({ cpu: 0, ram: 0 });
+
+    React.useEffect(() => {
+        if (serverState !== 'online') {
+            setStats({ cpu: 0, ram: 0 });
+            return;
+        }
+
+        // Initial stats
+        setStats({
+            cpu: server?.cpuUsage || 12,
+            ram: server?.ramUsage || 2.1
+        });
+
+        const interval = setInterval(() => {
+            setStats(prev => ({
+                cpu: Math.max(0, Math.min(100, parseFloat(prev.cpu) + (Math.random() * 10 - 5))).toFixed(1),
+                ram: Math.max(0, Math.min(parseFloat(server.ram), parseFloat(prev.ram) + (Math.random() * 0.2 - 0.1))).toFixed(2)
+            }));
+        }, 2000);
+
+        return () => clearInterval(interval);
+    }, [serverState, server]);
+
+    if (!server) return <div className="text-white">Loading server...</div>;
 
     return (
-        <div className="overview-page">
-            <div className="overview-header">
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
                 <div>
-                    <h1>{selectedServer.name}</h1>
-                    <p className="server-info">
-                        Java Port: {selectedServer.javaPort || 25565} | Bedrock Port: {selectedServer.bedrockPort || 19132} | VoIP Port: {selectedServer.voipPort || 5060} | Version: {selectedServer.version || 'Unknown'}
-                    </p>
-                </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <Link to="/dashboard/server-settings" className="settings-link-btn">
-                        <Wrench size={18} />
-                        Server Settings
-                    </Link>
-                    <button
-                        className={`server-control-btn ${isRunning ? 'stop' : 'start'}`}
-                        onClick={isRunning ? handleStopServer : handleStartServer}
-                        disabled={serverStatus === 'starting' || serverStatus === 'stopping'}
-                    >
-                        {serverStatus === 'starting' ? (
-                            'Starting...'
-                        ) : serverStatus === 'stopping' ? (
-                            'Stopping...'
-                        ) : isRunning ? (
-                            <>
-                                <Square size={18} />
-                                Stop Server
-                            </>
-                        ) : (
-                            <>
-                                <Play size={18} />
-                                Start Server
-                            </>
-                        )}
-                    </button>
+                    <h1 className="text-2xl font-bold text-white mb-1">{server.name}</h1>
+                    <div className="flex items-center space-x-2 text-sm">
+                        <span className={`w-2 h-2 rounded-full ${serverState === 'online' ? 'bg-green-500' : serverState === 'starting' ? 'bg-yellow-500' : 'bg-red-500'}`}></span>
+                        <span className="text-obsidian-muted capitalize">{serverState}</span>
+                        <span className="text-obsidian-border">|</span>
+                        <span className="text-obsidian-muted">{server.version}</span>
+                        <span className="text-obsidian-border">|</span>
+                        <span className="text-obsidian-muted">Port: {server.port}</span>
+                    </div>
                 </div>
             </div>
 
-            <div className="stats-grid">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <StatCard
                     title="CPU Usage"
-                    value={`${stats.cpu.toFixed(1)}%`}
-                    subtitle="Intel Xeon E-2236"
+                    value={serverState === 'online' ? `${stats.cpu}%` : '0%'}
+                    subtext="2 Cores Allocated"
                     icon={Cpu}
                     color="blue"
-                    progress={stats.cpu}
                 />
-
                 <StatCard
                     title="RAM Usage"
-                    value={`${stats.ram.toFixed(1)}%`}
-                    subtitle={`${(selectedServer.memory * stats.ram / 100 / 1024).toFixed(1)} GB / ${(selectedServer.memory / 1024).toFixed(1)} GB`}
-                    icon={HardDrive}
+                    value={serverState === 'online' ? `${stats.ram} GB` : '0 GB'}
+                    subtext={`of ${server.ram}`}
+                    icon={MemoryStick}
                     color="purple"
-                    progress={stats.ram}
                 />
-
-
+                <StatCard
+                    title="Storage"
+                    value={`${server.storageUsed} / ${server.storageTotal}`}
+                    subtext="SSD NVMe"
+                    icon={HardDrive}
+                    color="green"
+                />
             </div>
 
-            <div className="activity-card card">
-                <div className="activity-header">
-                    <Users size={20} />
-                    <h2>Recent Activity</h2>
-                </div>
-
-                <div className="activity-list">
-                    {activities.length === 0 ? (
-                        <div className="no-activity">
-                            <p>No recent activity</p>
-                        </div>
-                    ) : (
-                        activities.map((activity, index) => (
-                            <div key={index} className="activity-item">
-                                <div className="activity-icon">
-                                    <Play size={16} />
-                                </div>
-                                <div className="activity-info">
-                                    <div className="activity-title">{activity.title}</div>
-                                    <div className="activity-subtitle">{activity.subtitle}</div>
-                                </div>
-                                <div className="activity-time">{activity.time}</div>
-                            </div>
-                        ))
-                    )}
-                </div>
+            <div className="bg-obsidian-surface border border-obsidian-border rounded-xl p-6">
+                <h3 className="text-lg font-bold text-white mb-4">Power Controls</h3>
+                <PowerControls
+                    status={serverState}
+                    onStart={handleStart}
+                    onStop={handleStop}
+                    onRestart={handleRestart}
+                />
             </div>
         </div>
     );
