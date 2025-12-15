@@ -1,26 +1,28 @@
 const mongoose = require('mongoose');
-const BackupSchema = new mongoose.Schema({
+
+const backupSchema = new mongoose.Schema({
     fileName: {
         type: String,
         required: true
     },
-    downloadPage: {
+    size: {
         type: String,
         required: true
     },
-    guestToken: {
+    path: {
+        type: String,
+        required: true
+    },
+    downloadPage: {
         type: String
     },
-    size: {
-        type: String  
-    },
     encryptionPassword: {
-        type: String,  
-        default: null
+        type: String
     },
     createdAt: {
         type: Date,
         default: Date.now
     }
 });
-module.exports = mongoose.model('Backup', BackupSchema);
+
+module.exports = mongoose.model('Backup', backupSchema);
