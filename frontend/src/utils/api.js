@@ -7,16 +7,12 @@ const api = axios.create({
     }
 });
 
-// Add a request interceptor to add the auth token
-api.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('obsidian_token'); // Ensure this matches what AuthContext uses/will use
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
+export const setAuthToken = (token) => {
+    if (token) {
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+        delete api.defaults.headers.common['Authorization'];
+    }
+};
 
 export default api;
