@@ -48,7 +48,9 @@ const Overview = () => {
                     <p className="text-obsidian-muted">Manage and monitor your Minecraft server instance.</p>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <span className={`inline-flex h-3 w-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                    <span className={`inline-flex h-3 w-3 rounded-full ${server.status === 'online' ? 'bg-green-500' :
+                            server.status === 'starting' ? 'bg-yellow-500' : 'bg-red-500'
+                        }`}></span>
                     <span className="text-white font-medium capitalize">{server.status}</span>
                 </div>
             </div>

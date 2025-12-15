@@ -11,7 +11,9 @@ RUN npm run build
 FROM node:22-alpine
 
 # Install Java 21, 17, and 8 to support all Minecraft versions
-RUN apk add --no-cache openjdk8 openjdk17 openjdk21
+# RUN apk add --no-cache openjdk8 openjdk17 openjdk21
+
+RUN apk add --no-cache openjdk17 
 
 WORKDIR /app/backend
 COPY backend/package*.json ./
