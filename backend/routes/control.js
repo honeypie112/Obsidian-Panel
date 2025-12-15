@@ -88,4 +88,169 @@ router.post('/config', auth, (req, res) => {
     }
 });
 
+// --- File Management ---
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+
+// Configure upload storage
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        // We defer destination resolution to the handler or use a temp dir if needed
+        // But here we want to upload directly to the target path.
+        // However, middleware runs before the body is fully parsed in some cases?
+        // Let's use a temp dir or just the root server dir and move it later?
+        // Actually, let's use the 'path' query param if possible, or just upload to server root.
+        // For simplicity: Upload to root, frontend can handle logic or we move it.
+        // BETTER: Use /tmp and move in the handler to sanitize paths.
+        cb(null, '/tmp');
+    },
+    filename: function (req, file, cb) {
+        cb(null, file.originalname);
+    }
+});
+const upload = multer({ storage: storage });
+
+// Helper: Sanitize and resolve path
+const getSafePath = (reqPath) => {
+    const serverDir = minecraftService.serverDir;
+    // reqPath is relative, e.g., "logs/latest.log" or ""
+    const targetPath = path.join(serverDir, reqPath || '');
+
+    // Prevent directory traversal
+    if (!targetPath.startsWith(serverDir)) {
+        throw new Error('Access denied: Invalid path');
+    }
+    return targetPath;
+};
+
+// @route   POST api/control/files/list
+// @desc    List files in a directory
+router.post('/files/list', auth, (req, res) => {
+    try {
+        const targetPath = getSafePath(req.body.path);
+
+        if (!fs.existsSync(targetPath)) {
+            return res.json([]);
+        }
+
+        const entries = fs.readdirSync(targetPath, { withFileTypes: true });
+
+        const files = entries.map(entry => {
+            let size = '-';
+            if (entry.isFile()) {
+                const stats = fs.statSync(path.join(targetPath, entry.name));
+                // Convert to KB/MB
+                if (stats.size < 1024) size = stats.size + ' B';
+                else if (stats.size < 1024 * 1024) size = (stats.size / 1024).toFixed(1) + ' KB';
+                else size = (stats.size / (1024 * 1024)).toFixed(1) + ' MB';
+            }
+
+            return {
+                name: entry.name,
+                type: entry.isDirectory() ? 'folder' : 'file',
+                size: size
+            };
+        });
+
+        // Sort: Folders first
+        files.sort((a, b) => {
+            if (a.type === b.type) return a.name.localeCompare(b.name);
+            return a.type === 'folder' ? -1 : 1;
+        });
+
+        res.json(files);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// @route   POST api/control/files/read
+// @desc    Read text file content
+router.post('/files/read', auth, (req, res) => {
+    try {
+        const targetPath = getSafePath(req.body.path);
+        if (!fs.existsSync(targetPath)) return res.status(404).json({ message: 'File not found' });
+
+        // Check if binary? simple check
+        // For now assume text as per requirement
+        const content = fs.readFileSync(targetPath, 'utf8');
+        res.json({ content });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// @route   POST api/control/files/save
+// @desc    Save content to file
+router.post('/files/save', auth, (req, res) => {
+    try {
+        const { path: relPath, content } = req.body;
+        const targetPath = getSafePath(relPath);
+
+        fs.writeFileSync(targetPath, content, 'utf8');
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// @route   POST api/control/files/upload
+// @desc    Upload file
+router.post('/files/upload', auth, upload.single('file'), (req, res) => {
+    try {
+        const { path: relPath } = req.body; // Target folder relative path
+        const targetDir = getSafePath(relPath);
+
+        const tempPath = req.file.path;
+        const targetPath = path.join(targetDir, req.file.originalname);
+
+        // Move from temp to target
+        fs.renameSync(tempPath, targetPath);
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Upload error:", err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// @route   POST api/control/files/create
+// @desc    Create file or directory
+router.post('/files/create', auth, (req, res) => {
+    try {
+        const { path: relPath, name, type } = req.body;
+        const currentDir = getSafePath(relPath);
+        const targetPath = path.join(currentDir, name);
+
+        if (type === 'folder') {
+            fs.mkdirSync(targetPath);
+        } else {
+            fs.writeFileSync(targetPath, '', 'utf8');
+        }
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// @route   POST api/control/files/delete
+// @desc    Delete file or directory
+router.post('/files/delete', auth, (req, res) => {
+    try {
+        const { path: relPath } = req.body;
+        const targetPath = getSafePath(relPath);
+
+        const stats = fs.statSync(targetPath);
+        if (stats.isDirectory()) {
+            fs.rmdirSync(targetPath, { recursive: true });
+        } else {
+            fs.unlinkSync(targetPath);
+        }
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 module.exports = router;
