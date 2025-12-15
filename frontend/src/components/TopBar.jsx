@@ -11,12 +11,16 @@ const TopBar = () => {
         <div className="h-16 bg-obsidian-surface/50 backdrop-blur-md border-b border-obsidian-border flex items-center justify-between px-6 sticky top-0 z-10">
             {/* Server Status Indicator */}
             <div className="flex items-center space-x-3 px-3 py-2 rounded-lg bg-white/5 border border-obsidian-border">
-                <div className={`w-2 h-2 rounded-full ${server?.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <div className={`w-2 h-2 rounded-full ${server?.status === 'online' ? 'bg-green-500' :
+                        server?.status === 'starting' ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}></div>
                 <span className="text-sm font-medium text-white">
                     {server?.name || 'Server'}
                 </span>
                 {server && (
-                    <span className={`text-xs px-1.5 py-0.5 rounded ${server.status === 'online' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    <span className={`text-xs px-1.5 py-0.5 rounded capitalize ${server.status === 'online' ? 'bg-green-500/20 text-green-400' :
+                            server.status === 'starting' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'
+                        }`}>
                         {server.status}
                     </span>
                 )}

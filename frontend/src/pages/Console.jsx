@@ -15,15 +15,22 @@ const Console = () => {
         if (!socket) return;
 
         setIsConnected(true);
-        setLogs(prev => [...prev, '[System] Connected to console stream...']);
+        // setLogs(prev => [...prev, '[System] Connected to console stream...']); // Removed to avoid clutter
+
+        socket.on('log_history', (history) => {
+            setLogs(history || []);
+            // Add connection message after history load
+            setLogs(prev => [...prev, '[System] Connection established.']);
+        });
 
         socket.on('console_log', (log) => {
-            setLogs(prev => [...prev.slice(-100), log]); // Keep last 100 lines
+            setLogs(prev => [...prev.slice(-999), log]); // Keep last 1000 lines
         });
 
         return () => {
             setIsConnected(false);
             socket.off('console_log');
+            socket.off('log_history');
         };
     }, [socket]);
 

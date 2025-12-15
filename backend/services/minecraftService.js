@@ -1,9 +1,10 @@
 const ServerConfig = require('../models/ServerConfig');
-const EventEmitter = require('events'); // Assuming EventEmitter is needed for the class
+const EventEmitter = require('events');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
 const os = require('os');
+const { spawn } = require('child_process');
 
 // Cache for versions to avoid hitting Mojang API too often
 let versionCache = null;
@@ -17,6 +18,7 @@ class MinecraftService extends EventEmitter {
         this.jarFile = path.join(this.serverDir, 'server.jar');
         this.process = null;
         this.status = 'offline';
+        this.logBuffer = []; // Buffer for console logs
 
         // Default config
         this.config = {
@@ -31,9 +33,6 @@ class MinecraftService extends EventEmitter {
         if (!fs.existsSync(this.serverDir)) {
             fs.mkdirSync(this.serverDir, { recursive: true });
         }
-
-        // Initialize DB config asynchronously
-        // this.initDatabase(); // Removed: Called explicitly after DB connect
     }
 
     async initDatabase() {
@@ -46,9 +45,6 @@ class MinecraftService extends EventEmitter {
             }
             // Update local memory cache
             this.config = {
-                name: configDoc.name,
-                ram: configDoc.ram,
-                version: configDoc.version,
                 name: configDoc.name,
                 ram: configDoc.ram,
                 version: configDoc.version,
@@ -144,8 +140,6 @@ class MinecraftService extends EventEmitter {
         this.startStatsMonitoring();
     }
 
-    // ... existing broadcast, getStatus, install, start, stop, sendCommand methods ...
-
     broadcast(event, data) {
         if (this.io) {
             this.io.emit(event, data);
@@ -160,6 +154,10 @@ class MinecraftService extends EventEmitter {
         };
     }
 
+    getLogHistory() {
+        return this.logBuffer;
+    }
+
     async getAvailableVersions() {
         const cacheFile = path.join(__dirname, '../../versions_cache.json');
 
@@ -172,7 +170,6 @@ class MinecraftService extends EventEmitter {
         // Try reading file cache first
         try {
             if (fs.existsSync(cacheFile)) {
-                // console.log("Serving versions from disk cache");
                 const data = fs.readFileSync(cacheFile, 'utf8');
                 cachedVersions = JSON.parse(data);
                 // Validate structure briefly
@@ -261,15 +258,7 @@ class MinecraftService extends EventEmitter {
         return new Promise((resolve, reject) => {
             const options = { headers: { 'User-Agent': 'ObsidianPanel/1.0' } };
             https.get(`https://api.purpurmc.org/v2/purpur/${version}/latest/download`, options, (res) => {
-                // Determine if 404 or redirect
                 if (res.statusCode >= 400) return reject(new Error(`Purpur not available for ${version}`));
-                // Purpur API returns the file directly or a redirect, but we need the download link.
-                // Actually the endpoint IS the download link if it works.
-                // But we need to handle 302 redirects? https.get usually follows if configured, but node defaults?
-                // Actually easier: Purpur API documentation says /latest/download returns the file.
-                // We should probably just return this URL and let the install() method handle the download/redirects.
-                // Wait, our install method uses simple https.get(). 
-                // Let's resolve the URL we *should* download from.
                 resolve(`https://api.purpurmc.org/v2/purpur/${version}/latest/download`);
             }).on('error', reject);
         });
@@ -283,8 +272,6 @@ class MinecraftService extends EventEmitter {
         if (type === 'purpur') return this.getPurpurUrl(version);
 
         // Vanilla Logic (Mojang)
-        // To get the download URL, we still need to look up the version in the official manifest
-        // because mc-versions-api.net only gives us the ID list.
         return new Promise((resolve, reject) => {
             const options = {
                 headers: { 'User-Agent': 'ObsidianPanel/1.0 (Integration)' }
@@ -404,7 +391,7 @@ class MinecraftService extends EventEmitter {
 
         this.process.stdout.on('data', (data) => {
             const line = data.toString();
-            this.broadcast('console_log', line);
+            this.pushLog(line);
             if (line.includes('Done') && line.includes('! For help')) {
                 this.status = 'online';
                 this.broadcast('status', this.getStatus());
@@ -412,22 +399,40 @@ class MinecraftService extends EventEmitter {
         });
 
         this.process.stderr.on('data', (data) => {
-            this.broadcast('console_log', data.toString());
+            this.pushLog(data.toString());
         });
 
         this.process.on('close', (code) => {
             this.status = 'offline';
             this.process = null;
             this.broadcast('status', this.getStatus());
-            this.broadcast('console_log', `Server process exited with code ${code}`);
+            this.pushLog(`Server process exited with code ${code}`);
         });
 
         this.process.on('error', (err) => {
             this.status = 'offline';
             this.process = null;
             this.broadcast('status', this.getStatus());
-            this.broadcast('console_log', `Failed to start server: ${err.message}`);
+            this.pushLog(`Failed to start server: ${err.message}`);
         });
+    }
+
+    pushLog(message) {
+        // Broadcast
+        this.broadcast('console_log', message);
+
+        // Store in buffer
+        // Split by newlines in case chunk contains multiple
+        const lines = message.split('\n');
+        for (let line of lines) {
+            if (line.trim().length === 0) continue;
+            this.logBuffer.push(line);
+        }
+
+        // Limit buffer size (e.g. 1000 lines)
+        if (this.logBuffer.length > 1000) {
+            this.logBuffer = this.logBuffer.slice(this.logBuffer.length - 1000);
+        }
     }
 
     stop() {
@@ -446,7 +451,7 @@ class MinecraftService extends EventEmitter {
     sendCommand(command) {
         if (this.status === 'online' && this.process && this.process.stdin.writable) {
             this.process.stdin.write(command + '\n');
-            this.broadcast('console_log', `> ${command}`);
+            this.pushLog(`> ${command}`);
         }
     }
 }

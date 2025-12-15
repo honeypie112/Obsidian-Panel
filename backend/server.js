@@ -60,8 +60,9 @@ app.get('*', (req, res) => {
 io.on('connection', (socket) => {
     console.log('New client connected:', socket.id);
 
-    // Send initial status on connection
+    // Send initial status and log history on connection
     socket.emit('status', minecraftService.getStatus());
+    socket.emit('log_history', minecraftService.getLogHistory());
 
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
