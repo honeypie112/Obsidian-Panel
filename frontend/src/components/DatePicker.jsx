@@ -3,12 +3,12 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-r
 import clsx from 'clsx';
 const DatePicker = ({ value, onChange, placeholder = "Select date" }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [viewDate, setViewDate] = useState(new Date());  
+    const [viewDate, setViewDate] = useState(() => value ? new Date(value) : new Date());
     const containerRef = useRef(null);
     useEffect(() => {
         if (value) {
             const date = new Date(value);
-            if (!isNaN(date.getTime())) {
+            if (!isNaN(date.getTime()) && date.getTime() !== viewDate.getTime()) {
                 setViewDate(date);
             }
         }

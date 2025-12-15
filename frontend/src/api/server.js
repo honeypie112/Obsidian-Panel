@@ -11,12 +11,18 @@ const api = axios.create({
     }
 });
 
+// In-memory token storage
+let authToken = null;
+
+export const setAuthToken = (token) => {
+    authToken = token;
+};
+
 // Add auth token to requests
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('obsidian_token'); // Or from context if passed
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`; // Remove Bearer prefix if backend expects raw? No, standard is Bearer
+        if (authToken) {
+            config.headers.Authorization = `Bearer ${authToken}`;
         }
         return config;
     },
