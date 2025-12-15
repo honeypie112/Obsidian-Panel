@@ -10,9 +10,9 @@ let scheduledTask = null;
 let isBackupInProgress = false;
 const DEFAULT_CONFIG = {
     enabled: false,
-    frequency: 'daily',  
-    cronExpression: '0 0 * * *',  
-    maxBackups: 10  
+    frequency: 'daily',
+    cronExpression: '0 0 * * *',
+    maxBackups: 10
 };
 const BackupService = {
     isBackupInProgress: () => isBackupInProgress,
@@ -42,8 +42,22 @@ const BackupService = {
             const zipCmd = `zip -r -q -P "${encryptionPassword}" "${tempZipPath}" .`;
             await new Promise((resolve, reject) => {
                 exec(zipCmd, { cwd: serverDir }, (error, stdout, stderr) => {
-                    if (error) reject(new Error(`Zip failed: ${stderr || error.message}`));
-                    else resolve();
+                    // "zip warning: No such file or directory" is common during hot backups (files deleted mid-zip)
+                    // If the zip file exists and error is just a warning, we proceed.
+                    if (error) {
+                        const isWarning = stderr && stderr.includes('zip warning');
+                        const zipExists = fs.existsSync(tempZipPath);
+
+                        // If it's just a warning and we have a file, assume success (but log warning)
+                        if (isWarning && zipExists) {
+                            console.warn(`[BackupService] Zip completed with warnings: ${stderr}`);
+                            resolve();
+                        } else {
+                            reject(new Error(`Zip failed (Code ${error.code}): ${stderr || error.message}`));
+                        }
+                    } else {
+                        resolve();
+                    }
                 });
             });
             const stats = fs.statSync(tempZipPath);
