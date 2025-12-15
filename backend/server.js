@@ -77,6 +77,10 @@ io.on('connection', (socket) => {
             socket.emit('versions_error', 'Failed to fetch versions');
         }
     });
+
+    socket.on('request_log_history', () => {
+        socket.emit('log_history', minecraftService.getLogHistory());
+    });
 });
 
 // Export io to be used in other files

@@ -17,14 +17,19 @@ const Console = () => {
         setIsConnected(true);
         // setLogs(prev => [...prev, '[System] Connected to console stream...']); // Removed to avoid clutter
 
+        // Explicitly request history on mount, as socket might be already connected
+        socket.emit('request_log_history');
+
         socket.on('log_history', (history) => {
-            setLogs(history || []);
+            // User requested latest 300 lines
+            const limitedHistory = (history || []).slice(-300);
+            setLogs(limitedHistory);
             // Add connection message after history load
             setLogs(prev => [...prev, '[System] Connection established.']);
         });
 
         socket.on('console_log', (log) => {
-            setLogs(prev => [...prev.slice(-999), log]); // Keep last 1000 lines
+            setLogs(prev => [...prev.slice(-299), log]); // Keep last 300 lines
         });
 
         return () => {
