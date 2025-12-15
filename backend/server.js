@@ -9,6 +9,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const controlRoutes = require('./routes/control');
 const serverRoutes = require('./routes/server');
+const backupRoutes = require('./routes/backups');
 const minecraftService = require('./services/minecraftService');
 const app = express();
 const server = http.createServer(app);
