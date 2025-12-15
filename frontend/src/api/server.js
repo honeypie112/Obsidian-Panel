@@ -128,15 +128,94 @@ export const serverApi = {
         formData.append('file', file);
         formData.append('path', path.join('/'));
 
-        const headers = getHeaders();
-        delete headers['Content-Type']; // Let browser set boundary
-
         const res = await fetch(`${BASE_URL}/control/files/upload`, {
             method: 'POST',
-            headers: headers,
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('obsidian_token')}`
+                // Content-Type is set automatically for FormData
+            },
             body: formData
         });
         if (!res.ok) throw new Error('Failed to upload file');
+        return res.json();
+    },
+
+    downloadFile: async (path, name) => {
+        const fullPath = [...path, name].join('/');
+        const res = await fetch(`${BASE_URL}/control/files/download`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ path: fullPath })
+        });
+        if (!res.ok) throw new Error('Failed to download file');
+        return res.blob();
+    },
+
+    createBackup: async () => {
+        const res = await fetch(`${BASE_URL}/backups/create`, {
+            method: 'POST',
+            headers: getHeaders()
+        });
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.message || 'Backup failed');
+        }
+        return res.json();
+    },
+
+    // Backup Management
+    getBackupStatus: async () => {
+        const res = await fetch(`${BASE_URL}/backups/status`, {
+            headers: getHeaders()
+        });
+        if (!res.ok) throw new Error('Failed to fetch backup status');
+        return res.json();
+    },
+
+    getBackups: async () => {
+        const res = await fetch(`${BASE_URL}/backups`, {
+            headers: getHeaders()
+        });
+        if (!res.ok) throw new Error('Failed to fetch backups');
+        return res.json();
+    },
+
+    deleteBackup: async (id) => {
+        const res = await fetch(`${BASE_URL}/backups/${id}`, {
+            method: 'DELETE',
+            headers: getHeaders()
+        });
+        if (!res.ok) throw new Error('Failed to delete backup');
+        return res.json();
+    },
+
+    restoreBackup: async (id) => {
+        const res = await fetch(`${BASE_URL}/backups/${id}/restore`, {
+            method: 'POST',
+            headers: getHeaders()
+        });
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.message || 'Restore failed');
+        }
+        return res.json();
+    },
+
+    getBackupConfig: async () => {
+        const res = await fetch(`${BASE_URL}/backups/config`, {
+            headers: getHeaders()
+        });
+        if (!res.ok) throw new Error('Failed to fetch backup config');
+        return res.json();
+    },
+
+    updateBackupConfig: async (config) => {
+        const res = await fetch(`${BASE_URL}/backups/config`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify(config)
+        });
+        if (!res.ok) throw new Error('Failed to update config');
         return res.json();
     }
 };

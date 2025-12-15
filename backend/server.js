@@ -41,19 +41,27 @@ mongoose.connect(process.env.MONGO_URI, {
     .then(async () => {
         console.log('MongoDB Connected');
         await minecraftService.initDatabase();
+        // Initialize Auto-Backup Scheduler
+        require('./services/backupService').initScheduler();
     })
     .catch(err => console.log(err));
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/control', controlRoutes);
+app.use('/api/backups', require('./routes/backups'));
 
 // Serve static files from the React frontend app
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Anything that doesn't match the above routes, send back index.html
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public/index.html'));
+    const indexPath = path.join(__dirname, 'public/index.html');
+    if (require('fs').existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).send('Frontend build not found in backend/public. If running in dev, use the React dev server.');
+    }
 });
 
 // Socket.io

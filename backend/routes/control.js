@@ -202,6 +202,29 @@ router.post('/files/save', auth, (req, res) => {
     }
 });
 
+// @route   POST api/control/files/download
+// @desc    Download file
+router.post('/files/download', auth, (req, res) => {
+    try {
+        const { path: relPath } = req.body;
+        const targetPath = getSafePath(relPath);
+
+        if (!fs.existsSync(targetPath)) {
+            return res.status(404).json({ message: 'File not found' });
+        }
+
+        res.download(targetPath, path.basename(targetPath), (err) => {
+            if (err) {
+                if (!res.headersSent) {
+                    res.status(500).json({ message: 'Download failed' });
+                }
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // @route   POST api/control/files/upload
 // @desc    Upload file
 router.post('/files/upload', auth, upload.single('file'), (req, res) => {

@@ -263,6 +263,26 @@ const FileManager = () => {
         setLoading(false);
     };
 
+    const handleDownload = async (file) => {
+        setLoading(true);
+        try {
+            const blob = await serverApi.downloadFile(currentPath, file.name);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = file.name;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            showToast(`Downloaded ${file.name}`, 'success');
+        } catch (err) {
+            showToast('Download failed: ' + err.message, 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // --- Drag and Drop ---
     const [isDragging, setIsDragging] = useState(false);
 
@@ -444,6 +464,15 @@ const FileManager = () => {
                                         </div>
                                     </div>
                                     <div className="flex items-center opacity-0 group-hover:opacity-100 transition-all space-x-1">
+                                        {file.type !== 'folder' && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDownload(file); }}
+                                                className="p-1.5 text-obsidian-muted hover:text-blue-400 hover:bg-blue-500/10 rounded-md"
+                                                title="Download"
+                                            >
+                                                <Download size={16} />
+                                            </button>
+                                        )}
                                         {isArchive && (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handleExtract(file); }}

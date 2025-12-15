@@ -13,6 +13,7 @@ import Console from './pages/Console';
 import Files from './pages/Files';
 import ServerSettings from './pages/ServerSettings';
 import GeneralSettings from './pages/GeneralSettings';
+import Backups from './pages/Backups';
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
                   <Route path="/files" element={<Files />} />
                   <Route path="/server-settings" element={<ServerSettings />} />
                   <Route path="/general-settings" element={<GeneralSettings />} />
+                  <Route path="/backups" element={<Backups />} />
                 </Route>
               </Route>
 

@@ -16,6 +16,7 @@
         "jsonwebtoken": "^9.0.2",
         "mongoose": "^8.0.3",
         "multer": "^2.0.2",
+        "node-cron": "^4.2.1",
         "socket.io": "^4.7.2",
         "socket.io-client": "^4.8.1"
     },
