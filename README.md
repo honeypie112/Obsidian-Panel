@@ -2,7 +2,7 @@
 
 **Obsidian Panel** is a modern, dark-themed, and feature-rich Minecraft Server Management Panel. It provides a powerful web interface to manage your Minecraft server, handle files, schedule backups, and monitor performance.
 
-![Obsidian Panel Interface](images/main.png) *Replace with actual screenshot*
+![Obsidian Panel Interface](images/main.png)
 
 ## ✨ Features
 
