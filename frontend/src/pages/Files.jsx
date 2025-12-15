@@ -2,11 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { mockApi } from '../utils/mockApi';
 import { Folder, FileText, ChevronRight, Home, Download, Trash2, FileCode, FileJson, FileImage } from 'lucide-react';
 import clsx from 'clsx';
+import Modal from '../components/Modal';
+import { useToast } from '../context/ToastContext';
 
 const FileManager = () => {
     const [files, setFiles] = useState([]);
-    const [currentPath, setCurrentPath] = useState([]); // Array of folder names
+    const [currentPath, setCurrentPath] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Modal State
+    const [isCreateFileOpen, setIsCreateFileOpen] = useState(false);
+    const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [newItemName, setNewItemName] = useState('');
+    const [itemToDelete, setItemToDelete] = useState(null);
+
+    const { showToast } = useToast();
 
     useEffect(() => {
         loadFiles();
@@ -15,7 +26,6 @@ const FileManager = () => {
     const loadFiles = async () => {
         setLoading(true);
         // In a real app, we'd pass the path string. Here we mock it.
-        // We'll simulate traversing the mock object based on currentPath
         const root = await mockApi.getFiles();
         let currentDir = root;
 
@@ -35,7 +45,6 @@ const FileManager = () => {
     };
 
     const handleBreadcrumbClick = (index) => {
-        // Navigate to specific depth
         if (index === -1) {
             setCurrentPath([]);
         } else {
@@ -53,44 +62,56 @@ const FileManager = () => {
     };
 
     const handleCreateFolder = async () => {
-        const name = prompt("Enter folder name:");
-        if (!name) return;
+        if (!newItemName) return;
         setLoading(true);
         try {
-            await mockApi.createFile(currentPath, name, 'folder');
+            await mockApi.createFile(currentPath, newItemName, 'folder');
             await loadFiles();
+            showToast(`Folder "${newItemName}" created`, 'success');
+            setIsCreateFolderOpen(false);
+            setNewItemName('');
         } catch (err) {
-            alert(err.message);
+            showToast(err.message, 'error');
         } finally {
             setLoading(false);
         }
     };
 
     const handleCreateFile = async () => {
-        const name = prompt("Enter file name (e.g., config.yml):");
-        if (!name) return;
+        if (!newItemName) return;
         setLoading(true);
         try {
-            await mockApi.createFile(currentPath, name, 'file');
+            await mockApi.createFile(currentPath, newItemName, 'file');
             await loadFiles();
+            showToast(`File "${newItemName}" created`, 'success');
+            setIsCreateFileOpen(false);
+            setNewItemName('');
         } catch (err) {
-            alert(err.message);
+            showToast(err.message, 'error');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDelete = async (name) => {
-        if (!confirm(`Are you sure you want to delete ${name}?`)) return;
+    const handleDelete = async () => {
+        if (!itemToDelete) return;
         setLoading(true);
         try {
-            await mockApi.deleteFile(currentPath, name);
+            await mockApi.deleteFile(currentPath, itemToDelete);
             await loadFiles();
+            showToast(`${itemToDelete} deleted`, 'success');
+            setIsDeleteOpen(false);
+            setItemToDelete(null);
         } catch (err) {
-            alert(err.message);
+            showToast(err.message, 'error');
         } finally {
             setLoading(false);
         }
+    };
+
+    const confirmDelete = (name) => {
+        setItemToDelete(name);
+        setIsDeleteOpen(true);
     };
 
     return (
@@ -120,13 +141,13 @@ const FileManager = () => {
 
                 <div className="flex items-center space-x-2">
                     <button
-                        onClick={handleCreateFile}
+                        onClick={() => setIsCreateFileOpen(true)}
                         className="flex items-center px-3 py-1.5 bg-obsidian-accent/10 text-obsidian-accent hover:bg-obsidian-accent/20 rounded-lg transition-colors text-sm font-medium"
                     >
                         <FileText size={16} className="mr-2" /> New File
                     </button>
                     <button
-                        onClick={handleCreateFolder}
+                        onClick={() => setIsCreateFolderOpen(true)}
                         className="flex items-center px-3 py-1.5 bg-obsidian-accent/10 text-obsidian-accent hover:bg-obsidian-accent/20 rounded-lg transition-colors text-sm font-medium"
                     >
                         <Folder size={16} className="mr-2" /> New Folder
@@ -166,7 +187,7 @@ const FileManager = () => {
                                     </div>
                                 </div>
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); handleDelete(file.name); }}
+                                    onClick={(e) => { e.stopPropagation(); confirmDelete(file.name); }}
                                     className="p-1.5 text-obsidian-muted hover:text-red-400 hover:bg-red-500/10 rounded-md opacity-0 group-hover:opacity-100 transition-all"
                                     title="Delete"
                                 >
@@ -177,6 +198,63 @@ const FileManager = () => {
                     </div>
                 )}
             </div>
+
+            {/* Modals */}
+            <Modal
+                isOpen={isCreateFileOpen}
+                onClose={() => setIsCreateFileOpen(false)}
+                title="Create New File"
+                footer={
+                    <>
+                        <button onClick={() => setIsCreateFileOpen(false)} className="px-4 py-2 text-obsidian-muted hover:text-white transition-colors">Cancel</button>
+                        <button onClick={handleCreateFile} className="px-4 py-2 bg-obsidian-accent hover:bg-obsidian-accent-hover text-white rounded-lg">Create</button>
+                    </>
+                }
+            >
+                <input
+                    type="text"
+                    value={newItemName}
+                    onChange={(e) => setNewItemName(e.target.value)}
+                    placeholder="Enter file name (e.g. config.yml)"
+                    className="w-full bg-obsidian-bg border border-obsidian-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-obsidian-accent"
+                    autoFocus
+                />
+            </Modal>
+
+            <Modal
+                isOpen={isCreateFolderOpen}
+                onClose={() => setIsCreateFolderOpen(false)}
+                title="Create New Folder"
+                footer={
+                    <>
+                        <button onClick={() => setIsCreateFolderOpen(false)} className="px-4 py-2 text-obsidian-muted hover:text-white transition-colors">Cancel</button>
+                        <button onClick={handleCreateFolder} className="px-4 py-2 bg-obsidian-accent hover:bg-obsidian-accent-hover text-white rounded-lg">Create</button>
+                    </>
+                }
+            >
+                <input
+                    type="text"
+                    value={newItemName}
+                    onChange={(e) => setNewItemName(e.target.value)}
+                    placeholder="Enter folder name"
+                    className="w-full bg-obsidian-bg border border-obsidian-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-obsidian-accent"
+                    autoFocus
+                />
+            </Modal>
+
+            <Modal
+                isOpen={isDeleteOpen}
+                onClose={() => setIsDeleteOpen(false)}
+                title="Confirm Deletion"
+                footer={
+                    <>
+                        <button onClick={() => setIsDeleteOpen(false)} className="px-4 py-2 text-obsidian-muted hover:text-white transition-colors">Cancel</button>
+                        <button onClick={handleDelete} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">Delete</button>
+                    </>
+                }
+            >
+                <p>Are you sure you want to delete <span className="font-bold text-white">{itemToDelete}</span>? This action cannot be undone.</p>
+            </Modal>
         </div>
     );
 };

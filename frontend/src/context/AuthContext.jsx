@@ -11,23 +11,53 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const initAuth = async () => {
-            const adminExists = await mockApi.hasAdmin();
-            setHasAdmin(adminExists);
+            // Check if admin exists
+            try {
+                const res = await fetch('http://localhost:5000/api/auth/has-admin');
+                const data = await res.json();
+                setHasAdmin(data.hasAdmin);
+            } catch (e) {
+                console.error(e);
+            }
 
-            // No longer simulating token validation from localStorage
-            // if (token) {
-            //     // Simulate validating token / fetching user profile
-            //     setUser({ name: 'Admin User', role: 'admin' });
-            // }
+            const storedToken = localStorage.getItem('obsidian_token');
+            if (storedToken) {
+                setToken(storedToken);
+                try {
+                    const res = await fetch('http://localhost:5000/api/auth/me', {
+                        headers: { 'Authorization': `Bearer ${storedToken}` }
+                    });
+                    if (res.ok) {
+                        const userData = await res.json();
+                        setUser(userData);
+                    } else {
+                        localStorage.removeItem('obsidian_token');
+                        setToken(null);
+                    }
+                } catch (e) {
+                    localStorage.removeItem('obsidian_token');
+                    setToken(null);
+                }
+            }
             setLoading(false);
         };
         initAuth();
-    }, []); // Removed token from dependency array as it's no longer initialized from localStorage
+    }, []);
 
     const register = async (username, password) => {
         try {
-            await mockApi.register(username, password);
+            const res = await fetch('http://localhost:5000/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Registration failed');
+
             setHasAdmin(true);
+            setToken(data.token);
+            setUser(data.user);
+            localStorage.setItem('obsidian_token', data.token);
             return { success: true };
         } catch (error) {
             return { success: false, error: error.message };
@@ -35,17 +65,58 @@ export const AuthProvider = ({ children }) => {
     };
 
     const checkHasAdmin = async () => {
-        return await mockApi.hasAdmin();
+        try {
+            const res = await fetch('http://localhost:5000/api/auth/has-admin');
+            const data = await res.json();
+            return data.hasAdmin;
+        } catch { return false; }
     };
 
     const login = async (username, password) => {
         try {
-            const data = await mockApi.login(username, password);
+            const res = await fetch('http://localhost:5000/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Login failed');
+
             setToken(data.token);
             setUser(data.user);
-            // localStorage.setItem('obsidian_token', data.token); // Removed localStorage call
+            localStorage.setItem('obsidian_token', data.token);
             return { success: true };
         } catch (error) {
+            return { success: false, error: error.message };
+        }
+    };
+
+    const updateProfile = async (data) => {
+        try {
+            const res = await fetch('http://localhost:5000/api/auth/profile', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(data)
+            });
+
+            let result;
+            try {
+                result = await res.json();
+            } catch (e) {
+                // If response is not JSON (e.g. 404 HTML or 500 text), throw text
+                const text = await res.text().catch(() => 'Unknown error');
+                throw new Error(res.statusText || text || 'Network response was not ok');
+            }
+
+            if (!res.ok) throw new Error(result.message || 'Update failed');
+
+            setUser(result); // Update local state
+            return { success: true };
+        } catch (error) {
+            console.error(error);
             return { success: false, error: error.message };
         }
     };
@@ -53,11 +124,11 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         setToken(null);
         setUser(null);
-        // localStorage.removeItem('obsidian_token'); // Removed localStorage call
+        localStorage.removeItem('obsidian_token');
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, register, checkHasAdmin, hasAdmin, loading }}>
+        <AuthContext.Provider value={{ user, token, login, logout, register, checkHasAdmin, hasAdmin, loading, updateProfile }}>
             {children}
         </AuthContext.Provider>
     );

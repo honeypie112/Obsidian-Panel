@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { mockApi } from '../utils/mockApi';
+import { useServer } from '../context/ServerContext';
+import { serverApi } from '../api/server';
 import { Terminal as TerminalIcon, Send } from 'lucide-react';
 
 const Console = () => {
@@ -8,48 +9,38 @@ const Console = () => {
     const logsEndRef = useRef(null);
     const [isConnected, setIsConnected] = useState(false);
 
-    useEffect(() => {
-        // Initial connection message
-        setLogs(['[System] Connecting to server console...']);
-        setIsConnected(true);
+    const { socket } = useServer();
 
-        const unsubscribe = mockApi.subscribeToConsole((newLog) => {
-            setLogs((prev) => [...prev, newLog].slice(-100)); // Keep last 100 lines
+    useEffect(() => {
+        if (!socket) return;
+
+        setIsConnected(true);
+        setLogs(prev => [...prev, '[System] Connected to console stream...']);
+
+        socket.on('console_log', (log) => {
+            setLogs(prev => [...prev.slice(-100), log]); // Keep last 100 lines
         });
 
         return () => {
-            unsubscribe();
             setIsConnected(false);
+            socket.off('console_log');
         };
-    }, []);
+    }, [socket]);
 
     useEffect(() => {
         logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [logs]);
 
-    const handleSendCommand = (e) => {
+    const handleSendCommand = async (e) => {
         e.preventDefault();
         if (!command.trim()) return;
 
-        // Add user command to logs
-        const timestamp = new Date().toLocaleTimeString();
-        setLogs((prev) => [...prev, `> ${command}`]);
+        try {
+            await serverApi.sendCommand(command);
 
-        // Process mock commands
-        if (command.startsWith('op ')) {
-            const player = command.split(' ')[1];
-            setTimeout(() => {
-                setLogs((prev) => [...prev, `[${timestamp}] [Server thread/INFO]: Made ${player} a server operator`]);
-            }, 500);
-        } else if (command === 'stop') {
-            setTimeout(() => {
-                setLogs((prev) => [...prev, `[${timestamp}] [Server thread/INFO]: Stopping the server`]);
-                setLogs((prev) => [...prev, `[${timestamp}] [Server thread/INFO]: Saving chunks for level 'ServerLevel'...`]);
-            }, 500);
-        } else {
-            setTimeout(() => {
-                setLogs((prev) => [...prev, `[${timestamp}] [Server thread/INFO]: Unknown command. Type "help" for help.`]);
-            }, 500);
+            // Optimistic update not needed as backend echoes command
+        } catch (err) {
+            setLogs(prev => [...prev, `[System] Error sending command: ${err.message}`]);
         }
 
         setCommand('');

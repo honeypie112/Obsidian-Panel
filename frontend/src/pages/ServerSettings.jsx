@@ -2,51 +2,186 @@ import React, { useState, useEffect } from 'react';
 import { useServer } from '../context/ServerContext';
 import { Save, Download, CheckCircle, AlertCircle } from 'lucide-react';
 
+import SearchableSelect from '../components/SearchableSelect';
+import { useToast } from '../context/ToastContext';
+import Modal from '../components/Modal';
+
+// Helper to generate RAM options
+const generateRamOptions = (totalBytes) => {
+    const totalGB = Math.floor(totalBytes / (1024 * 1024 * 1024));
+    const options = [1, 2, 4, 8, 16, 32, 64].filter(gb => gb < totalGB);
+
+    if (!options.includes(totalGB) && totalGB > 0) {
+        options.push(totalGB);
+    }
+    return options.sort((a, b) => a - b);
+};
+
 const ServerSettings = () => {
-    const { server, updateServer, loading } = useServer();
+    const { server, updateServer, loading, installServer, socket } = useServer();
+    const { showToast } = useToast();
     const [name, setName] = useState('');
     const [ram, setRam] = useState('');
+    const [type, setType] = useState('vanilla');
     const [version, setVersion] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
+
+    // Dynamic Versions State
+    const [availableVersions, setAvailableVersions] = useState([]);
+    const [isLoadingVersions, setIsLoadingVersions] = useState(false);
+
+    const [ramOptions, setRamOptions] = useState([1, 2, 4, 8, 16]);
     const [updateProgress, setUpdateProgress] = useState(0);
     const [isUpdating, setIsUpdating] = useState(false);
-    const [updateStatus, setUpdateStatus] = useState(null); // 'success' | 'error'
+    const [updateStatus, setUpdateStatus] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isConfirmUpdateOpen, setIsConfirmUpdateOpen] = useState(false);
 
+    // Sync state with server config only when config values actually change
     useEffect(() => {
         if (server) {
-            setName(server.name);
-            setRam(server.ram);
-            setVersion(server.version);
+            // Only update if the value is different from current state (and optionally check if focused?)
+            // Actually best practice: Only update if the *server prop* changed relative to previous *server prop*.
+            // Since we don't have previous prop efficiently here, we depend on specific fields.
+            setName(server.name || '');
+            setRam(server.ram || '');
+            setType(server.type || 'vanilla');
+
+            // For version, strictly only update if we aren't "dirty" or just trust the dependency array
+            // If I depend on server.version, it only runs when server.version changes.
+            if (server.version) setVersion(server.version);
+
+            if (server.totalMem) {
+                setRamOptions(generateRamOptions(server.totalMem));
+            }
         }
-    }, [server]);
+    }, [server?.name, server?.ram, server?.version, server?.totalMem, server?.type]);
+
+    // Fetch versions
+    useEffect(() => {
+        if (!socket) return;
+
+        let timeoutId; // Declare strictly at top scope of effect
+
+        setIsLoadingVersions(true);
+        console.log("Emitting get_versions...");
+        socket.emit('get_versions');
+
+        const onVersionsList = (versions) => {
+            console.log("Received versions payload:", versions);
+            if (timeoutId) clearTimeout(timeoutId); // Success!
+
+            if (!Array.isArray(versions)) {
+                console.error("Invalid versions data received:", versions);
+                onVersionsError();
+                return;
+            }
+
+            try {
+                const options = versions.map(v => ({
+                    label: `${v.id} ${v.type === 'snapshot' ? '(Snapshot)' : ''}`,
+                    value: v.id
+                }));
+                setAvailableVersions(options);
+                setIsLoadingVersions(false);
+            } catch (err) {
+                console.error("Error processing version list:", err);
+                onVersionsError();
+            }
+        };
+
+        const onVersionsError = () => {
+            // Fallback to static list if fetch fails
+            setIsLoadingVersions(false);
+            showToast('Using offline version list', 'warning');
+            setAvailableVersions([
+                { label: '1.20.4 (Offline)', value: '1.20.4' },
+                { label: '1.20.2', value: '1.20.2' },
+                { label: '1.20.1', value: '1.20.1' },
+                { label: '1.19.4', value: '1.19.4' },
+                { label: '1.19.3', value: '1.19.3' },
+                { label: '1.19.2', value: '1.19.2' },
+                { label: '1.18.2', value: '1.18.2' },
+                { label: '1.18.1', value: '1.18.1' },
+                { label: '1.17.1', value: '1.17.1' },
+                { label: '1.16.5', value: '1.16.5' },
+                { label: '1.16.4', value: '1.16.4' },
+                { label: '1.15.2', value: '1.15.2' },
+                { label: '1.14.4', value: '1.14.4' },
+                { label: '1.13.2', value: '1.13.2' },
+                { label: '1.12.2', value: '1.12.2' },
+                { label: '1.8.9', value: '1.8.9' },
+                { label: '1.8.8', value: '1.8.8' },
+                { label: '1.7.10', value: '1.7.10' }
+            ]);
+        };
+
+        const onVersionsErrorFallback = () => {
+            if (timeoutId) clearTimeout(timeoutId); // Failed explicitly
+            onVersionsError();
+        };
+
+        socket.on('versions_list', onVersionsList);
+        socket.on('versions_error', onVersionsErrorFallback);
+
+        // Timeout to prevent infinite loading if backend doesn't respond
+        timeoutId = setTimeout(() => {
+            console.warn("Version fetch timed out (15s)");
+            onVersionsError();
+        }, 15000);
+
+        return () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            socket.off('versions_list', onVersionsList);
+            socket.off('versions_error', onVersionsErrorFallback);
+        };
+    }, [socket]);
+
+    // Update Progress Listener
+    useEffect(() => {
+        if (!socket) return;
+        const onProgress = (data) => {
+            const percent = typeof data === 'object' ? data.percent : data;
+            setUpdateProgress(percent);
+            setIsUpdating(true);
+            if (percent >= 100) {
+                setIsUpdating(false);
+                setUpdateStatus('success');
+                showToast('Server updated successfully!', 'success');
+                setTimeout(() => setUpdateStatus(null), 5000);
+            }
+        };
+        socket.on('install_progress', onProgress);
+        return () => socket.off('install_progress', onProgress);
+    }, [socket]);
 
     const handleSave = async (e) => {
         e.preventDefault();
         setIsSaving(true);
-        // Simulate save delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        updateServer({ name, ram, version });
-        setIsSaving(false);
+        try {
+            await updateServer({ name, ram, type, version });
+            showToast('Settings saved successfully', 'success');
+        } catch (error) {
+            console.error(error);
+            showToast('Failed to save settings', 'error');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    const handleUpdateJar = () => {
-        if (isUpdating) return;
+    const handleUpdateJar = async () => {
+        setIsConfirmUpdateOpen(false);
         setIsUpdating(true);
         setUpdateProgress(0);
         setUpdateStatus(null);
-
-        const interval = setInterval(() => {
-            setUpdateProgress(prev => {
-                if (prev >= 100) {
-                    clearInterval(interval);
-                    setIsUpdating(false);
-                    setUpdateStatus('success');
-                    setTimeout(() => setUpdateStatus(null), 3000);
-                    return 100;
-                }
-                return prev + Math.random() * 10;
-            });
-        }, 200);
+        try {
+            // User Request: Save settings first, then update
+            await updateServer({ name, ram, type, version });
+            await installServer(version);
+        } catch (error) {
+            setIsUpdating(false);
+            setUpdateStatus('error');
+            showToast('Failed to update server: ' + error.message, 'error');
+        }
     };
 
     if (loading) return <div className="text-white flex items-center justify-center h-64">Loading settings...</div>;
@@ -55,7 +190,7 @@ const ServerSettings = () => {
     const isOnline = server.status === 'online' || server.status === 'starting';
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8">
+        <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
             {isOnline && (
                 <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 flex items-center text-yellow-500">
                     <AlertCircle size={20} className="mr-3" />
@@ -77,22 +212,31 @@ const ServerSettings = () => {
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full bg-obsidian-bg border border-obsidian-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-obsidian-accent"
+                                className="w-full bg-obsidian-bg border border-obsidian-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-obsidian-accent transition-colors"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-obsidian-muted mb-1 uppercase">Server Type</label>
+                            <SearchableSelect
+                                options={[
+                                    { label: 'Vanilla (Official)', value: 'vanilla' },
+                                    { label: 'PaperMC (Optimized)', value: 'paper' },
+                                    { label: 'Purpur (Advanced)', value: 'purpur' }
+                                ]}
+                                value={type}
+                                onChange={setType}
+                                placeholder="Select Server Type..."
                             />
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-obsidian-muted mb-1 uppercase">RAM Allocation</label>
-                            <select
+                            <SearchableSelect
+                                options={ramOptions.map(gb => ({ label: `${gb} GB`, value: `${gb}GB` }))}
                                 value={ram}
-                                onChange={(e) => setRam(e.target.value)}
-                                className="w-full bg-obsidian-bg border border-obsidian-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-obsidian-accent"
-                            >
-                                <option value="1GB">1 GB</option>
-                                <option value="2GB">2 GB</option>
-                                <option value="4GB">4 GB</option>
-                                <option value="8GB">8 GB</option>
-                                <option value="16GB">16 GB</option>
-                            </select>
+                                onChange={setRam}
+                                placeholder="Select or type (e.g. 4GB)..."
+                            />
+                            <p className="text-xs text-obsidian-muted mt-1">Select from list or type custom value</p>
                         </div>
                     </div>
 
@@ -116,34 +260,45 @@ const ServerSettings = () => {
                 <div className="space-y-6">
                     <div>
                         <label className="block text-xs font-medium text-obsidian-muted mb-1 uppercase">Minecraft Version</label>
-                        <div className="flex space-x-4">
-                            <select
-                                value={version}
-                                onChange={(e) => setVersion(e.target.value)}
-                                className="flex-1 bg-obsidian-bg border border-obsidian-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-obsidian-accent"
-                            >
-                                <option value="1.20.4">1.20.4 (Latest)</option>
-                                <option value="1.20.1">1.20.1</option>
-                                <option value="1.19.4">1.19.4</option>
-                                <option value="1.8.9">1.8.9</option>
-                            </select>
+                        <div className="flex flex-col md:flex-row gap-4">
+                            <div className="flex-1">
+                                <SearchableSelect
+                                    options={availableVersions}
+                                    value={version}
+                                    onChange={setVersion}
+                                    placeholder={isLoadingVersions ? "Loading versions..." : "Select Version..."}
+                                    disabled={isLoadingVersions || isUpdating}
+                                />
+                                <p className="text-xs text-obsidian-muted mt-1">Fetched from official Mojang Manifest</p>
+                            </div>
 
-                            <button
-                                onClick={handleUpdateJar}
-                                disabled={isUpdating}
-                                className="flex items-center px-6 py-2.5 bg-obsidian-surface border border-obsidian-border hover:bg-white/5 text-white rounded-lg font-medium transition-colors disabled:opacity-50 whitespace-nowrap"
-                            >
-                                <Download size={18} className="mr-2" />
-                                {isUpdating ? 'Updating...' : 'Update JAR'}
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleSave}
+                                    disabled={isSaving || isUpdating}
+                                    className="flex items-center justify-center px-4 py-2.5 bg-obsidian-surface border border-obsidian-border hover:bg-white/5 text-white rounded-lg font-medium transition-colors disabled:opacity-50 h-[42px]"
+                                    title="Save version setting without installing"
+                                >
+                                    <Save size={18} />
+                                </button>
+
+                                <button
+                                    onClick={() => setIsConfirmUpdateOpen(true)}
+                                    disabled={isUpdating || (isOnline && !window.confirm("Server is online. Updating JAR might corrupt data if not stopped. Continue?"))}
+                                    className="flex items-center justify-center px-6 py-2.5 bg-obsidian-surface border border-obsidian-border hover:bg-white/5 text-white rounded-lg font-medium transition-colors disabled:opacity-50 whitespace-nowrap h-[42px]"
+                                >
+                                    <Download size={18} className="mr-2" />
+                                    {isUpdating ? 'Updating...' : 'Update JAR'}
+                                </button>
+                            </div>
                         </div>
                     </div>
 
                     {/* Progress Bar */}
-                    {(isUpdating || updateStatus) && (
+                    {(isUpdating || updateStatus === 'success') && (
                         <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
                             <div className="flex justify-between text-xs text-obsidian-muted">
-                                <span>{updateStatus === 'success' ? 'Update Complete' : 'Downloading server.jar...'}</span>
+                                <span>{updateStatus === 'success' ? 'Update Complete' : `Downloading Minecraft ${version}...`}</span>
                                 <span>{Math.round(updateProgress)}%</span>
                             </div>
                             <div className="h-2 bg-obsidian-bg rounded-full overflow-hidden">
@@ -154,15 +309,24 @@ const ServerSettings = () => {
                             </div>
                         </div>
                     )}
-
-                    {updateStatus === 'success' && (
-                        <div className="flex items-center text-green-400 text-sm bg-green-500/10 p-3 rounded-lg border border-green-500/20">
-                            <CheckCircle size={16} className="mr-2" />
-                            Server JAR updated successfully. Please restart the server to apply changes.
-                        </div>
-                    )}
                 </div>
             </div>
+
+            <Modal
+                isOpen={isConfirmUpdateOpen}
+                onClose={() => setIsConfirmUpdateOpen(false)}
+                title={`Update to Minecraft ${version}?`}
+                footer={
+                    <>
+                        <button onClick={() => setIsConfirmUpdateOpen(false)} className="px-4 py-2 text-obsidian-muted hover:text-white transition-colors">Cancel</button>
+                        <button onClick={handleUpdateJar} className="px-4 py-2 bg-obsidian-accent hover:bg-obsidian-accent-hover text-white rounded-lg flex items-center">
+                            <Download size={16} className="mr-2" /> Install Update
+                        </button>
+                    </>
+                }
+            >
+                <p>This will download <strong>server.jar</strong> for version <strong>{version}</strong> from Mojang's official servers. Ensure you have a backup if updating an existing world.</p>
+            </Modal>
         </div>
     );
 };
@@ -185,4 +349,40 @@ const SettingsIcon = ({ className }) => (
     </svg>
 );
 
-export default ServerSettings;
+
+class ErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error, errorInfo) {
+        console.error("ServerSettings Crash:", error, errorInfo);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="p-8 text-red-500 bg-obsidian-surface rounded-xl border border-red-500/20">
+                    <h2 className="text-xl font-bold mb-4">Something went wrong</h2>
+                    <pre className="text-xs bg-black/50 p-4 rounded overflow-auto">
+                        {this.state.error && this.state.error.toString()}
+                    </pre>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+
+const ServerSettingsWithBoundary = () => (
+    <ErrorBoundary>
+        <ServerSettings />
+    </ErrorBoundary>
+);
+
+export default ServerSettingsWithBoundary;

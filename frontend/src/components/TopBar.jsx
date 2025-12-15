@@ -10,15 +10,11 @@ const TopBar = () => {
     return (
         <div className="h-16 bg-obsidian-surface/50 backdrop-blur-md border-b border-obsidian-border flex items-center justify-between px-6 sticky top-0 z-10">
             {/* Server Status Indicator */}
-            <div className="flex items-center space-x-3 px-3 py-2 rounded-lg bg-white/5 border border-obsidian-border group focus-within:border-obsidian-accent/50 transition-colors">
+            <div className="flex items-center space-x-3 px-3 py-2 rounded-lg bg-white/5 border border-obsidian-border">
                 <div className={`w-2 h-2 rounded-full ${server?.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                <input
-                    type="text"
-                    value={server?.name || ''}
-                    onChange={(e) => updateServer({ name: e.target.value })}
-                    className="bg-transparent border-none focus:ring-0 text-sm font-medium text-white p-0 w-32 focus:w-48 transition-all placeholder-obsidian-muted"
-                    placeholder="Server Name"
-                />
+                <span className="text-sm font-medium text-white">
+                    {server?.name || 'Server'}
+                </span>
                 {server && (
                     <span className={`text-xs px-1.5 py-0.5 rounded ${server.status === 'online' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                         {server.status}

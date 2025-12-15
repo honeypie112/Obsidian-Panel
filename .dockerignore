@@ -1,0 +1,10 @@
+node_modules
+dist
+build
+.git
+minecraft_server
+backend/minecraft_server
+frontend/dist
+frontend/node_modules
+backend/node_modules
+.env

@@ -8,8 +8,14 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const { login, hasAdmin, checkHasAdmin } = useAuth();
+    const { login, hasAdmin, checkHasAdmin, user, loading } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!loading && user) {
+            navigate('/');
+        }
+    }, [user, loading, navigate]);
 
     useEffect(() => {
         const verifyAdmin = async () => {

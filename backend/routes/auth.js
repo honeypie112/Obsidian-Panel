@@ -98,6 +98,48 @@ router.get('/me', auth, async (req, res) => {
     }
 });
 
+// @route   PUT api/auth/profile
+// @desc    Update user profile (username & password)
+// @access  Private
+router.put('/profile', auth, async (req, res) => {
+    const { username, currentPassword, newPassword } = req.body;
+
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        // Update Username
+        if (username && username !== user.username) {
+            const exists = await User.findOne({ username });
+            if (exists) return res.status(400).json({ message: 'Username already taken' });
+            user.username = username;
+        }
+
+        // Update Password
+        if (newPassword) {
+            if (!currentPassword) {
+                return res.status(400).json({ message: 'Current password is required to set a new password' });
+            }
+            const isMatch = await user.comparePassword(currentPassword);
+            if (!isMatch) {
+                return res.status(400).json({ message: 'Invalid current password' });
+            }
+            user.password = newPassword; // Pre-save hook will hash this
+        }
+
+        await user.save();
+
+        res.json({
+            id: user.id,
+            username: user.username,
+            role: user.role
+        });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
 // @route   GET api/auth/has-admin
 // @desc    Check if any admin exists
 // @access  Public
