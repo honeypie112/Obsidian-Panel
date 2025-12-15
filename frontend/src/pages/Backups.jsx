@@ -33,7 +33,7 @@ const Backups = () => {
     const [backupToRestore, setBackupToRestore] = useState(null);
     const [isRestoring, setIsRestoring] = useState(false);
     const [filterDate, setFilterDate] = useState('');
-    const [deleteId, setDeleteId] = useState(null);  
+    const [deleteId, setDeleteId] = useState(null);
     const [backupData, setBackupData] = useState(null);
     const pollIntervalRef = useRef(null);
     useEffect(() => {
@@ -81,7 +81,7 @@ const Backups = () => {
                 case 'monthly_1st': cron = '0 0 1 * *'; break;
                 case 'every_15_min': cron = '*/15 * * * *'; break;
                 case 'every_weekday': cron = '0 0 * * 1-5'; break;
-                case 'custom': break;  
+                case 'custom': break;
                 default: break;
             }
             const newConfig = { ...backupConfig, cronExpression: cron };
@@ -129,9 +129,13 @@ const Backups = () => {
             showToast(err.message || 'Failed to restore backup', 'error');
         } finally {
             setIsRestoring(false);
-            window.onbeforeunload = null;  
+            window.onbeforeunload = null;
         }
     };
+    const handleDelete = (id) => {
+        setDeleteId(id);
+    };
+
     const handleDeleteBackup = async () => {
         if (!deleteId) return;
         try {
@@ -156,7 +160,7 @@ const Backups = () => {
         const backupDate = new Date(backup.createdAt);
         const [fYear, fMonth, fDay] = filterDate.split('-').map(Number);
         return backupDate.getFullYear() === fYear &&
-            backupDate.getMonth() === fMonth - 1 &&  
+            backupDate.getMonth() === fMonth - 1 &&
             backupDate.getDate() === fDay;
     });
     const isBusy = loading || isBackupInProgress;
