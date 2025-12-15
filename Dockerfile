@@ -1,5 +1,5 @@
 # Build stage
-FROM node:25-alpine as build-step
+FROM node:22-alpine as build-step
 
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
@@ -8,7 +8,10 @@ COPY frontend/ ./
 RUN npm run build
 
 # Production stage
-FROM node:25-alpine
+FROM node:22-alpine
+
+# Install Java 21, 17, and 8 to support all Minecraft versions
+RUN apk add --no-cache openjdk21 openjdk17 openjdk8
 
 WORKDIR /app/backend
 COPY backend/package*.json ./

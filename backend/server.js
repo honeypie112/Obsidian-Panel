@@ -4,7 +4,9 @@ const cors = require('cors');
 const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
-require('dotenv').config({ path: '../.env' }); // Load from root .env
+// Try loading from root (dev/local) or current dir (production/docker)
+require('dotenv').config({ path: '../.env' });
+require('dotenv').config(); // Falls back to standard .env lookup (current dir)
 
 const authRoutes = require('./routes/auth');
 const controlRoutes = require('./routes/control');
@@ -25,6 +27,12 @@ minecraftService.setSocketIo(io);
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+if (!process.env.MONGO_URI) {
+    console.error('FATAL ERROR: MONGO_URI is not defined.');
+    console.error('Please check your .env file or environment variables.');
+    process.exit(1);
+}
 
 // Database Connection
 mongoose.connect(process.env.MONGO_URI, {
