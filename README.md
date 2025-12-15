@@ -29,52 +29,7 @@
 -   **MongoDB** (running locally or a connection URI)
 -   **Java** (installed on the host machine to run Minecraft)
 
-### 1. Setup Backend
-
-1.  Navigate to the backend folder:
-    ```bash
-    cd backend
-    ```
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  Configure Environment:
-    -   Copy `.env.example` to `.env` (or use the one in root if shared):
-        ```bash
-        cp ../.env.example .env
-        ```
-    -   Edit `.env` and fill in your details:
-        ```env
-        MONGO_URI=mongodb://localhost:27017
-        MONGO_DB_NAME=obsidian_panel
-        JWT_SECRET=your_super_secret_key
-        GOFILE_API_TOKEN=your_gofile_token
-        TEMP_BACKUP_PATH=/tmp/obsidian_backups
-        # MINECRAFT_JAR_PATH is managed dynamically or set here
-        ```
-
-4.  Start the Server:
-    ```bash
-    npm start
-    ```
-    (Runs on Port `5000` by default)
-
-### 2. Setup Frontend
-
-1.  Navigate to the frontend folder:
-    ```bash
-    cd frontend
-    ```
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  Start Development Server:
-    ```bash
-    npm run dev
-    ```
-    (Access at `http://localhost:5173`)
+### 1. Setup Backend (I willl add it soon)
 
 ## 📖 Usage
 
