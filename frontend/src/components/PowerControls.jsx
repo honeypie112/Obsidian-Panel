@@ -1,19 +1,15 @@
 import React, { useState } from 'react';
 import { Play, Square, RotateCw } from 'lucide-react';
 import clsx from 'clsx';
-
 const PowerControls = ({ status, onStart, onStop, onRestart }) => {
     const [loading, setLoading] = useState(false);
-
     const handleAction = async (action, callback) => {
         setLoading(true);
         await callback();
         setLoading(false);
     };
-
     const isOnline = status === 'online';
     const isOffline = status === 'offline';
-
     return (
         <div className="flex space-x-2">
             <button
@@ -29,7 +25,6 @@ const PowerControls = ({ status, onStart, onStop, onRestart }) => {
                 <Play size={18} className="mr-2 fill-current" />
                 Start
             </button>
-
             <button
                 onClick={() => handleAction('restart', onRestart)}
                 disabled={!isOnline || loading}
@@ -43,7 +38,6 @@ const PowerControls = ({ status, onStart, onStop, onRestart }) => {
                 <RotateCw size={18} className="mr-2" />
                 Restart
             </button>
-
             <button
                 onClick={() => handleAction('stop', onStop)}
                 disabled={!isOnline || loading}
@@ -60,5 +54,4 @@ const PowerControls = ({ status, onStart, onStop, onRestart }) => {
         </div>
     );
 };
-
 export default PowerControls;

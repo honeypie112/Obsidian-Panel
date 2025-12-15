@@ -2,15 +2,11 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { serverApi } from '../api/server';
 import { SOCKET_URL } from '../config';
-
 const ServerContext = createContext(null);
-
 export const ServerProvider = ({ children }) => {
     const [server, setServer] = useState(null);
     const [loading, setLoading] = useState(true);
     const [socket, setSocket] = useState(null);
-
-    // Initial Fetch
     const fetchServer = async () => {
         try {
             const data = await serverApi.getStatus();
@@ -21,37 +17,27 @@ export const ServerProvider = ({ children }) => {
             setLoading(false);
         }
     };
-
-    // Socket Connection
     useEffect(() => {
         const newSocket = io(SOCKET_URL, {
             transports: ['websocket', 'polling']
         });
         setSocket(newSocket);
-
         newSocket.on('status', (status) => {
             setServer(status);
             setLoading(false);
         });
-
         return () => newSocket.close();
     }, []);
-
-    // Actions
     const updateServer = async (updates) => {
-        // Renaming this conceptual update to actual config update
         await serverApi.updateServerConfig(updates);
         fetchServer();
     };
-
     const performAction = async (action) => {
         return await serverApi.performAction(action);
     };
-
     const installServer = async (version) => {
         return await serverApi.install(version);
     };
-
     return (
         <ServerContext.Provider value={{
             server,
@@ -66,5 +52,4 @@ export const ServerProvider = ({ children }) => {
         </ServerContext.Provider>
     );
 };
-
 export const useServer = () => useContext(ServerContext);

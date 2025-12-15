@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-
 const SettingsSchema = new mongoose.Schema({
     key: {
         type: String,
@@ -15,11 +14,8 @@ const SettingsSchema = new mongoose.Schema({
         default: Date.now
     }
 });
-
-// Update timestamp on save
 SettingsSchema.pre('save', function (next) {
     this.updatedAt = Date.now();
     next();
 });
-
 module.exports = mongoose.model('Settings', SettingsSchema);

@@ -1,15 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
-import { clsx } from 'clsx'; // Assuming clsx is available or I can use template literals. 
-// I'll skip clsx import if not sure and use template literals to be safe.
-
+import { clsx } from 'clsx';  
 const Select = ({ value, onChange, options, label, disabled = false }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef(null);
-
     const selectedOption = options.find(opt => opt.value === value) || options[0];
-
-    // Close on click outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (containerRef.current && !containerRef.current.contains(event.target)) {
@@ -19,18 +14,15 @@ const Select = ({ value, onChange, options, label, disabled = false }) => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
-
     const handleSelect = (val) => {
         if (!disabled) {
             onChange(val);
             setIsOpen(false);
         }
     };
-
     return (
         <div className="relative" ref={containerRef}>
             {label && <label className="block text-sm font-medium text-obsidian-muted mb-2">{label}</label>}
-
             <button
                 type="button"
                 onClick={() => !disabled && setIsOpen(!isOpen)}
@@ -40,8 +32,7 @@ const Select = ({ value, onChange, options, label, disabled = false }) => {
                 <span className="truncate">{selectedOption?.label || value}</span>
                 <ChevronDown size={16} className={`text-obsidian-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
-
-            {/* Dropdown Menu */}
+            { }
             {isOpen && (
                 <div className="absolute z-50 w-full mt-2 bg-[#1a1a1a] border border-obsidian-border rounded-lg shadow-xl shadow-black/50 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top">
                     <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
@@ -64,5 +55,4 @@ const Select = ({ value, onChange, options, label, disabled = false }) => {
         </div>
     );
 };
-
 export default Select;

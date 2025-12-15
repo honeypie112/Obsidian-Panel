@@ -1,22 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useServer } from '../context/ServerContext';
 import { Save, Download, CheckCircle, AlertCircle } from 'lucide-react';
-
 import SearchableSelect from '../components/SearchableSelect';
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
-
-// Helper to generate RAM options
 const generateRamOptions = (totalBytes) => {
     const totalGB = Math.floor(totalBytes / (1024 * 1024 * 1024));
     const options = [1, 2, 4, 8, 16, 32, 64].filter(gb => gb < totalGB);
-
     if (!options.includes(totalGB) && totalGB > 0) {
         options.push(totalGB);
     }
     return options.sort((a, b) => a - b);
 };
-
 const ServerSettings = () => {
     const { server, updateServer, loading, installServer, socket } = useServer();
     const { showToast } = useToast();
@@ -24,58 +19,39 @@ const ServerSettings = () => {
     const [ram, setRam] = useState('');
     const [type, setType] = useState('vanilla');
     const [version, setVersion] = useState('');
-
-    // Dynamic Versions State
     const [availableVersions, setAvailableVersions] = useState([]);
     const [isLoadingVersions, setIsLoadingVersions] = useState(false);
-
     const [ramOptions, setRamOptions] = useState([1, 2, 4, 8, 16]);
     const [updateProgress, setUpdateProgress] = useState(0);
     const [isUpdating, setIsUpdating] = useState(false);
     const [updateStatus, setUpdateStatus] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isConfirmUpdateOpen, setIsConfirmUpdateOpen] = useState(false);
-
-    // Sync state with server config only when config values actually change
     useEffect(() => {
         if (server) {
-            // Only update if the value is different from current state (and optionally check if focused?)
-            // Actually best practice: Only update if the *server prop* changed relative to previous *server prop*.
-            // Since we don't have previous prop efficiently here, we depend on specific fields.
             setName(server.name || '');
             setRam(server.ram || '');
             setType(server.type || 'vanilla');
-
-            // For version, strictly only update if we aren't "dirty" or just trust the dependency array
-            // If I depend on server.version, it only runs when server.version changes.
             if (server.version) setVersion(server.version);
-
             if (server.totalMem) {
                 setRamOptions(generateRamOptions(server.totalMem));
             }
         }
     }, [server?.name, server?.ram, server?.version, server?.totalMem, server?.type]);
-
-    // Fetch versions
     useEffect(() => {
         if (!socket) return;
-
-        let timeoutId; // Declare strictly at top scope of effect
-
+        let timeoutId;  
         setIsLoadingVersions(true);
         console.log("Emitting get_versions...");
         socket.emit('get_versions');
-
         const onVersionsList = (versions) => {
             console.log("Received versions payload:", versions);
-            if (timeoutId) clearTimeout(timeoutId); // Success!
-
+            if (timeoutId) clearTimeout(timeoutId);  
             if (!Array.isArray(versions)) {
                 console.error("Invalid versions data received:", versions);
                 onVersionsError();
                 return;
             }
-
             try {
                 const options = versions.map(v => ({
                     label: `${v.id} ${v.type === 'snapshot' ? '(Snapshot)' : ''}`,
@@ -88,9 +64,7 @@ const ServerSettings = () => {
                 onVersionsError();
             }
         };
-
         const onVersionsError = () => {
-            // Fallback to static list if fetch fails
             setIsLoadingVersions(false);
             showToast('Using offline version list', 'warning');
             setAvailableVersions([
@@ -114,29 +88,22 @@ const ServerSettings = () => {
                 { label: '1.7.10', value: '1.7.10' }
             ]);
         };
-
         const onVersionsErrorFallback = () => {
-            if (timeoutId) clearTimeout(timeoutId); // Failed explicitly
+            if (timeoutId) clearTimeout(timeoutId);  
             onVersionsError();
         };
-
         socket.on('versions_list', onVersionsList);
         socket.on('versions_error', onVersionsErrorFallback);
-
-        // Timeout to prevent infinite loading if backend doesn't respond
         timeoutId = setTimeout(() => {
             console.warn("Version fetch timed out (15s)");
             onVersionsError();
         }, 15000);
-
         return () => {
             if (timeoutId) clearTimeout(timeoutId);
             socket.off('versions_list', onVersionsList);
             socket.off('versions_error', onVersionsErrorFallback);
         };
     }, [socket]);
-
-    // Update Progress Listener
     useEffect(() => {
         if (!socket) return;
         const onProgress = (data) => {
@@ -153,9 +120,16 @@ const ServerSettings = () => {
         socket.on('install_progress', onProgress);
         return () => socket.off('install_progress', onProgress);
     }, [socket]);
-
     const handleSave = async (e) => {
         e.preventDefault();
+        if (!name.trim()) {
+            showToast('Server name is required', 'error');
+            return;
+        }
+        if (!ram) {
+            showToast('RAM allocation is required', 'error');
+            return;
+        }
         setIsSaving(true);
         try {
             await updateServer({ name, ram, type, version });
@@ -167,14 +141,12 @@ const ServerSettings = () => {
             setIsSaving(false);
         }
     };
-
     const handleUpdateJar = async () => {
         setIsConfirmUpdateOpen(false);
         setIsUpdating(true);
         setUpdateProgress(0);
         setUpdateStatus(null);
         try {
-            // User Request: Save settings first, then update
             await updateServer({ name, ram, type, version });
             await installServer(version);
         } catch (error) {
@@ -183,12 +155,9 @@ const ServerSettings = () => {
             showToast('Failed to update server: ' + error.message, 'error');
         }
     };
-
     if (loading) return <div className="text-white flex items-center justify-center h-64">Loading settings...</div>;
     if (!server) return <div className="text-obsidian-muted">Server not found</div>;
-
     const isOnline = server.status === 'online' || server.status === 'starting';
-
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
             {isOnline && (
@@ -197,13 +166,11 @@ const ServerSettings = () => {
                     <span>Server is currently <strong>{server.status}</strong>. Changes will apply after a restart.</span>
                 </div>
             )}
-
-            {/* General Configuration */}
+            { }
             <div className="bg-obsidian-surface border border-obsidian-border rounded-xl p-6">
                 <h2 className="text-xl font-bold text-white mb-6 flex items-center">
                     <SettingsIcon className="mr-2" /> Server Configuration
                 </h2>
-
                 <form onSubmit={handleSave} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -239,7 +206,6 @@ const ServerSettings = () => {
                             <p className="text-xs text-obsidian-muted mt-1">Select from list or type custom value</p>
                         </div>
                     </div>
-
                     <div className="flex justify-end">
                         <button
                             type="submit"
@@ -252,11 +218,9 @@ const ServerSettings = () => {
                     </div>
                 </form>
             </div>
-
-            {/* Version Management */}
+            { }
             <div className="bg-obsidian-surface border border-obsidian-border rounded-xl p-6">
                 <h2 className="text-xl font-bold text-white mb-6">Version Management</h2>
-
                 <div className="space-y-6">
                     <div>
                         <label className="block text-xs font-medium text-obsidian-muted mb-1 uppercase">Minecraft Version</label>
@@ -271,7 +235,6 @@ const ServerSettings = () => {
                                 />
                                 <p className="text-xs text-obsidian-muted mt-1">Fetched from official Mojang Manifest</p>
                             </div>
-
                             <div className="flex gap-2">
                                 <button
                                     onClick={handleSave}
@@ -281,7 +244,6 @@ const ServerSettings = () => {
                                 >
                                     <Save size={18} />
                                 </button>
-
                                 <button
                                     onClick={() => setIsConfirmUpdateOpen(true)}
                                     disabled={isUpdating}
@@ -293,8 +255,7 @@ const ServerSettings = () => {
                             </div>
                         </div>
                     </div>
-
-                    {/* Progress Bar */}
+                    { }
                     {(isUpdating || updateStatus === 'success') && (
                         <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
                             <div className="flex justify-between text-xs text-obsidian-muted">
@@ -311,7 +272,6 @@ const ServerSettings = () => {
                     )}
                 </div>
             </div>
-
             <Modal
                 isOpen={isConfirmUpdateOpen}
                 onClose={() => setIsConfirmUpdateOpen(false)}
@@ -341,7 +301,6 @@ const ServerSettings = () => {
         </div>
     );
 };
-
 const SettingsIcon = ({ className }) => (
     <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -359,22 +318,17 @@ const SettingsIcon = ({ className }) => (
         <circle cx="12" cy="12" r="3"></circle>
     </svg>
 );
-
-
 class ErrorBoundary extends React.Component {
     constructor(props) {
         super(props);
         this.state = { hasError: false, error: null };
     }
-
     static getDerivedStateFromError(error) {
         return { hasError: true, error };
     }
-
     componentDidCatch(error, errorInfo) {
         console.error("ServerSettings Crash:", error, errorInfo);
     }
-
     render() {
         if (this.state.hasError) {
             return (
@@ -389,11 +343,9 @@ class ErrorBoundary extends React.Component {
         return this.props.children;
     }
 }
-
 const ServerSettingsWithBoundary = () => (
     <ErrorBoundary>
         <ServerSettings />
     </ErrorBoundary>
 );
-
 export default ServerSettingsWithBoundary;

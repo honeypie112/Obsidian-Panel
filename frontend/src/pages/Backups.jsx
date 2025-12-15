@@ -5,7 +5,6 @@ import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
 import DatePicker from '../components/DatePicker';
 import Select from '../components/Select';
-
 const frequencyOptions = [
     { value: 'minute', label: 'Every minute (* * * * *)' },
     { value: 'hourly', label: 'Every hour (0 * * * *)' },
@@ -16,7 +15,6 @@ const frequencyOptions = [
     { value: 'every_weekday', label: 'Every weekday at midnight (0 0 * * 1-5)' },
     { value: 'custom', label: 'Custom' }
 ];
-
 const Backups = () => {
     const { showToast } = useToast();
     const [backups, setBackups] = useState([]);
@@ -24,8 +22,6 @@ const Backups = () => {
     const [isCreating, setIsCreating] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isBackupInProgress, setIsBackupInProgress] = useState(false);
-
-    // Auto Backup Config
     const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
     const [backupConfig, setBackupConfig] = useState({
         enabled: false,
@@ -33,45 +29,27 @@ const Backups = () => {
         cronExpression: '0 0 * * *'
     });
     const [isSavingConfig, setIsSavingConfig] = useState(false);
-
-    // Restore State
     const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
     const [backupToRestore, setBackupToRestore] = useState(null);
     const [isRestoring, setIsRestoring] = useState(false);
-
-    // Date Filtering State
     const [filterDate, setFilterDate] = useState('');
-
-    // Modal States
-    const [deleteId, setDeleteId] = useState(null); // ID of backup to delete, null if modal closed
-
-    // Latest created backup data (for success card)
+    const [deleteId, setDeleteId] = useState(null);  
     const [backupData, setBackupData] = useState(null);
-
     const pollIntervalRef = useRef(null);
-
     useEffect(() => {
         loadBackups();
         checkStatus();
-
-        // Start polling every 5 seconds
         const interval = setInterval(checkStatus, 5000);
         return () => clearInterval(interval);
     }, []);
-
     const checkStatus = async () => {
         try {
             const status = await serverApi.getBackupStatus();
             setIsBackupInProgress(status.isBackupInProgress);
-
-            // If the global status is not in progress, but we have a local loading state (maybe from refreshing logic),
-            // and we were waiting for it, we could sync it.
-            // But 'loading' state is mostly used for the spinner on the button itself during the initial click-to-start.
         } catch (e) {
             console.error(e);
         }
     };
-
     const loadBackups = async () => {
         try {
             const data = await serverApi.getBackups();
@@ -82,7 +60,6 @@ const Backups = () => {
             setLoading(false);
         }
     };
-
     const loadConfig = async () => {
         try {
             const config = await serverApi.getBackupConfig();
@@ -92,12 +69,10 @@ const Backups = () => {
             showToast('Failed to load settings', 'error');
         }
     };
-
     const handleSaveConfig = async () => {
         setIsSavingConfig(true);
         try {
             let cron = backupConfig.cronExpression;
-            // Map preset values to cron expressions
             switch (backupConfig.frequency) {
                 case 'minute': cron = '* * * * *'; break;
                 case 'hourly': cron = '0 * * * *'; break;
@@ -106,12 +81,10 @@ const Backups = () => {
                 case 'monthly_1st': cron = '0 0 1 * *'; break;
                 case 'every_15_min': cron = '*/15 * * * *'; break;
                 case 'every_weekday': cron = '0 0 * * 1-5'; break;
-                case 'custom': break; // Use existing cronExpression
+                case 'custom': break;  
                 default: break;
             }
-
             const newConfig = { ...backupConfig, cronExpression: cron };
-
             await serverApi.updateBackupConfig(newConfig);
             setBackupConfig(newConfig);
             showToast('Auto-Backup settings saved', 'success');
@@ -122,18 +95,13 @@ const Backups = () => {
             setIsSavingConfig(false);
         }
     };
-
     const handleCreateBackup = async () => {
         setIsCreating(true);
         try {
             const data = await serverApi.createBackup();
             setBackupData(data);
             showToast('Backup created successfully!', 'success');
-
-            // Manually update the list immediately to ensure "live" feel
             setBackups(prev => [data, ...prev]);
-
-            // Also fetch to ensure consistency
             loadBackups();
         } catch (err) {
             console.error(err);
@@ -143,18 +111,13 @@ const Backups = () => {
             setIsCreateModalOpen(false);
         }
     };
-
     const confirmRestore = (backup) => {
         setBackupToRestore(backup);
         setIsRestoreModalOpen(true);
     };
-
     const handleRestore = async () => {
         if (!backupToRestore) return;
-
-        // Prevent accidental page refresh/close
         window.onbeforeunload = () => true;
-
         setIsRestoring(true);
         try {
             await serverApi.restoreBackup(backupToRestore._id);
@@ -166,11 +129,9 @@ const Backups = () => {
             showToast(err.message || 'Failed to restore backup', 'error');
         } finally {
             setIsRestoring(false);
-            window.onbeforeunload = null; // Clean up listener
+            window.onbeforeunload = null;  
         }
     };
-
-
     const handleDeleteBackup = async () => {
         if (!deleteId) return;
         try {
@@ -183,35 +144,25 @@ const Backups = () => {
             setDeleteId(null);
         }
     };
-
     const handleCopyPassword = (password) => {
         navigator.clipboard.writeText(password);
         showToast('Password copied to clipboard', 'success');
     };
-
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleString();
     };
-
     const filteredBackups = backups.filter(backup => {
         if (!filterDate) return true;
-
-        // Handle potentially different timezones by just comparing date parts YYYY-MM-DD
-        // The DatePicker returns YYYY-MM-DD string.
         const backupDate = new Date(backup.createdAt);
         const [fYear, fMonth, fDay] = filterDate.split('-').map(Number);
-
         return backupDate.getFullYear() === fYear &&
-            backupDate.getMonth() === fMonth - 1 && // Month is 0-indexed in JS Date
+            backupDate.getMonth() === fMonth - 1 &&  
             backupDate.getDate() === fDay;
     });
-
-    // Derived busy state
     const isBusy = loading || isBackupInProgress;
-
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
-            {/* Header */}
+            { }
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
@@ -229,8 +180,7 @@ const Backups = () => {
                     Auto Backup
                 </button>
             </div>
-
-            {/* Config Modal */}
+            { }
             <Modal
                 isOpen={isConfigModalOpen}
                 onClose={() => setIsConfigModalOpen(false)}
@@ -260,7 +210,6 @@ const Backups = () => {
                             <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-obsidian-accent rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-obsidian-accent"></div>
                         </label>
                     </div>
-
                     <div>
                         <Select
                             label="Schedule"
@@ -270,7 +219,6 @@ const Backups = () => {
                             disabled={!backupConfig.enabled}
                         />
                     </div>
-
                     {backupConfig.frequency === 'custom' && (
                         <div>
                             <label className="block text-sm font-medium text-obsidian-muted mb-2">Cron Expression</label>
@@ -287,8 +235,7 @@ const Backups = () => {
                     )}
                 </div>
             </Modal>
-
-            {/* Main Action Card */}
+            { }
             <div className="bg-obsidian-surface border border-obsidian-border rounded-xl p-8 flex flex-col items-center justify-center text-center space-y-4 shadow-lg shadow-black/20">
                 <div className="w-16 h-16 bg-obsidian-accent/10 rounded-full flex items-center justify-center text-obsidian-accent mb-2">
                     <CloudUpload size={32} />
@@ -297,7 +244,6 @@ const Backups = () => {
                 <p className="text-obsidian-muted max-w-md">
                     Create a full compressed backup of your Minecraft server directory and securely upload it to GoFile.
                 </p>
-
                 <button
                     onClick={() => setIsCreateModalOpen(true)}
                     disabled={isBusy}
@@ -321,8 +267,7 @@ const Backups = () => {
                     </p>
                 )}
             </div>
-
-            {/* Latest Backup Success Card */}
+            { }
             {backupData && (
                 <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-6 animate-in slide-in-from-bottom-5">
                     <div className="flex items-start">
@@ -332,7 +277,6 @@ const Backups = () => {
                             <p className="text-obsidian-muted mb-4">
                                 Your backup has been successfully uploaded to GoFile.
                             </p>
-
                             <div className="bg-black/30 rounded-lg p-4 flex items-center justify-between border border-white/5">
                                 <span className="font-mono text-sm text-gray-300 truncate mr-4">
                                     {backupData.fileName}
@@ -351,16 +295,14 @@ const Backups = () => {
                     </div>
                 </div>
             )}
-
-            {/* Backup History List */}
+            { }
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-bold text-white flex items-center">
                         <Database size={20} className="mr-2 text-obsidian-muted" />
                         Backup History
                     </h3>
-
-                    {/* Date Filter */}
+                    { }
                     <div className="w-48">
                         <DatePicker
                             value={filterDate}
@@ -369,7 +311,6 @@ const Backups = () => {
                         />
                     </div>
                 </div>
-
                 {filteredBackups.length === 0 ? (
                     <div className="text-center py-10 bg-obsidian-surface border border-obsidian-border rounded-xl text-obsidian-muted flex flex-col items-center">
                         <Database size={40} className="opacity-20 mb-3" />
@@ -428,7 +369,6 @@ const Backups = () => {
                                         </div>
                                     </div>
                                 </div>
-
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => confirmRestore(backup)}
@@ -461,10 +401,7 @@ const Backups = () => {
                     </div>
                 )}
             </div>
-
-
-
-            {/* Restore Confirmation Modal */}
+            { }
             <Modal
                 isOpen={isRestoreModalOpen}
                 onClose={() => !isRestoring && setIsRestoreModalOpen(false)}
@@ -484,7 +421,6 @@ const Backups = () => {
                             )}
                         </div>
                     </div>
-
                     <div className="flex justify-end gap-3 mt-6">
                         <button
                             onClick={() => setIsRestoreModalOpen(false)}
@@ -513,8 +449,7 @@ const Backups = () => {
                     </div>
                 </div>
             </Modal>
-
-            {/* Create Confirmation Modal */}
+            { }
             <Modal
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
@@ -547,8 +482,7 @@ const Backups = () => {
                     </p>
                 </div>
             </Modal>
-
-            {/* Delete Confirmation Modal */}
+            { }
             <Modal
                 isOpen={!!deleteId}
                 onClose={() => setDeleteId(null)}
@@ -584,5 +518,4 @@ const Backups = () => {
         </div>
     );
 };
-
 export default Backups;

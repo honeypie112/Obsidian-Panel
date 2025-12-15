@@ -8,13 +8,11 @@ import Register from './pages/Register';
 import DashboardLayout from './components/DashboardLayout';
 import Overview from './pages/Overview';
 import PrivateRoute from './components/PrivateRoute';
-
 import Console from './pages/Console';
 import Files from './pages/Files';
 import ServerSettings from './pages/ServerSettings';
 import GeneralSettings from './pages/GeneralSettings';
 import Backups from './pages/Backups';
-
 function App() {
   return (
     <AuthProvider>
@@ -24,7 +22,6 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-
               <Route element={<PrivateRoute />}>
                 <Route element={<DashboardLayout />}>
                   <Route path="/" element={<Overview />} />
@@ -35,7 +32,6 @@ function App() {
                   <Route path="/backups" element={<Backups />} />
                 </Route>
               </Route>
-
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </Router>
@@ -44,5 +40,4 @@ function App() {
     </AuthProvider>
   );
 }
-
 export default App;

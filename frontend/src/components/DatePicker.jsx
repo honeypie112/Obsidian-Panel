@@ -1,13 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
 import clsx from 'clsx';
-
 const DatePicker = ({ value, onChange, placeholder = "Select date" }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [viewDate, setViewDate] = useState(new Date()); // Current month view
+    const [viewDate, setViewDate] = useState(new Date());  
     const containerRef = useRef(null);
-
-    // Initialize viewDate from value if present
     useEffect(() => {
         if (value) {
             const date = new Date(value);
@@ -16,52 +13,40 @@ const DatePicker = ({ value, onChange, placeholder = "Select date" }) => {
             }
         }
     }, [value]);
-
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (containerRef.current && !containerRef.current.contains(event.target)) {
                 setIsOpen(false);
             }
         };
-
         if (isOpen) {
             document.addEventListener('mousedown', handleClickOutside);
         }
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isOpen]);
-
     const daysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
     const firstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
-
     const monthNames = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     ];
-
     const generateDays = () => {
         const year = viewDate.getFullYear();
         const month = viewDate.getMonth();
         const days = daysInMonth(year, month);
         const firstDay = firstDayOfMonth(year, month);
-
         const dayElements = [];
-
-        // Empty slots for previous month
         for (let i = 0; i < firstDay; i++) {
             dayElements.push(<div key={`empty-${i}`} className="h-8 w-8" />);
         }
-
-        // Days
         for (let day = 1; day <= days; day++) {
             const currentDate = new Date(year, month, day);
             const isSelected = value && new Date(value).toDateString() === currentDate.toDateString();
             const isToday = new Date().toDateString() === currentDate.toDateString();
-
             dayElements.push(
                 <button
                     key={day}
                     onClick={() => {
-                        // Format as YYYY-MM-DD for consistency with input type="date"
                         const offsetDate = new Date(currentDate.getTime() - (currentDate.getTimezoneOffset() * 60000));
                         onChange(offsetDate.toISOString().split('T')[0]);
                         setIsOpen(false);
@@ -76,14 +61,11 @@ const DatePicker = ({ value, onChange, placeholder = "Select date" }) => {
                 </button>
             );
         }
-
         return dayElements;
     };
-
     const changeMonth = (offset) => {
         setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + offset, 1));
     };
-
     return (
         <div className="relative" ref={containerRef}>
             <div
@@ -106,7 +88,6 @@ const DatePicker = ({ value, onChange, placeholder = "Select date" }) => {
                     </button>
                 )}
             </div>
-
             {isOpen && (
                 <div className="absolute right-0 mt-2 p-4 bg-obsidian-surface border border-obsidian-border rounded-xl shadow-xl shadow-black/50 z-50 w-64 animate-in fade-in zoom-in-95 duration-200">
                     <div className="flex items-center justify-between mb-4">
@@ -126,17 +107,14 @@ const DatePicker = ({ value, onChange, placeholder = "Select date" }) => {
                             <ChevronRight size={16} />
                         </button>
                     </div>
-
                     <div className="grid grid-cols-7 gap-1 text-center mb-2">
                         {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
                             <span key={d} className="text-xs text-obsidian-muted font-medium">{d}</span>
                         ))}
                     </div>
-
                     <div className="grid grid-cols-7 gap-1">
                         {generateDays()}
                     </div>
-
                     <div className="mt-3 pt-3 border-t border-white/5 text-center">
                         <button
                             onClick={() => {
@@ -153,5 +131,4 @@ const DatePicker = ({ value, onChange, placeholder = "Select date" }) => {
         </div>
     );
 };
-
 export default DatePicker;

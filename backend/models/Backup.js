@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-
 const BackupSchema = new mongoose.Schema({
     fileName: {
         type: String,
@@ -13,10 +12,10 @@ const BackupSchema = new mongoose.Schema({
         type: String
     },
     size: {
-        type: String // We'll store formatted size string for now or bytes
+        type: String  
     },
     encryptionPassword: {
-        type: String, // Store the generated password
+        type: String,  
         default: null
     },
     createdAt: {
@@ -24,5 +23,4 @@ const BackupSchema = new mongoose.Schema({
         default: Date.now
     }
 });
-
 module.exports = mongoose.model('Backup', BackupSchema);

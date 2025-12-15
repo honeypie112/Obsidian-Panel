@@ -1,7 +1,4 @@
-// Simulated network delay
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-// Mock Data
 const INITIAL_SERVER = {
     id: 'srv-main',
     name: 'Main Server',
@@ -15,7 +12,6 @@ const INITIAL_SERVER = {
     storageUsed: '2.4GB',
     storageTotal: '15GB',
 };
-
 const INITIAL_FILES = {
     name: 'root',
     type: 'folder',
@@ -40,26 +36,20 @@ const INITIAL_FILES = {
         }
     ]
 };
-
-// In-Memory Storage (Resets on refresh)
 let storedUser = null;
 let storedServer = { ...INITIAL_SERVER };
-let storedFiles = JSON.parse(JSON.stringify(INITIAL_FILES)); // Deep copy
-
+let storedFiles = JSON.parse(JSON.stringify(INITIAL_FILES));  
 export const mockApi = {
     login: async (username, password) => {
         await delay(800);
-
         if (!storedUser) {
             throw new Error('No admin account found. Please register first.');
         }
-
         if (username === storedUser.username && password === storedUser.password) {
             return { token: 'fake-jwt-token-123', user: { name: storedUser.username, role: 'admin' } };
         }
         throw new Error('Invalid credentials');
     },
-
     register: async (username, password) => {
         await delay(800);
         if (storedUser) {
@@ -68,70 +58,54 @@ export const mockApi = {
         storedUser = { username, password };
         return { success: true };
     },
-
     hasAdmin: async () => {
         await delay(200);
         return !!storedUser;
     },
-
     getServer: async () => {
         await delay(500);
         return storedServer;
     },
-
     updateServer: async (updates) => {
         await delay(500);
         storedServer = { ...storedServer, ...updates };
         return storedServer;
     },
-
     getFiles: async () => {
         await delay(300);
         return storedFiles;
     },
-
     createFile: async (path, name, type = 'file') => {
         await delay(400);
-
-        // Helper to find dir
         let current = storedFiles;
         for (const folder of path) {
             const found = current.children?.find(c => c.name === folder && c.type === 'folder');
             if (found) current = found;
         }
-
         if (!current.children) current.children = [];
-
         if (current.children.find(c => c.name === name)) {
             throw new Error('File or folder already exists');
         }
-
         current.children.push({
             name,
             type,
             size: type === 'folder' ? '-' : '0B',
             children: type === 'folder' ? [] : undefined
         });
-
         return true;
     },
-
     deleteFile: async (path, name) => {
         await delay(400);
-
         let current = storedFiles;
         for (const folder of path) {
             const found = current.children?.find(c => c.name === folder && c.type === 'folder');
             if (found) current = found;
         }
-
         if (current.children) {
             current.children = current.children.filter(c => c.name !== name);
         }
         return true;
     },
-
-    // Simulate stream
     subscribeToConsole: (callback) => {
         const interval = setInterval(() => {
             const logs = [

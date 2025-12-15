@@ -2,62 +2,43 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useServer } from '../context/ServerContext';
 import { serverApi } from '../api/server';
 import { Terminal as TerminalIcon, Send } from 'lucide-react';
-
 const Console = () => {
     const [logs, setLogs] = useState([]);
     const [command, setCommand] = useState('');
     const logsEndRef = useRef(null);
     const [isConnected, setIsConnected] = useState(false);
-
     const { socket } = useServer();
-
     useEffect(() => {
         if (!socket) return;
-
         setIsConnected(true);
-        // setLogs(prev => [...prev, '[System] Connected to console stream...']); // Removed to avoid clutter
-
-        // Explicitly request history on mount, as socket might be already connected
         socket.emit('request_log_history');
-
         socket.on('log_history', (history) => {
-            // User requested latest 300 lines
             const limitedHistory = (history || []).slice(-300);
             setLogs(limitedHistory);
-            // Add connection message after history load
             setLogs(prev => [...prev, '[System] Connection established.']);
         });
-
         socket.on('console_log', (log) => {
-            setLogs(prev => [...prev.slice(-299), log]); // Keep last 300 lines
+            setLogs(prev => [...prev.slice(-299), log]);  
         });
-
         return () => {
             setIsConnected(false);
             socket.off('console_log');
             socket.off('log_history');
         };
     }, [socket]);
-
     useEffect(() => {
         logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [logs]);
-
     const handleSendCommand = async (e) => {
         e.preventDefault();
         if (!command.trim()) return;
-
         try {
             await serverApi.sendCommand(command);
-
-            // Optimistic update not needed as backend echoes command
         } catch (err) {
             setLogs(prev => [...prev, `[System] Error sending command: ${err.message}`]);
         }
-
         setCommand('');
     };
-
     return (
         <div className="h-[calc(100vh-8rem)] flex flex-col bg-black rounded-xl border border-obsidian-border overflow-hidden shadow-2xl">
             <div className="bg-obsidian-surface border-b border-obsidian-border px-4 py-2 flex items-center justify-between">
@@ -70,7 +51,6 @@ const Console = () => {
                     <span className="text-xs text-obsidian-muted">{isConnected ? 'Connected' : 'Disconnected'}</span>
                 </div>
             </div>
-
             <div className="flex-1 overflow-y-auto p-4 font-mono text-sm space-y-1 custom-scrollbar">
                 {logs.map((log, index) => (
                     <div key={index} className="break-words">
@@ -89,7 +69,6 @@ const Console = () => {
                 ))}
                 <div ref={logsEndRef} />
             </div>
-
             <form onSubmit={handleSendCommand} className="bg-obsidian-surface p-2 border-t border-obsidian-border flex items-center">
                 <span className="text-obsidian-accent px-2 font-mono">{'>'}</span>
                 <input
@@ -110,5 +89,4 @@ const Console = () => {
         </div>
     );
 };
-
 export default Console;

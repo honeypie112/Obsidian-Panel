@@ -4,34 +4,24 @@ import { Folder, FileText, ChevronRight, Home, Download, Trash2, FileCode, FileJ
 import clsx from 'clsx';
 import Modal from '../components/Modal';
 import { useToast } from '../context/ToastContext';
-
 const FileManager = () => {
     const [files, setFiles] = useState([]);
     const [currentPath, setCurrentPath] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    // Modal State
     const [isCreateFileOpen, setIsCreateFileOpen] = useState(false);
     const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [newItemName, setNewItemName] = useState('');
     const [itemToDelete, setItemToDelete] = useState(null);
-
-    // Editor State
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [editorFile, setEditorFile] = useState(null);
     const [editorContent, setEditorContent] = useState('');
     const [isSaving, setIsSaving] = useState(false);
-
-    // Upload Ref
     const fileInputRef = useRef(null);
-
     const { showToast } = useToast();
-
     useEffect(() => {
         loadFiles();
     }, [currentPath]);
-
     const loadFiles = async () => {
         setLoading(true);
         try {
@@ -45,11 +35,9 @@ const FileManager = () => {
             setLoading(false);
         }
     };
-
     const handleNavigate = (folderName) => {
         setCurrentPath([...currentPath, folderName]);
     };
-
     const handleBreadcrumbClick = (index) => {
         if (index === -1) {
             setCurrentPath([]);
@@ -58,7 +46,6 @@ const FileManager = () => {
         }
     };
     const handleHome = () => setCurrentPath([]);
-
     const handleExtract = async (file) => {
         setLoading(true);
         try {
@@ -71,7 +58,6 @@ const FileManager = () => {
             setLoading(false);
         }
     };
-
     const getFileIcon = (name, type) => {
         if (type === 'folder') return <Folder className="text-obsidian-accent fill-obsidian-accent/20" size={24} />;
         if (name.endsWith('.json')) return <FileJson className="text-yellow-400" size={24} />;
@@ -81,9 +67,6 @@ const FileManager = () => {
         if (name.endsWith('.png') || name.endsWith('.jpg')) return <FileImage className="text-purple-400" size={24} />;
         return <FileText className="text-gray-400" size={24} />;
     };
-
-    // --- Actions ---
-
     const handleCreateFolder = async () => {
         if (!newItemName) return;
         setLoading(true);
@@ -99,7 +82,6 @@ const FileManager = () => {
             setLoading(false);
         }
     };
-
     const handleCreateFile = async () => {
         if (!newItemName) return;
         setLoading(true);
@@ -115,7 +97,6 @@ const FileManager = () => {
             setLoading(false);
         }
     };
-
     const handleDelete = async () => {
         if (!itemToDelete) return;
         setLoading(true);
@@ -131,21 +112,16 @@ const FileManager = () => {
             setLoading(false);
         }
     };
-
     const confirmDelete = (name) => {
         setItemToDelete(name);
         setIsDeleteOpen(true);
     };
-
-    // --- Upload ---
     const triggerUpload = () => {
         fileInputRef.current?.click();
     };
-
     const handleUpload = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
         setLoading(true);
         try {
             await serverApi.uploadFile(currentPath, file);
@@ -156,24 +132,19 @@ const FileManager = () => {
             showToast('Upload failed: ' + err.message, 'error');
         } finally {
             setLoading(false);
-            // Reset input
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
-
-    // --- Edit ---
     const handleFileClick = async (file) => {
         if (file.type === 'folder') {
             handleNavigate(file.name);
             return;
         }
-
         const isEditable = /\.(txt|log|properties|json|yml|yaml|md|js|xml)$/i.test(file.name);
         if (!isEditable) {
             showToast('This file type is not editable', 'error');
             return;
         }
-
         setLoading(true);
         try {
             const path = [...currentPath, file.name];
@@ -187,7 +158,6 @@ const FileManager = () => {
             setLoading(false);
         }
     };
-
     const handleSaveFile = async () => {
         if (!editorFile) return;
         setIsSaving(true);
@@ -196,31 +166,24 @@ const FileManager = () => {
             showToast('File saved successfully', 'success');
             setIsEditorOpen(false);
             setEditorFile(null);
-            loadFiles(); // Refresh incase size changed
+            loadFiles();  
         } catch (err) {
             showToast('Failed to save: ' + err.message, 'error');
         } finally {
             setIsSaving(false);
         }
     };
-
-    // --- Multi-Select ---
     const [selectedFiles, setSelectedFiles] = useState(new Set());
     const [isSelectMode, setIsSelectMode] = useState(false);
-
     useEffect(() => {
         setSelectedFiles(new Set());
-        // We ensure select mode persists or resets per path? Usually better to reset or keep.
-        // Let's keep it but clear selection.
     }, [currentPath]);
-
     const toggleSelectMode = () => {
         setIsSelectMode(prev => {
-            if (prev) setSelectedFiles(new Set()); // Clear on exit
+            if (prev) setSelectedFiles(new Set());  
             return !prev;
         });
     };
-
     const handleSelect = (file, e) => {
         e.stopPropagation();
         const newSet = new Set(selectedFiles);
@@ -231,20 +194,16 @@ const FileManager = () => {
         }
         setSelectedFiles(newSet);
     };
-
     const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
-
     const handleBulkDelete = () => {
         if (selectedFiles.size === 0) return;
         setIsBulkDeleteOpen(true);
     };
-
     const executeBulkDelete = async () => {
         setIsBulkDeleteOpen(false);
         setLoading(true);
         let successCount = 0;
         let failCount = 0;
-
         for (const fileName of selectedFiles) {
             try {
                 await serverApi.deleteFile(currentPath, fileName);
@@ -254,15 +213,12 @@ const FileManager = () => {
                 failCount++;
             }
         }
-
         if (successCount > 0) showToast(`Deleted ${successCount} items`, 'success');
         if (failCount > 0) showToast(`Failed to delete ${failCount} items`, 'error');
-
         setSelectedFiles(new Set());
         await loadFiles();
         setLoading(false);
     };
-
     const handleDownload = async (file) => {
         setLoading(true);
         try {
@@ -282,33 +238,23 @@ const FileManager = () => {
             setLoading(false);
         }
     };
-
-    // --- Drag and Drop ---
     const [isDragging, setIsDragging] = useState(false);
-
     const handleDragOver = (e) => {
         e.preventDefault();
         setIsDragging(true);
     };
-
     const handleDragLeave = (e) => {
         e.preventDefault();
         setIsDragging(false);
     };
-
     const handleDrop = async (e) => {
         e.preventDefault();
         setIsDragging(false);
-
         const files = Array.from(e.dataTransfer.files);
         if (files.length === 0) return;
-
         setLoading(true);
-        // Sequential upload to avoid overwhelming server or UI
-        // In a clearer implementation, we'd use Promise.all or a queue
         let successCount = 0;
         let failCount = 0;
-
         for (const file of files) {
             try {
                 await serverApi.uploadFile(currentPath, file);
@@ -318,14 +264,11 @@ const FileManager = () => {
                 failCount++;
             }
         }
-
         if (successCount > 0) showToast(`Uploaded ${successCount} file${successCount > 1 ? 's' : ''}`, 'success');
         if (failCount > 0) showToast(`Failed to upload ${failCount} file${failCount > 1 ? 's' : ''}`, 'error');
-
         await loadFiles();
         setLoading(false);
     };
-
     return (
         <div
             className="bg-obsidian-surface border border-obsidian-border rounded-xl overflow-hidden flex flex-col h-[calc(100vh-8rem)] relative"
@@ -341,7 +284,7 @@ const FileManager = () => {
                     </div>
                 </div>
             )}
-            {/* Breadcrumbs & Actions */}
+            { }
             <div className="p-4 border-b border-obsidian-border flex items-center justify-between bg-obsidian-surface/50 backdrop-blur">
                 <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar">
                     <button
@@ -350,7 +293,6 @@ const FileManager = () => {
                     >
                         <Home size={18} />
                     </button>
-
                     {currentPath.map((folder, index) => (
                         <React.Fragment key={index}>
                             <ChevronRight size={16} className="text-obsidian-border flex-shrink-0" />
@@ -363,7 +305,6 @@ const FileManager = () => {
                         </React.Fragment>
                     ))}
                 </div>
-
                 <div className="flex items-center space-x-2">
                     {selectedFiles.size > 0 && (
                         <button
@@ -373,7 +314,6 @@ const FileManager = () => {
                             <Trash2 size={16} className="mr-2" /> Delete ({selectedFiles.size})
                         </button>
                     )}
-
                     <button
                         onClick={toggleSelectMode}
                         className={clsx(
@@ -386,7 +326,6 @@ const FileManager = () => {
                     >
                         <CheckSquare size={16} className="mr-2" /> Select
                     </button>
-
                     <input
                         type="file"
                         ref={fileInputRef}
@@ -400,7 +339,6 @@ const FileManager = () => {
                     >
                         <Upload size={16} className="mr-2" /> Upload
                     </button>
-
                     <button
                         onClick={() => setIsCreateFileOpen(true)}
                         className="flex items-center px-3 py-1.5 bg-obsidian-accent/10 text-obsidian-accent hover:bg-obsidian-accent/20 rounded-lg transition-colors text-sm font-medium"
@@ -415,8 +353,7 @@ const FileManager = () => {
                     </button>
                 </div>
             </div>
-
-            {/* File List */}
+            { }
             <div className="flex-1 overflow-y-auto p-2">
                 {loading ? (
                     <div className="flex items-center justify-center h-full text-obsidian-muted">Loading files...</div>
@@ -496,8 +433,7 @@ const FileManager = () => {
                     </div>
                 )}
             </div>
-
-            {/* Editor Modal (Full Screen Overlay) */}
+            { }
             {isEditorOpen && (
                 <div className="fixed inset-0 z-50 bg-obsidian-bg/95 flex flex-col animate-in fade-in duration-200">
                     <div className="h-14 border-b border-obsidian-border flex items-center justify-between px-6 bg-obsidian-surface">
@@ -532,8 +468,7 @@ const FileManager = () => {
                     </div>
                 </div>
             )}
-
-            {/* Modals */}
+            { }
             <Modal
                 isOpen={isCreateFileOpen}
                 onClose={() => setIsCreateFileOpen(false)}
@@ -554,7 +489,6 @@ const FileManager = () => {
                     autoFocus
                 />
             </Modal>
-
             <Modal
                 isOpen={isCreateFolderOpen}
                 onClose={() => setIsCreateFolderOpen(false)}
@@ -575,7 +509,6 @@ const FileManager = () => {
                     autoFocus
                 />
             </Modal>
-
             <Modal
                 isOpen={isDeleteOpen}
                 onClose={() => setIsDeleteOpen(false)}
@@ -589,8 +522,7 @@ const FileManager = () => {
             >
                 <p>Are you sure you want to delete <span className="font-bold text-white">{itemToDelete}</span>? This action cannot be undone.</p>
             </Modal>
-
-            {/* Bulk Delete Modal */}
+            { }
             <Modal
                 isOpen={isBulkDeleteOpen}
                 onClose={() => setIsBulkDeleteOpen(false)}
@@ -616,5 +548,4 @@ const FileManager = () => {
         </div>
     );
 };
-
 export default FileManager;

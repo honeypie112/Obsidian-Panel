@@ -2,10 +2,8 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
-
 const DashboardLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
-
     return (
         <div className="flex h-screen bg-obsidian-bg text-white overflow-hidden">
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
@@ -18,5 +16,4 @@ const DashboardLayout = () => {
         </div>
     );
 };
-
 export default DashboardLayout;

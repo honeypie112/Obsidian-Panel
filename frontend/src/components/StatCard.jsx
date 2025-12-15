@@ -1,6 +1,5 @@
 import React from 'react';
 import clsx from 'clsx';
-
 const StatCard = ({ title, value, subtext, icon: Icon, color = 'blue' }) => {
     const colorStyles = {
         blue: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
@@ -8,7 +7,6 @@ const StatCard = ({ title, value, subtext, icon: Icon, color = 'blue' }) => {
         green: 'text-green-400 bg-green-500/10 border-green-500/20',
         orange: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
     };
-
     return (
         <div className="bg-obsidian-surface border border-obsidian-border rounded-xl p-6 flex items-start justify-between hover:border-obsidian-accent/30 transition-colors">
             <div>
@@ -22,5 +20,4 @@ const StatCard = ({ title, value, subtext, icon: Icon, color = 'blue' }) => {
         </div>
     );
 };
-
 export default StatCard;
