@@ -16,7 +16,7 @@
 @layer base {
   body {
     @apply text-obsidian-text antialiased;
-    background-image: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.85)), url('/obsidian-background.png');
+    background-image: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.85)), url('/obsidian-background.jpg');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
