@@ -19,7 +19,6 @@ const Backups = () => {
     const { showToast } = useToast();
     const [backups, setBackups] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [isCreating, setIsCreating] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isBackupInProgress, setIsBackupInProgress] = useState(false);
     const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
@@ -35,7 +34,6 @@ const Backups = () => {
     const [filterDate, setFilterDate] = useState('');
     const [deleteId, setDeleteId] = useState(null);
     const [backupData, setBackupData] = useState(null);
-    const pollIntervalRef = useRef(null);
     useEffect(() => {
         loadBackups();
         checkStatus();

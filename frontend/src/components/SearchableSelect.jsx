@@ -9,10 +9,9 @@ const SearchableSelect = ({ options, value, onChange, placeholder = "Select...",
     const safeOptions = Array.isArray(options) ? options : [];
     const selectedOption = safeOptions.find(opt => opt.value === value);
     useEffect(() => {
-        if (selectedOption) {
-            setInputValue(selectedOption.label);
-        } else {
-            setInputValue(value || '');
+        const newLabel = selectedOption ? selectedOption.label : (value || '');
+        if (inputValue !== newLabel) {
+            setInputValue(newLabel);
         }
     }, [value, selectedOption]);
     useEffect(() => {
@@ -31,12 +30,12 @@ const SearchableSelect = ({ options, value, onChange, placeholder = "Select...",
     const handleInputChange = (e) => {
         const newVal = e.target.value;
         setInputValue(newVal);
-        onChange(newVal);  
+        onChange(newVal);
         setIsOpen(true);
     };
     const handleOptionSelect = (opt) => {
-        onChange(opt.value);  
-        setInputValue(opt.label);  
+        onChange(opt.value);
+        setInputValue(opt.label);
         setIsOpen(false);
     };
     return (

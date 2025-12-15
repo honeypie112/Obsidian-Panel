@@ -8,7 +8,6 @@ const INITIAL_SERVER = {
     version: '1.20.4',
     cpuUsage: 0,
     ramUsage: 0,
-    ramUsage: 0,
     storageUsed: '2.4GB',
     storageTotal: '15GB',
 };
@@ -38,7 +37,7 @@ const INITIAL_FILES = {
 };
 let storedUser = null;
 let storedServer = { ...INITIAL_SERVER };
-let storedFiles = JSON.parse(JSON.stringify(INITIAL_FILES));  
+let storedFiles = JSON.parse(JSON.stringify(INITIAL_FILES));
 export const mockApi = {
     login: async (username, password) => {
         await delay(800);
