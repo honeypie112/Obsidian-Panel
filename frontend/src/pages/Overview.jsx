@@ -13,7 +13,7 @@ const formatBytes = (bytes) => {
 };
 
 const Overview = () => {
-    const { server, performAction, socket } = useServer();
+    const { server, performAction, installServer, socket } = useServer();
     const [installing, setInstalling] = useState(false);
 
     // Real-time System Stats
@@ -30,6 +30,15 @@ const Overview = () => {
         socket.on('stats', onStats);
         return () => socket.off('stats', onStats);
     }, [socket]);
+
+    const handleReinstall = async () => {
+        if (!server.version) return;
+        try {
+            await installServer(server.version);
+        } catch (error) {
+            console.error("Reinstall failed:", error);
+        }
+    };
 
     if (!server) return <div className="text-white">Loading...</div>;
 
@@ -49,25 +58,25 @@ const Overview = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                     <span className={`inline-flex h-3 w-3 rounded-full ${server.status === 'online' ? 'bg-green-500' :
-                            server.status === 'starting' ? 'bg-yellow-500' : 'bg-red-500'
+                        server.status === 'starting' ? 'bg-yellow-500' : 'bg-red-500'
                         }`}></span>
                     <span className="text-white font-medium capitalize">{server.status}</span>
                 </div>
             </div>
 
-            {/* Installation Prompt */}
-            {server.status === 'offline' && (
+            {/* Installation Prompt - Only show if server JAR is missing */}
+            {server.isInstalled === false && server.status === 'offline' && (
                 <div className="bg-obsidian-surface border border-obsidian-border rounded-xl p-6 flex justify-between items-center">
                     <div>
-                        <h3 className="text-white font-bold text-lg mb-1">Server Offline</h3>
-                        <p className="text-obsidian-muted text-sm">Server is ready to be started or updated.</p>
+                        <h3 className="text-white font-bold text-lg mb-1">Server Not Installed</h3>
+                        <p className="text-obsidian-muted text-sm">Server JAR not found. Please install to start.</p>
                     </div>
                     <button
-                        onClick={() => performAction('install')}
+                        onClick={handleReinstall}
                         className="bg-obsidian-surface hover:bg-white/5 border border-obsidian-border text-white px-4 py-2 rounded-lg transition-colors flex items-center"
                     >
                         <RefreshCw size={16} className="mr-2" />
-                        Re-Install / Update
+                        Install Server
                     </button>
                 </div>
             )}

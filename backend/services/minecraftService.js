@@ -147,9 +147,24 @@ class MinecraftService extends EventEmitter {
     }
 
     getStatus() {
+        // Debug detection
+        const exists = fs.existsSync(this.jarFile);
+        if (!exists) {
+            console.log(`[DEBUG] Check detected missing JAR at: ${this.jarFile}`);
+            // List dir content to debug
+            try {
+                if (fs.existsSync(this.serverDir)) {
+                    console.log(`[DEBUG] Dir Content:`, fs.readdirSync(this.serverDir));
+                } else {
+                    console.log(`[DEBUG] Server Dir does not exist: ${this.serverDir}`);
+                }
+            } catch (e) { }
+        }
+
         return {
             status: this.status,
             totalMem: os.totalmem(),
+            isInstalled: exists,
             ...this.config
         };
     }

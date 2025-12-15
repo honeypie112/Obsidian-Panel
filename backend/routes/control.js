@@ -144,6 +144,13 @@ router.post('/files/list', auth, (req, res) => {
                 if (stats.size < 1024) size = stats.size + ' B';
                 else if (stats.size < 1024 * 1024) size = (stats.size / 1024).toFixed(1) + ' KB';
                 else size = (stats.size / (1024 * 1024)).toFixed(1) + ' MB';
+            } else if (entry.isDirectory()) {
+                try {
+                    const subFiles = fs.readdirSync(path.join(targetPath, entry.name));
+                    size = `${subFiles.length} item${subFiles.length !== 1 ? 's' : ''}`;
+                } catch (e) {
+                    size = 'Unknown';
+                }
             }
 
             return {
@@ -205,8 +212,17 @@ router.post('/files/upload', auth, upload.single('file'), (req, res) => {
         const tempPath = req.file.path;
         const targetPath = path.join(targetDir, req.file.originalname);
 
-        // Move from temp to target
-        fs.renameSync(tempPath, targetPath);
+        // Move from temp to target (Handle EXDEV for cross-device moves)
+        try {
+            fs.renameSync(tempPath, targetPath);
+        } catch (error) {
+            if (error.code === 'EXDEV') {
+                fs.copyFileSync(tempPath, targetPath);
+                fs.unlinkSync(tempPath);
+            } else {
+                throw error;
+            }
+        }
 
         res.json({ success: true });
     } catch (err) {
@@ -234,6 +250,39 @@ router.post('/files/create', auth, (req, res) => {
     }
 });
 
+// @route   POST api/control/files/extract
+// @desc    Extract .zip or .tar.gz files
+router.post('/files/extract', auth, (req, res) => {
+    try {
+        const { path: relPath } = req.body;
+        const targetPath = getSafePath(relPath);
+        const parentDir = path.dirname(targetPath);
+        const { exec } = require('child_process');
+
+        let cmd;
+        if (targetPath.endsWith('.zip')) {
+            // unzip -o (overwrite) -d (destination)
+            cmd = `unzip -o "${targetPath}" -d "${parentDir}"`;
+        } else if (targetPath.endsWith('.tar.gz')) {
+            // tar -xzf (extract, gzip, file) -C (destination)
+            cmd = `tar -xzf "${targetPath}" -C "${parentDir}"`;
+        } else {
+            return res.status(400).json({ message: 'Unsupported archive format' });
+        }
+
+        exec(cmd, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Exec error: ${error}`);
+                // Often system might not have unzip installed, handle that?
+                return res.status(500).json({ message: 'Extraction failed. Ensure unzip/tar is installed.' });
+            }
+            res.json({ success: true });
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // @route   POST api/control/files/delete
 // @desc    Delete file or directory
 router.post('/files/delete', auth, (req, res) => {
@@ -243,7 +292,8 @@ router.post('/files/delete', auth, (req, res) => {
 
         const stats = fs.statSync(targetPath);
         if (stats.isDirectory()) {
-            fs.rmdirSync(targetPath, { recursive: true });
+            // Using rmSync with recursive: true to force delete non-empty folders
+            fs.rmSync(targetPath, { recursive: true, force: true });
         } else {
             fs.unlinkSync(targetPath);
         }

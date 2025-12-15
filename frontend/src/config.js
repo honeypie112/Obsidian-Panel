@@ -1,8 +1,11 @@
-// In production (same origin), use relative paths.
-// In dev, use env var or localhost fallback.
-export const API_URL = import.meta.env.VITE_API_URL || '';
+// In production (same origin), use relative paths (empty string).
+// In dev (detected by Vite), use localhost:5000 if VITE_API_URL isn't set.
 
-// Socket.io needs a full URL or just path if same origin,
-// but for some setups (CORS), it's explicit.
-// For same-origin production, undefined/null lets socket.io auto-detect.
-export const SOCKET_URL = import.meta.env.VITE_API_URL || undefined;
+const isDev = import.meta.env.MODE === 'development';
+
+export const API_URL = import.meta.env.VITE_API_URL || (isDev ? 'http://localhost:5000' : '');
+
+// Socket.io config
+// Production: undefined (auto-detects from window.location, which serves the frontend)
+// Development: points to backend explicitly
+export const SOCKET_URL = import.meta.env.VITE_API_URL || (isDev ? 'http://localhost:5000' : undefined);
