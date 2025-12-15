@@ -166,7 +166,7 @@ const FileManager = () => {
             showToast('File saved successfully', 'success');
             setIsEditorOpen(false);
             setEditorFile(null);
-            loadFiles();  
+            loadFiles();
         } catch (err) {
             showToast('Failed to save: ' + err.message, 'error');
         } finally {
@@ -180,7 +180,7 @@ const FileManager = () => {
     }, [currentPath]);
     const toggleSelectMode = () => {
         setIsSelectMode(prev => {
-            if (prev) setSelectedFiles(new Set());  
+            if (prev) setSelectedFiles(new Set());
             return !prev;
         });
     };
@@ -324,8 +324,23 @@ const FileManager = () => {
                         )}
                         title="Toggle Selection Mode"
                     >
-                        <CheckSquare size={16} className="mr-2" /> Select
+                        <CheckSquare size={16} className="mr-2" /> {isSelectMode ? 'Done' : 'Select'}
                     </button>
+                    {isSelectMode && (
+                        <button
+                            onClick={() => {
+                                if (selectedFiles.size === files.length) {
+                                    setSelectedFiles(new Set());
+                                } else {
+                                    setSelectedFiles(new Set(files.map(f => f.name)));
+                                }
+                            }}
+                            className="flex items-center px-3 py-1.5 bg-obsidian-surface hover:bg-white/5 border border-obsidian-border text-white rounded-lg transition-colors text-sm font-medium animate-in fade-in slide-in-from-left-2"
+                        >
+                            <CheckSquare size={16} className="mr-2" />
+                            {selectedFiles.size === files.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                    )}
                     <input
                         type="file"
                         ref={fileInputRef}
