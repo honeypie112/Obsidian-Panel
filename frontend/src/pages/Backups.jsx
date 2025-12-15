@@ -130,7 +130,6 @@ const Backups = () => {
             window.onbeforeunload = null;
         }
     };
-
     const handleDelete = (id) => {
         setDeleteId(id);
     };
