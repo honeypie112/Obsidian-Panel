@@ -284,7 +284,7 @@ const ServerSettings = () => {
 
                                 <button
                                     onClick={() => setIsConfirmUpdateOpen(true)}
-                                    disabled={isUpdating || (isOnline && !window.confirm("Server is online. Updating JAR might corrupt data if not stopped. Continue?"))}
+                                    disabled={isUpdating}
                                     className="flex items-center justify-center px-6 py-2.5 bg-obsidian-surface border border-obsidian-border hover:bg-white/5 text-white rounded-lg font-medium transition-colors disabled:opacity-50 whitespace-nowrap h-[42px]"
                                 >
                                     <Download size={18} className="mr-2" />
@@ -325,7 +325,18 @@ const ServerSettings = () => {
                     </>
                 }
             >
-                <p>This will download <strong>server.jar</strong> for version <strong>{version}</strong> from Mojang's official servers. Ensure you have a backup if updating an existing world.</p>
+                <div className="space-y-4">
+                    {isOnline && (
+                        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 flex items-start text-yellow-500">
+                            <AlertCircle size={20} className="mr-3 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <strong className="block mb-1">Server is Online</strong>
+                                Updating the JAR while the server is running might corrupt data. We recommend stopping the server first.
+                            </div>
+                        </div>
+                    )}
+                    <p>This will download <strong>server.jar</strong> for version <strong>{version}</strong> from Mojang's official servers. Ensure you have a backup if updating an existing world.</p>
+                </div>
             </Modal>
         </div>
     );
