@@ -1,4 +1,6 @@
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000') + '/api';
+import { API_URL } from '../config';
+
+const BASE_URL = `${API_URL}/api`;
 
 const getHeaders = () => {
     const token = localStorage.getItem('obsidian_token'); // Assuming AuthContext saves this
@@ -10,7 +12,7 @@ const getHeaders = () => {
 
 export const serverApi = {
     getStatus: async () => {
-        const res = await fetch(`${API_URL}/control/status`, {
+        const res = await fetch(`${BASE_URL}/control/status`, {
             headers: getHeaders()
         });
         if (!res.ok) throw new Error('Failed to fetch status');
@@ -18,7 +20,7 @@ export const serverApi = {
     },
 
     performAction: async (action) => {
-        const res = await fetch(`${API_URL}/control/action`, {
+        const res = await fetch(`${BASE_URL}/control/action`, {
             method: 'POST',
             headers: getHeaders(),
             body: JSON.stringify({ action })
@@ -28,7 +30,7 @@ export const serverApi = {
     },
 
     sendCommand: async (command) => {
-        const res = await fetch(`${API_URL}/control/command`, {
+        const res = await fetch(`${BASE_URL}/control/command`, {
             method: 'POST',
             headers: getHeaders(),
             body: JSON.stringify({ command })
@@ -38,7 +40,7 @@ export const serverApi = {
     },
 
     install: async (version) => {
-        const res = await fetch(`${API_URL}/control/install`, {
+        const res = await fetch(`${BASE_URL}/control/install`, {
             method: 'POST',
             headers: getHeaders(),
             body: JSON.stringify({ version })
@@ -48,7 +50,7 @@ export const serverApi = {
     },
 
     updateServerConfig: async (config) => {
-        const res = await fetch(`${API_URL}/control/config`, {
+        const res = await fetch(`${BASE_URL}/control/config`, {
             method: 'POST',
             headers: getHeaders(),
             body: JSON.stringify(config)

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { mockApi } from '../utils/mockApi';
+import { API_URL } from '../config';
 
 const AuthContext = createContext(null);
 
@@ -13,7 +14,7 @@ export const AuthProvider = ({ children }) => {
         const initAuth = async () => {
             // Check if admin exists
             try {
-                const res = await fetch('http://localhost:5000/api/auth/has-admin');
+                const res = await fetch(`${API_URL}/api/auth/has-admin`);
                 const data = await res.json();
                 setHasAdmin(data.hasAdmin);
             } catch (e) {
@@ -24,7 +25,7 @@ export const AuthProvider = ({ children }) => {
             if (storedToken) {
                 setToken(storedToken);
                 try {
-                    const res = await fetch('http://localhost:5000/api/auth/me', {
+                    const res = await fetch(`${API_URL}/api/auth/me`, {
                         headers: { 'Authorization': `Bearer ${storedToken}` }
                     });
                     if (res.ok) {
@@ -46,7 +47,7 @@ export const AuthProvider = ({ children }) => {
 
     const register = async (username, password) => {
         try {
-            const res = await fetch('http://localhost:5000/api/auth/register', {
+            const res = await fetch(`${API_URL}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
@@ -66,7 +67,7 @@ export const AuthProvider = ({ children }) => {
 
     const checkHasAdmin = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/auth/has-admin');
+            const res = await fetch(`${API_URL}/api/auth/has-admin`);
             const data = await res.json();
             return data.hasAdmin;
         } catch { return false; }
@@ -74,7 +75,7 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (username, password) => {
         try {
-            const res = await fetch('http://localhost:5000/api/auth/login', {
+            const res = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
@@ -93,7 +94,7 @@ export const AuthProvider = ({ children }) => {
 
     const updateProfile = async (data) => {
         try {
-            const res = await fetch('http://localhost:5000/api/auth/profile', {
+            const res = await fetch(`${API_URL}/api/auth/profile`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

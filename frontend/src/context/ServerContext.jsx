@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { serverApi } from '../api/server';
+import { SOCKET_URL } from '../config';
 
 const ServerContext = createContext(null);
 
@@ -23,7 +24,9 @@ export const ServerProvider = ({ children }) => {
 
     // Socket Connection
     useEffect(() => {
-        const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+        const newSocket = io(SOCKET_URL, {
+            transports: ['websocket', 'polling']
+        });
         setSocket(newSocket);
 
         newSocket.on('status', (status) => {
