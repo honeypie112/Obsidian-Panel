@@ -8,9 +8,9 @@ require('dotenv').config({ path: '../.env' });
 require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const controlRoutes = require('./routes/control');
-const serverRoutes = require('./routes/server');
-const backupRoutes = require('./routes/backups');
 const minecraftService = require('./services/minecraftService');
+const backupRoutes = require('./routes/backups');
+// const serverRoutes = require('./routes/server'); // To be implemented
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -38,8 +38,7 @@ mongoose.connect(process.env.MONGO_URI, {
     .catch(err => console.log(err));
 app.use('/api/auth', authRoutes);
 app.use('/api/control', controlRoutes);
-app.use('/api/server', serverRoutes); // Reordered serverRoutes usage
-app.use('/api/backups', backupRoutes); // Used backupRoutes variable
+app.use('/api/backups', require('./routes/backups'));
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (req, res) => {
     const indexPath = path.join(__dirname, 'public/index.html');

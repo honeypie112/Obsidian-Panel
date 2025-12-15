@@ -132,11 +132,10 @@ const Backups = () => {
             window.onbeforeunload = null;
         }
     };
+
     const handleDelete = (id) => {
         setDeleteId(id);
     };
-
-
 
     const handleDeleteBackup = async () => {
         if (!deleteId) return;

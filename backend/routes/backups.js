@@ -1,85 +1,79 @@
 const express = require('express');
 const router = express.Router();
-const Backup = require('../models/Backup');
 const auth = require('../middleware/auth');
-const fs = require('fs');
-const path = require('path');
-const { exec } = require('child_process');
-
-const BACKUP_DIR = path.join(__dirname, '../../backups');
-const SERVER_DIR = process.env.MC_SERVER_BASE_PATH || './servers';
-
-if (!fs.existsSync(BACKUP_DIR)) {
-    fs.mkdirSync(BACKUP_DIR, { recursive: true });
-}
+const Backup = require('../models/Backup');
+// const minecraftService = require('../services/minecraftService'); // For real backup creation
 
 // @route   GET api/backups
 // @desc    Get all backups
+// @access  Private
 router.get('/', auth, async (req, res) => {
     try {
         const backups = await Backup.find().sort({ createdAt: -1 });
         res.json(backups);
     } catch (err) {
-        console.error(err);
-        res.status(500).send('Server error');
+        console.error(err.message);
+        res.status(500).send('Server Error');
     }
 });
 
-// @route   POST api/backups/create
-// @desc    Create a backup (Mock implementation using simple copy/zip or just dummy for now)
-router.post('/create', auth, async (req, res) => {
+// @route   POST api/backups
+// @desc    Create a new backup
+// @access  Private
+router.post('/', auth, async (req, res) => {
     try {
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const fileName = `backup-${timestamp}.zip`;
-        const filePath = path.join(BACKUP_DIR, fileName);
-
-        // For now, create a dummy file to simulate backup
-        // In real impl, use 'archiver' or 'zip -r'
-        fs.writeFileSync(filePath, 'Mock backup content');
-
+        // Mock Implementation for now until minecraftService is ready
         const newBackup = new Backup({
-            fileName,
-            size: '0MB', // Calculate real size
-            path: filePath,
-            downloadPage: `/api/backups/download/${fileName}` // Serve static or stream
+            fileName: `backup-${Date.now()}.zip`,
+            size: '150MB',
+            downloadPage: 'https://gofile.io/d/mock',
+            fileId: 'mock-id',
+            createdBy: req.user.id
         });
 
-        await newBackup.save();
-        res.json(newBackup);
+        const backup = await newBackup.save();
+        res.json(backup);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Backup creation failed' });
+        console.error(err.message);
+        res.status(500).send('Server Error');
     }
 });
 
 // @route   DELETE api/backups/:id
 // @desc    Delete a backup
+// @access  Private
 router.delete('/:id', auth, async (req, res) => {
     try {
         const backup = await Backup.findById(req.params.id);
+
         if (!backup) {
             return res.status(404).json({ message: 'Backup not found' });
         }
 
-        // Delete file
-        if (fs.existsSync(backup.path)) {
-            fs.unlinkSync(backup.path);
-        }
+        await backup.deleteOne(); // Delete from MongoDB
 
-        // Delete DB record
-        await Backup.findByIdAndDelete(req.params.id);
-
-        res.json({ message: 'Backup deleted' });
+        res.json({ message: 'Backup removed' });
     } catch (err) {
-        console.error(err);
-        res.status(500).send('Server error');
+        console.error(err.message);
+        if (err.kind === 'ObjectId') {
+            return res.status(404).json({ message: 'Backup not found' });
+        }
+        res.status(500).send('Server Error');
     }
 });
 
 // @route   GET api/backups/status
 // @desc    Get backup status
+// @access  Private
 router.get('/status', auth, (req, res) => {
-    res.json({ isBackupInProgress: false });
+    res.json({ isBackupInProgress: false }); // Mock
+});
+
+// @route   GET api/backups/config
+// @desc    Get backup config
+// @access  Private
+router.get('/config', auth, (req, res) => {
+    res.json({ enabled: false, frequency: 'daily', cronExpression: '0 0 * * *' }); // Mock
 });
 
 module.exports = router;

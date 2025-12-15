@@ -9,15 +9,22 @@ const backupSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    path: {
-        type: String,
+    downloadPage: {
+        type: String, // GoFile URL
         required: true
     },
-    downloadPage: {
-        type: String
+    fileId: {
+        type: String, // GoFile ID
+        required: true
     },
+    md5: String,
     encryptionPassword: {
-        type: String
+        type: String,
+        default: null
+    },
+    createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     },
     createdAt: {
         type: Date,

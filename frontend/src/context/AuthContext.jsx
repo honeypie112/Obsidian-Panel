@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { mockApi } from '../utils/mockApi';
 import { API_URL } from '../config';
-import { setAuthToken } from '../utils/api'; // Import helper
 const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -20,7 +19,6 @@ export const AuthProvider = ({ children }) => {
             const storedToken = localStorage.getItem('obsidian_token');
             if (storedToken) {
                 setToken(storedToken);
-                setAuthToken(storedToken); // Set header for future axios calls
                 try {
                     const res = await fetch(`${API_URL}/api/auth/me`, {
                         headers: { 'Authorization': `Bearer ${storedToken}` }
@@ -31,12 +29,10 @@ export const AuthProvider = ({ children }) => {
                     } else {
                         localStorage.removeItem('obsidian_token');
                         setToken(null);
-                        setAuthToken(null); // Clear token on failure
                     }
                 } catch (e) {
                     localStorage.removeItem('obsidian_token');
                     setToken(null);
-                    setAuthToken(null); // Clear token on failure
                 }
             }
             setLoading(false);
