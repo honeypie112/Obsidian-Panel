@@ -11,7 +11,7 @@
     <br>
     ![Server Console](images/console_v2.png)
 
--   **Server Settings**: Manage server properties, Java flags, and versions through a simple UI.
+-   **Server Settings**: Manage server and versions through a simple UI.
     <br>
     ![Server Settings](images/settings.png)
 
