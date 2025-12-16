@@ -12,9 +12,23 @@ echo -e "${BLUE}   Obsidian Panel Installation Script   ${NC}"
 echo -e "${BLUE}========================================${NC}"
 
 # 1. Repository Setup
-if [ -d ".git" ] && grep -q "Obsidian-Panel" .git/config; then
-    echo -e "${GREEN}✓ Detected Obsidian-Panel repository.${NC}"
-else
+# 1. Repository Setup
+if [ -d "Obsidian-Panel" ]; then
+    echo -e "${GREEN}✓ Detected Obsidian-Panel directory.${NC}"
+    echo -e "${BLUE}Do you want to perform a fresh reinstall? (This will delete the existing code)${NC}"
+    read -p "Reinstall fresh? (y/n): " reinstall_choice
+    
+    if [[ "$reinstall_choice" =~ ^[Yy]$ ]]; then
+        echo -e "${RED}Removing existing installation...${NC}"
+        rm -rf Obsidian-Panel
+    else
+        echo -e "${BLUE}Updating repository...${NC}"
+        cd Obsidian-Panel || exit 1
+        git pull
+    fi
+fi
+
+if [ ! -d "Obsidian-Panel" ]; then
     echo -e "${BLUE}Cloning Obsidian-Panel repository...${NC}"
     if git clone https://github.com/honeypie112/Obsidian-Panel.git; then
         cd Obsidian-Panel || exit 1
