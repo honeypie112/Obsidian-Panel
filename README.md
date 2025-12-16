@@ -49,7 +49,19 @@
 -   **MongoDB** (running locally or a connection URI)
 -   **Java** (installed on the host machine to run Minecraft)
 
-### 1. Setup Backend (I willl add it soon)
+### ⚡ One-Click Installation (Docker)
+
+Run the following command to install and configure Obsidian Panel automatically:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/honeypie112/Obsidian-Panel/main/install.sh | bash
+```
+
+This script will:
+- Clone the repository.
+- Help you select the Java version.
+- Configure your `.env` file (MongoDB, etc.).
+- Set up Docker containers.
 
 ## 📖 Usage
 
