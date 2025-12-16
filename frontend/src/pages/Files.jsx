@@ -45,6 +45,7 @@ const FileManager = () => {
             setCurrentPath(currentPath.slice(0, index + 1));
         }
     };
+    const handleHome = () => setCurrentPath([]);
     const handleExtract = async (file) => {
         setLoading(true);
         try {

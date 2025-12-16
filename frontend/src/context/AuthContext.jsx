@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { mockApi } from '../utils/mockApi';
-import { setAuthToken } from '../api/server';
 import { API_URL } from '../config';
 const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
@@ -75,7 +74,6 @@ export const AuthProvider = ({ children }) => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Login failed');
             setToken(data.token);
-            setAuthToken(data.token); // Set token for API calls
             setUser(data.user);
             localStorage.setItem('obsidian_token', data.token);
             return { success: true };
@@ -83,7 +81,6 @@ export const AuthProvider = ({ children }) => {
             return { success: false, error: error.message };
         }
     };
-
     const updateProfile = async (data) => {
         try {
             const res = await fetch(`${API_URL}/api/auth/profile`, {

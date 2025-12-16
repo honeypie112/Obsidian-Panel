@@ -1,79 +1,196 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
+const { exec } = require('child_process');
 const auth = require('../middleware/auth');
+const minecraftService = require('../services/minecraftService');
+const backupService = require('../services/backupService');
 const Backup = require('../models/Backup');
-// const minecraftService = require('../services/minecraftService'); // For real backup creation
-
-// @route   GET api/backups
-// @desc    Get all backups
-// @access  Private
+let isRestoreInProgress = false;
+router.get('/status', auth, (req, res) => {
+    res.json({
+        isBackupInProgress: backupService.isBackupInProgress(),
+        isRestoreInProgress
+    });
+});
+router.post('/:id/restore', auth, async (req, res) => {
+    if (backupService.isBackupInProgress() || isRestoreInProgress) {
+        return res.status(409).json({ message: 'A backup or restore operation is already in progress.' });
+    }
+    let downloadPath = null;
+    try {
+        const backup = await Backup.findById(req.params.id);
+        if (!backup) return res.status(404).json({ message: 'Backup not found' });
+        isRestoreInProgress = true;
+        minecraftService.isOperationLocked = true;
+        console.log(`Starting restore for ${backup.fileName}...`);
+        if (minecraftService.status !== 'offline') {
+            console.log('Stopping server for restore...');
+            minecraftService.stop();
+            let retries = 30;
+            while (minecraftService.status !== 'offline' && retries > 0) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                retries--;
+            }
+            if (minecraftService.status !== 'offline') {
+                throw new Error('Failed to stop server. Restore aborted.');
+            }
+        }
+        const serverDir = minecraftService.serverDir;
+        console.log('Wiping server directory...');
+        if (fs.existsSync(serverDir)) {
+            fs.rmSync(serverDir, { recursive: true, force: true });
+            fs.mkdirSync(serverDir, { recursive: true });
+        }
+        console.log(`Starting GoFile native download for: ${backup.downloadPage}`);
+        const createGuestAccount = async () => {
+            console.log('Creating guest account for API access...');
+            const res = await fetch('https://api.gofile.io/accounts', {
+                method: 'POST',
+                headers: {
+                    'User-Agent': 'ObsidianPanel/1.0',
+                    'Accept': '*/*'
+                }
+            });
+            const json = await res.json();
+            if (json.status !== 'ok') throw new Error('Failed to create guest account');
+            return json.data.token;
+        };
+        const token = await createGuestAccount();
+        console.log('Guest token obtained.');
+        const parts = backup.downloadPage.split('/');
+        const contentId = parts[parts.length - 1];
+        const fetchFolderData = async (id, authToken) => {
+            const url = `https://api.gofile.io/contents/${id}?cache=true`;
+            const headers = {
+                'Authorization': `Bearer ${authToken}`,
+                'Cookie': `accountToken=${authToken}`,
+                'User-Agent': 'ObsidianPanel/1.0',
+                'X-Website-Token': '4fd6sg89d7s6',
+                'Accept': '*/*'
+            };
+            const res = await fetch(url, { headers });
+            const json = await res.json();
+            if (json.status !== 'ok') {
+                throw new Error(`GoFile API Error: ${json.status}`);
+            }
+            return json.data;
+        };
+        console.log(`Fetching metadata for Content ID: ${contentId}`);
+        const data = await fetchFolderData(contentId, token);
+        if (!data.children) throw new Error('No files found in this content ID');
+        const children = Object.values(data.children);
+        const targetFile = children.find(f => f.name === backup.fileName);
+        if (!targetFile || !targetFile.link) {
+            throw new Error(`File ${backup.fileName} not found in GoFile folder`);
+        }
+        const downloadUrl = targetFile.link;
+        console.log(`Downloading from: ${downloadUrl}`);
+        const tempDir = process.env.TEMP_BACKUP_PATH || path.resolve(__dirname, '../../tmp');
+        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+        downloadPath = path.resolve(tempDir, `restore-${backup.fileName}`);
+        if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath);
+        const downloadRes = await fetch(downloadUrl, {
+            headers: {
+                'Cookie': `accountToken=${token}`,
+                'Authorization': `Bearer ${token}`,
+                'User-Agent': 'ObsidianPanel/1.0'
+            }
+        });
+        if (!downloadRes.ok) throw new Error(`Download failed: ${downloadRes.status}`);
+        const fileStream = fs.createWriteStream(downloadPath);
+        await new Promise((resolve, reject) => {
+            if (downloadRes.body) {
+                const { Readable } = require('stream');
+                Readable.fromWeb(downloadRes.body).pipe(fileStream);
+                fileStream.on('finish', resolve);
+                fileStream.on('error', reject);
+            } else {
+                reject(new Error('No response body'));
+            }
+        });
+        console.log('Download complete.');
+        console.log('Extracting...');
+        let unzipCmd = `unzip -o -q "${downloadPath}" -d "${serverDir}"`;
+        if (backup.encryptionPassword) {
+            unzipCmd = `unzip -o -q -P "${backup.encryptionPassword}" "${downloadPath}" -d "${serverDir}"`;
+        }
+        await new Promise((resolve, reject) => {
+            exec(unzipCmd, (error, stdout, stderr) => {
+                if (error) {
+                    reject(new Error(`Unzip failed: ${stderr || error.message}`));
+                } else {
+                    resolve();
+                }
+            });
+        });
+        if (!fs.existsSync(minecraftService.jarFile)) {
+            console.warn('Warning: Server JAR missing after restore. You may need to reinstall version.');
+        } else {
+            try { fs.writeFileSync(path.join(serverDir, 'eula.txt'), 'eula=true'); } catch (e) { }
+        }
+        console.log('Restore complete.');
+        res.json({ success: true, message: 'Server restored successfully.' });
+    } catch (err) {
+        console.error('Restore Error:', err);
+        res.status(500).json({ message: err.message || 'Restore failed' });
+    } finally {
+        if (downloadPath && fs.existsSync(downloadPath)) {
+            try {
+                fs.unlinkSync(downloadPath);
+                console.log('Cleaned up temp restore file:', downloadPath);
+            } catch (e) {
+                console.warn("Cleanup warning:", e.message);
+            }
+        }
+        isRestoreInProgress = false;
+        minecraftService.isOperationLocked = false;
+    }
+});
 router.get('/', auth, async (req, res) => {
     try {
         const backups = await Backup.find().sort({ createdAt: -1 });
         res.json(backups);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(500).json({ message: err.message });
     }
 });
-
-// @route   POST api/backups
-// @desc    Create a new backup
-// @access  Private
-router.post('/', auth, async (req, res) => {
+router.post('/create', auth, async (req, res) => {
     try {
-        // Mock Implementation for now until minecraftService is ready
-        const newBackup = new Backup({
-            fileName: `backup-${Date.now()}.zip`,
-            size: '150MB',
-            downloadPage: 'https://gofile.io/d/mock',
-            fileId: 'mock-id',
-            createdBy: req.user.id
-        });
-
-        const backup = await newBackup.save();
+        const backup = await backupService.performBackup(true);
         res.json(backup);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        if (err.message === 'Backup already in progress') {
+            return res.status(409).json({ message: err.message });
+        }
+        res.status(500).json({ message: err.message });
     }
 });
-
-// @route   DELETE api/backups/:id
-// @desc    Delete a backup
-// @access  Private
+router.get('/config', auth, async (req, res) => {
+    try {
+        const settings = await backupService.getSettings();
+        res.json(settings);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+router.post('/config', auth, async (req, res) => {
+    try {
+        const newSettings = await backupService.saveSettings(req.body);
+        res.json(newSettings);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
 router.delete('/:id', auth, async (req, res) => {
     try {
         const backup = await Backup.findById(req.params.id);
-
-        if (!backup) {
-            return res.status(404).json({ message: 'Backup not found' });
-        }
-
-        await backup.deleteOne(); // Delete from MongoDB
-
-        res.json({ message: 'Backup removed' });
+        if (!backup) return res.status(404).json({ message: 'Backup not found' });
+        await Backup.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
     } catch (err) {
-        console.error(err.message);
-        if (err.kind === 'ObjectId') {
-            return res.status(404).json({ message: 'Backup not found' });
-        }
-        res.status(500).send('Server Error');
+        res.status(500).json({ message: err.message });
     }
 });
-
-// @route   GET api/backups/status
-// @desc    Get backup status
-// @access  Private
-router.get('/status', auth, (req, res) => {
-    res.json({ isBackupInProgress: false }); // Mock
-});
-
-// @route   GET api/backups/config
-// @desc    Get backup config
-// @access  Private
-router.get('/config', auth, (req, res) => {
-    res.json({ enabled: false, frequency: 'daily', cronExpression: '0 0 * * *' }); // Mock
-});
-
 module.exports = router;
