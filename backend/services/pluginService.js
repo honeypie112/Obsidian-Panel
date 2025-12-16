@@ -40,18 +40,21 @@ class PluginService {
         return data.hits || [];
     }
 
-    async install(projectId, version, loader) {
+    async install(projectId, version, loaders) {
+        // Ensure loaders is an array
+        const loaderList = Array.isArray(loaders) ? loaders : [loaders];
+
         // 1. Get Project Versions
         const versions = await this._get(`https://api.modrinth.com/v2/project/${projectId}/version`);
 
         // 2. Filter for Compatible Version
         const compatible = versions.find(v =>
             v.game_versions.includes(version) &&
-            v.loaders.includes(loader)
+            v.loaders.some(l => loaderList.includes(l))
         );
 
         if (!compatible) {
-            throw new Error(`No version found for Minecraft ${version} (${loader})`);
+            throw new Error(`No version found for Minecraft ${version} (loaders: ${loaderList.join(', ')})`);
         }
 
         // 3. Select Primary File

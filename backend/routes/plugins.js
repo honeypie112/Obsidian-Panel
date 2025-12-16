@@ -34,23 +34,26 @@ router.post('/install', async (req, res) => {
         // Actually, vanilla servers can't run plugins. 
         // But for "Plugin Store" usually implies Bukkit/Spigot/Paper context.
         // We'll map common types.
+        // Map server type to compatible Modrinth loaders
+        // User requested cross-compatibility between Paper and Purpur.
+        // Both support Spigot/Bukkit plugins.
         const loaderMap = {
-            'paper': 'paper',
-            'purpur': 'purpur',
-            'spigot': 'spigot',
-            'bukkit': 'bukkit',
-            'vanilla': 'paper' // Fallback: if they start installing plugins, they probably want paper/spigot plugins
+            'paper': ['paper', 'purpur', 'spigot', 'bukkit'],
+            'purpur': ['purpur', 'paper', 'spigot', 'bukkit'],
+            'spigot': ['spigot', 'bukkit', 'paper'], // 'paper' added generously as many paper plugins work on spigot if not using specific API
+            'bukkit': ['bukkit', 'spigot'],
+            'vanilla': ['paper', 'purpur', 'spigot', 'bukkit'] // Fallback
         };
 
-        const loader = loaderMap[type] || 'paper';
+        const loaders = loaderMap[type] || ['paper', 'purpur', 'spigot', 'bukkit'];
 
         if (!projectId) {
             return res.status(400).json({ error: 'Project ID is required' });
         }
 
-        console.log(`Installing plugin ${projectId} for ${version} (${loader})`);
+        console.log(`Installing plugin ${projectId} for ${version} (loaders: ${loaders.join(', ')})`);
 
-        const result = await pluginService.install(projectId, version, loader);
+        const result = await pluginService.install(projectId, version, loaders);
         res.json({ success: true, ...result });
 
     } catch (err) {
