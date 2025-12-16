@@ -16,14 +16,40 @@ const DEFAULT_CONFIG = {
 };
 const BackupService = {
     isBackupInProgress: () => isBackupInProgress,
+    getGuestToken: async () => {
+        try {
+            const response = await fetch('https://api.gofile.io/accounts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            const data = await response.json();
+            if (data.status === 'ok') {
+                return data.data.token;
+            }
+            throw new Error('Failed to create guest account');
+        } catch (error) {
+            throw new Error(`Guest token generation failed: ${error.message}`);
+        }
+    },
     performBackup: async (manualTrigger = false) => {
         if (isBackupInProgress) {
             throw new Error('Backup already in progress');
         }
-        const token = process.env.GOFILE_API_TOKEN || process.env.YOUR_API_TOKEN;
+
+        let token = process.env.GOFILE_API_TOKEN || process.env.YOUR_API_TOKEN;
+
+        // Auto-generate guest token if no token provided
         if (!token) {
-            throw new Error('GoFile API Token not found in .env');
+            try {
+                console.log('[BackupService] No API token found. Generating guest token...');
+                token = await BackupService.getGuestToken();
+                console.log('[BackupService] Guest token generated successfully.');
+            } catch (err) {
+                throw new Error(`Authorized failed: No token in .env and guest generation failed (${err.message})`);
+            }
         }
+
         const serverDir = minecraftService.serverDir;
         if (!fs.existsSync(serverDir)) {
             throw new Error('Server directory not found');
