@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
             if (storedToken) {
                 setToken(storedToken);
                 try {
-                    const res = await fetch(`${API_URL}/api/auth/me`, {
+                    const res = await fetch(`${API_URL}/api/auth/me?_=${Date.now()}`, {
                         headers: { 'Authorization': `Bearer ${storedToken}` }
                     });
                     if (res.ok) {
@@ -99,7 +99,7 @@ export const AuthProvider = ({ children }) => {
                 throw new Error(res.statusText || text || 'Network response was not ok');
             }
             if (!res.ok) throw new Error(result.message || 'Update failed');
-            setUser(result);  
+            setUser(result);
             return { success: true };
         } catch (error) {
             console.error(error);
