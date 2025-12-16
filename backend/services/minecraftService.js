@@ -7,7 +7,7 @@ const os = require('os');
 const { spawn } = require('child_process');
 let versionCache = null;
 let lastCacheTime = 0;
-const CACHE_DURATION = 1000 * 60 * 60;  
+const CACHE_DURATION = 1000 * 60 * 60;
 class MinecraftService extends EventEmitter {
     constructor() {
         super();
@@ -15,7 +15,7 @@ class MinecraftService extends EventEmitter {
         this.jarFile = path.join(this.serverDir, 'server.jar');
         this.process = null;
         this.status = 'offline';
-        this.logBuffer = [];  
+        this.logBuffer = [];
         this.config = {
             name: 'main-server',
             ram: '4GB',
@@ -23,7 +23,7 @@ class MinecraftService extends EventEmitter {
             version: '1.20.4',
             type: 'vanilla'
         };
-        this.isOperationLocked = false;  
+        this.isOperationLocked = false;
         if (!fs.existsSync(this.serverDir)) {
             fs.mkdirSync(this.serverDir, { recursive: true });
         }
@@ -189,7 +189,7 @@ class MinecraftService extends EventEmitter {
             return await fetchAndCache();
         } catch (e) {
             console.error("Critical: Failed to fetch versions and no cache available.", e);
-            throw e;  
+            throw e;
         }
     }
     async getPaperUrl(version) {
@@ -228,9 +228,10 @@ class MinecraftService extends EventEmitter {
         if (type === 'purpur') return this.getPurpurUrl(version);
         return new Promise((resolve, reject) => {
             const options = {
-                headers: { 'User-Agent': 'ObsidianPanel/1.0 (Integration)' }
+                headers: { 'User-Agent': 'ObsidianPanel/1.0 (Integration)' },
+                timeout: 10000 // 10s timeout
             };
-            https.get('https://piston-meta.mojang.com/mc/game/version_manifest_v2.json', options, (res) => {
+            const req = https.get('https://piston-meta.mojang.com/mc/game/version_manifest_v2.json', options, (res) => {
                 let data = '';
                 res.on('data', (chunk) => data += chunk);
                 res.on('end', () => {
@@ -240,7 +241,7 @@ class MinecraftService extends EventEmitter {
                         if (!vEntry) {
                             return reject(new Error(`Version ${version} parsing info not found in Mojang manifest`));
                         }
-                        https.get(vEntry.url, (pkgRes) => {
+                        const pkgReq = https.get(vEntry.url, { ...options, timeout: 10000 }, (pkgRes) => {
                             let pkgData = '';
                             pkgRes.on('data', (chunk) => pkgData += chunk);
                             pkgRes.on('end', () => {
@@ -251,12 +252,16 @@ class MinecraftService extends EventEmitter {
                                     resolve(serverUrl);
                                 } catch (e) { reject(e); }
                             });
-                        }).on('error', (err) => reject(err));
+                        });
+                        pkgReq.on('error', (err) => reject(err));
+                        pkgReq.on('timeout', () => { pkgReq.destroy(); reject(new Error('Version package fetch timed out')); });
                     } catch (e) {
                         reject(e);
                     }
                 });
-            }).on('error', (err) => reject(err));
+            });
+            req.on('error', (err) => reject(err));
+            req.on('timeout', () => { req.destroy(); reject(new Error('Manifest fetch timed out')); });
         });
     }
     async install(version = '1.20.4') {
