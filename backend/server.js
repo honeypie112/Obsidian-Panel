@@ -1,11 +1,15 @@
 const express = require('express');
+const dns = require('dns');
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+}
 const mongoose = require('mongoose');
 const cors = require('cors');
 const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
 require('dotenv').config({ path: '../.env' });
-require('dotenv').config();  
+require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const controlRoutes = require('./routes/control');
 const minecraftService = require('./services/minecraftService');

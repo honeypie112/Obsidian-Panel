@@ -268,30 +268,62 @@ class MinecraftService extends EventEmitter {
         if (this.status !== 'offline') throw new Error('Server must be offline to install/update');
         this.status = 'installing';
         this.broadcast('status', this.getStatus());
+
         try {
             const downloadUrl = await this.getVersionDownloadUrl(version);
-            return new Promise((resolve, reject) => {
+
+            await new Promise((resolve, reject) => {
+                const cleanup = (err) => {
+                    // Ensure the file generic error handler doesn't trigger secondary cleanup
+                    if (file) {
+                        file.destroy();
+                    }
+                    fs.unlink(this.jarFile, () => { }); // Best effort cleanup
+                    this.status = 'offline';
+                    this.broadcast('status', this.getStatus());
+                    reject(err);
+                };
+
                 const file = fs.createWriteStream(this.jarFile);
-                https.get(downloadUrl, (response) => {
+
+                file.on('error', (err) => {
+                    cleanup(new Error(`File write error: ${err.message}`));
+                });
+
+                const request = https.get(downloadUrl, (response) => {
+                    if (response.statusCode >= 400) {
+                        cleanup(new Error(`Download failed with status code ${response.statusCode}`));
+                        return;
+                    }
+
                     const len = parseInt(response.headers['content-length'], 10);
                     let cur = 0;
+
                     response.pipe(file);
+
                     response.on('data', (chunk) => {
                         cur += chunk.length;
                         const percent = len ? (cur / len) * 100 : 0;
                         this.broadcast('install_progress', percent);
                     });
+
                     file.on('finish', () => {
-                        file.close();
-                        this.status = 'offline';
-                        this.broadcast('status', this.getStatus());
-                        fs.writeFileSync(path.join(this.serverDir, 'eula.txt'), 'eula=true');
-                        resolve(true);
+                        file.close(() => {
+                            this.status = 'offline';
+                            this.broadcast('status', this.getStatus());
+                            fs.writeFileSync(path.join(this.serverDir, 'eula.txt'), 'eula=true');
+                            resolve(true);
+                        });
                     });
-                }).on('error', (err) => {
-                    fs.unlink(this.jarFile, () => { });
-                    this.status = 'offline';
-                    reject(err);
+                });
+
+                request.on('error', (err) => {
+                    cleanup(new Error(`Network error: ${err.message}`));
+                });
+
+                request.on('timeout', () => {
+                    request.destroy();
+                    cleanup(new Error('Download timed out'));
                 });
             });
         } catch (error) {
