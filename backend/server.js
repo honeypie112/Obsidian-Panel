@@ -5,10 +5,12 @@ const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
 require('dotenv').config({ path: '../.env' });
-require('dotenv').config();  
+require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const controlRoutes = require('./routes/control');
 const minecraftService = require('./services/minecraftService');
+const backupRoutes = require('./routes/backups');
+// const serverRoutes = require('./routes/server'); // To be implemented
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {

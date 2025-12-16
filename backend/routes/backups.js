@@ -1,11 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs');
-const path = require('path');
-const { exec } = require('child_process');
 const auth = require('../middleware/auth');
-const minecraftService = require('../services/minecraftService');
-const backupService = require('../services/backupService');
 const Backup = require('../models/Backup');
 let isRestoreInProgress = false;
 router.get('/status', auth, (req, res) => {
@@ -153,44 +148,59 @@ router.get('/', auth, async (req, res) => {
         const backups = await Backup.find().sort({ createdAt: -1 });
         res.json(backups);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        console.error(err.message);
+        res.status(500).send('Server Error');
     }
 });
-router.post('/create', auth, async (req, res) => {
+
+// @route   POST api/backups
+// @desc    Create a new backup
+// @access  Private
+router.post('/', auth, async (req, res) => {
     try {
         const backup = await backupService.performBackup(true);
         res.json(backup);
     } catch (err) {
-        if (err.message === 'Backup already in progress') {
-            return res.status(409).json({ message: err.message });
-        }
-        res.status(500).json({ message: err.message });
+        console.error(err.message);
+        res.status(500).send('Server Error');
     }
 });
-router.get('/config', auth, async (req, res) => {
-    try {
-        const settings = await backupService.getSettings();
-        res.json(settings);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-});
-router.post('/config', auth, async (req, res) => {
-    try {
-        const newSettings = await backupService.saveSettings(req.body);
-        res.json(newSettings);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-});
+
+// @route   DELETE api/backups/:id
+// @desc    Delete a backup
+// @access  Private
 router.delete('/:id', auth, async (req, res) => {
     try {
         const backup = await Backup.findById(req.params.id);
-        if (!backup) return res.status(404).json({ message: 'Backup not found' });
-        await Backup.findByIdAndDelete(req.params.id);
-        res.json({ success: true });
+
+        if (!backup) {
+            return res.status(404).json({ message: 'Backup not found' });
+        }
+
+        await backup.deleteOne(); // Delete from MongoDB
+
+        res.json({ message: 'Backup removed' });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        console.error(err.message);
+        if (err.kind === 'ObjectId') {
+            return res.status(404).json({ message: 'Backup not found' });
+        }
+        res.status(500).send('Server Error');
     }
 });
+
+// @route   GET api/backups/status
+// @desc    Get backup status
+// @access  Private
+router.get('/status', auth, (req, res) => {
+    res.json({ isBackupInProgress: false }); // Mock
+});
+
+// @route   GET api/backups/config
+// @desc    Get backup config
+// @access  Private
+router.get('/config', auth, (req, res) => {
+    res.json({ enabled: false, frequency: 'daily', cronExpression: '0 0 * * *' }); // Mock
+});
+
 module.exports = router;
