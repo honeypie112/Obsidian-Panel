@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
             if (storedToken) {
                 setToken(storedToken);
                 try {
-                    const res = await fetch(`${API_URL}/api/auth/me`, {
+                    const res = await fetch(`${API_URL}/api/auth/me?_=${Date.now()}`, {
                         headers: { 'Authorization': `Bearer ${storedToken}` }
                     });
                     if (res.ok) {

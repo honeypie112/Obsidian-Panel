@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CloudUpload, HardDrive, Download, CheckCircle, Database, Shield, Trash2, Clock, FileArchive, AlertTriangle, Calendar, X, Lock, Copy, RotateCw, Settings } from 'lucide-react';
 import { serverApi } from '../api/server';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import DatePicker from '../components/DatePicker';
 import Select from '../components/Select';
@@ -17,6 +18,7 @@ const frequencyOptions = [
 ];
 const Backups = () => {
     const { showToast } = useToast();
+    const { logout } = useAuth();
     const [backups, setBackups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -40,12 +42,18 @@ const Backups = () => {
         const interval = setInterval(checkStatus, 5000);
         return () => clearInterval(interval);
     }, []);
+    // Need to update import at top and destructuring
+
+    // ... logic below ...
     const checkStatus = async () => {
         try {
             const status = await serverApi.getBackupStatus();
             setIsBackupInProgress(status.isBackupInProgress);
         } catch (e) {
             console.error(e);
+            if (e.message.includes('401') || e.message.includes('Unauthorized')) {
+                logout();
+            }
         }
     };
     const loadBackups = async () => {

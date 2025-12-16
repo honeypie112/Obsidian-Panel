@@ -1,16 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useServer } from '../context/ServerContext';
-import StatCard from '../components/StatCard';
-import { Activity, Cpu, HardDrive, MemoryStick, Play, Square, RefreshCw, Loader2 } from 'lucide-react';
-const formatBytes = (bytes) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
+import { useToast } from '../context/ToastContext';
+// ... (imports remain matching targeting)
+
 const Overview = () => {
     const { server, performAction, installServer, socket } = useServer();
+    const { showToast } = useToast();
     const [installing, setInstalling] = useState(false);
     const [stats, setStats] = useState({
         cpu: 0,
@@ -18,6 +13,14 @@ const Overview = () => {
         ram: { total: 0, used: 0 },
         storage: { total: 0, used: 0 }
     });
+
+    const handleStart = () => {
+        if (server.isInstalled === false) {
+            showToast('Please install the server JAR first!', 'error');
+            return;
+        }
+        performAction('start');
+    };
     useEffect(() => {
         if (!socket) return;
         const onStats = (data) => setStats(data);
@@ -110,7 +113,7 @@ const Overview = () => {
                 <h3 className="text-white font-bold mb-4">Power Controls</h3>
                 <div className="flex space-x-4">
                     <button
-                        onClick={() => performAction('start')}
+                        onClick={handleStart}
                         disabled={isOnline || isInstalling || server.status === 'stopping'}
                         className="flex-1 bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 py-3 rounded-lg font-medium transition-colors flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
