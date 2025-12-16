@@ -372,80 +372,105 @@ const FileManager = () => {
             <div className="flex-1 overflow-y-auto p-2">
                 {loading ? (
                     <div className="flex items-center justify-center h-full text-obsidian-muted">Loading files...</div>
-                ) : files.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-obsidian-muted">
-                        <Folder size={48} className="mb-2 opacity-20" />
-                        <p>This folder is empty</p>
-                    </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                        {files.map((file, index) => {
-                            const isArchive = file.name.endsWith('.zip') || file.name.endsWith('.tar.gz');
-                            const isSelected = selectedFiles.has(file.name);
-                            return (
-                                <div
-                                    key={index}
-                                    className={clsx(
-                                        "group flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer select-none",
-                                        isSelected
-                                            ? "bg-obsidian-accent/10 border-obsidian-accent"
-                                            : "border-transparent hover:bg-white/5 hover:border-obsidian-border",
-                                        file.type === 'folder' ? "hover:shadow-lg hover:shadow-black/20" : ""
-                                    )}
-                                    onClick={() => handleFileClick(file)}
-                                >
-                                    <div className="flex items-center flex-1 min-w-0">
-                                        {isSelectMode && (
-                                            <div className="mr-3 flex-shrink-0" onClick={(e) => handleSelect(file, e)}>
-                                                <div className={clsx(
-                                                    "w-5 h-5 rounded border flex items-center justify-center transition-all cursor-pointer",
-                                                    isSelected
-                                                        ? "bg-obsidian-accent border-obsidian-accent shadow-[0_0_10px_rgba(139,92,246,0.3)]"
-                                                        : "border-obsidian-muted hover:border-obsidian-accent bg-black/20"
-                                                )}>
-                                                    {isSelected && <Check size={12} className="text-white stroke-[3]" />}
+                    <>
+                        {files.length === 0 && currentPath.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full text-obsidian-muted">
+                                <Folder size={48} className="mb-2 opacity-20" />
+                                <p>This folder is empty</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                {currentPath.length > 0 && (
+                                    <div
+                                        className="group flex items-center p-3 rounded-lg border border-transparent hover:bg-white/5 hover:border-obsidian-border cursor-pointer select-none transition-all hover:shadow-lg hover:shadow-black/20"
+                                        onClick={() => setCurrentPath(prev => prev.slice(0, -1))}
+                                    >
+                                        <div className="flex items-center flex-1 min-w-0">
+                                            <div className="mr-3 flex-shrink-0 transition-transform group-hover:scale-110">
+                                                <Folder className="text-obsidian-muted fill-obsidian-muted/20" size={24} />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-medium text-obsidian-muted group-hover:text-white">..</p>
+                                                <p className="text-xs text-obsidian-muted/50">Parent Directory</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                {files.map((file, index) => {
+                                    const isArchive = file.name.endsWith('.zip') || file.name.endsWith('.tar.gz');
+                                    const isSelected = selectedFiles.has(file.name);
+                                    return (
+                                        <div
+                                            key={index}
+                                            className={clsx(
+                                                "group flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer select-none",
+                                                isSelected
+                                                    ? "bg-obsidian-accent/10 border-obsidian-accent"
+                                                    : "border-transparent hover:bg-white/5 hover:border-obsidian-border",
+                                                file.type === 'folder' ? "hover:shadow-lg hover:shadow-black/20" : ""
+                                            )}
+                                            onClick={() => handleFileClick(file)}
+                                        >
+                                            <div className="flex items-center flex-1 min-w-0">
+                                                {isSelectMode && (
+                                                    <div className="mr-3 flex-shrink-0" onClick={(e) => handleSelect(file, e)}>
+                                                        <div className={clsx(
+                                                            "w-5 h-5 rounded border flex items-center justify-center transition-all cursor-pointer",
+                                                            isSelected
+                                                                ? "bg-obsidian-accent border-obsidian-accent shadow-[0_0_10px_rgba(139,92,246,0.3)]"
+                                                                : "border-obsidian-muted hover:border-obsidian-accent bg-black/20"
+                                                        )}>
+                                                            {isSelected && <Check size={12} className="text-white stroke-[3]" />}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <div className="mr-3 flex-shrink-0 transition-transform group-hover:scale-110">
+                                                    {getFileIcon(file.name, file.type)}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className={clsx("text-sm font-medium truncate group-hover:text-white", isSelected ? "text-white" : "text-gray-200")}>{file.name}</p>
+                                                    <p className="text-xs text-obsidian-muted">{file.size}</p>
                                                 </div>
                                             </div>
-                                        )}
-                                        <div className="mr-3 flex-shrink-0 transition-transform group-hover:scale-110">
-                                            {getFileIcon(file.name, file.type)}
+                                            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-all space-x-1">
+                                                {file.type !== 'folder' && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleDownload(file); }}
+                                                        className="p-1.5 text-obsidian-muted hover:text-blue-400 hover:bg-blue-500/10 rounded-md"
+                                                        title="Download"
+                                                    >
+                                                        <Download size={16} />
+                                                    </button>
+                                                )}
+                                                {isArchive && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleExtract(file); }}
+                                                        className="p-1.5 text-obsidian-muted hover:text-orange-400 hover:bg-orange-500/10 rounded-md"
+                                                        title="Extract"
+                                                    >
+                                                        <Archive size={16} />
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); confirmDelete(file.name); }}
+                                                    className="p-1.5 text-obsidian-muted hover:text-red-400 hover:bg-red-500/10 rounded-md"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className={clsx("text-sm font-medium truncate group-hover:text-white", isSelected ? "text-white" : "text-gray-200")}>{file.name}</p>
-                                            <p className="text-xs text-obsidian-muted">{file.size}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-all space-x-1">
-                                        {file.type !== 'folder' && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleDownload(file); }}
-                                                className="p-1.5 text-obsidian-muted hover:text-blue-400 hover:bg-blue-500/10 rounded-md"
-                                                title="Download"
-                                            >
-                                                <Download size={16} />
-                                            </button>
-                                        )}
-                                        {isArchive && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleExtract(file); }}
-                                                className="p-1.5 text-obsidian-muted hover:text-orange-400 hover:bg-orange-500/10 rounded-md"
-                                                title="Extract"
-                                            >
-                                                <Archive size={16} />
-                                            </button>
-                                        )}
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); confirmDelete(file.name); }}
-                                            className="p-1.5 text-obsidian-muted hover:text-red-400 hover:bg-red-500/10 rounded-md"
-                                            title="Delete"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                        {files.length === 0 && currentPath.length > 0 && (
+                            <div className="flex flex-col items-center justify-center py-12 text-obsidian-muted opacity-50">
+                                <p>This folder is empty</p>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
             { }
