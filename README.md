@@ -11,7 +11,11 @@
     <br>
     ![Server Console](images/console_v2.png)
 
--   **File Manager**: Full-featured web-based file manager with **Drag-and-Drop** support to upload, download, edit, delete, and **extract (zip/tar)** server files.
+-   **Server Settings**: Manage server properties, Java flags, and versions through a simple UI.
+    <br>
+    ![Server Settings](images/settings.png)
+
+-   **File Manager**: Full-featured web-based file manager with **Drag-and-Drop** support to upload, download, delete, and **extract (zip/tar)** server files. Use the **Built-in Text Editor** to edit configuration files directly.
     <br>
     ![File Manager](images/file_manager_v2.png)
 
