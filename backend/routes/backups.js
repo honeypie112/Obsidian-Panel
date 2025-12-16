@@ -8,7 +8,7 @@ const minecraftService = require('../services/minecraftService');
 const backupService = require('../services/backupService');
 const Backup = require('../models/Backup');
 let isRestoreInProgress = false;
-router.get('/status', (req, res) => {
+router.get('/status', auth, (req, res) => {
     res.json({
         isBackupInProgress: backupService.isBackupInProgress(),
         isRestoreInProgress
@@ -18,12 +18,12 @@ router.post('/:id/restore', auth, async (req, res) => {
     if (backupService.isBackupInProgress() || isRestoreInProgress) {
         return res.status(409).json({ message: 'A backup or restore operation is already in progress.' });
     }
-    let downloadPath = null;  
+    let downloadPath = null;
     try {
         const backup = await Backup.findById(req.params.id);
         if (!backup) return res.status(404).json({ message: 'Backup not found' });
         isRestoreInProgress = true;
-        minecraftService.isOperationLocked = true;  
+        minecraftService.isOperationLocked = true;
         console.log(`Starting restore for ${backup.fileName}...`);
         if (minecraftService.status !== 'offline') {
             console.log('Stopping server for restore...');
@@ -67,7 +67,7 @@ router.post('/:id/restore', auth, async (req, res) => {
                 'Authorization': `Bearer ${authToken}`,
                 'Cookie': `accountToken=${authToken}`,
                 'User-Agent': 'ObsidianPanel/1.0',
-                'X-Website-Token': '4fd6sg89d7s6',  
+                'X-Website-Token': '4fd6sg89d7s6',
                 'Accept': '*/*'
             };
             const res = await fetch(url, { headers });
@@ -94,7 +94,7 @@ router.post('/:id/restore', auth, async (req, res) => {
         const downloadRes = await fetch(downloadUrl, {
             headers: {
                 'Cookie': `accountToken=${token}`,
-                'Authorization': `Bearer ${token}`,  
+                'Authorization': `Bearer ${token}`,
                 'User-Agent': 'ObsidianPanel/1.0'
             }
         });
@@ -158,7 +158,7 @@ router.get('/', auth, async (req, res) => {
 });
 router.post('/create', auth, async (req, res) => {
     try {
-        const backup = await backupService.performBackup(true);  
+        const backup = await backupService.performBackup(true);
         res.json(backup);
     } catch (err) {
         if (err.message === 'Backup already in progress') {
