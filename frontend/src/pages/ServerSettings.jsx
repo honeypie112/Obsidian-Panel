@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useServer } from '../context/ServerContext';
 import { Save, Download, CheckCircle, AlertCircle } from 'lucide-react';
 import SearchableSelect from '../components/SearchableSelect';
+import Select from '../components/Select';
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
 const generateRamOptions = (totalBytes) => {
@@ -40,13 +41,13 @@ const ServerSettings = () => {
     }, [server?.name, server?.ram, server?.version, server?.totalMem, server?.type]);
     useEffect(() => {
         if (!socket) return;
-        let timeoutId;  
+        let timeoutId;
         setIsLoadingVersions(true);
         console.log("Emitting get_versions...");
         socket.emit('get_versions');
         const onVersionsList = (versions) => {
             console.log("Received versions payload:", versions);
-            if (timeoutId) clearTimeout(timeoutId);  
+            if (timeoutId) clearTimeout(timeoutId);
             if (!Array.isArray(versions)) {
                 console.error("Invalid versions data received:", versions);
                 onVersionsError();
@@ -89,7 +90,7 @@ const ServerSettings = () => {
             ]);
         };
         const onVersionsErrorFallback = () => {
-            if (timeoutId) clearTimeout(timeoutId);  
+            if (timeoutId) clearTimeout(timeoutId);
             onVersionsError();
         };
         socket.on('versions_list', onVersionsList);
@@ -184,7 +185,7 @@ const ServerSettings = () => {
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-obsidian-muted mb-1 uppercase">Server Type</label>
-                            <SearchableSelect
+                            <Select
                                 options={[
                                     { label: 'Vanilla (Official)', value: 'vanilla' },
                                     { label: 'PaperMC (Optimized)', value: 'paper' },
@@ -192,18 +193,31 @@ const ServerSettings = () => {
                                 ]}
                                 value={type}
                                 onChange={setType}
-                                placeholder="Select Server Type..."
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-obsidian-muted mb-1 uppercase">RAM Allocation</label>
-                            <SearchableSelect
-                                options={ramOptions.map(gb => ({ label: `${gb} GB`, value: `${gb}GB` }))}
-                                value={ram}
-                                onChange={setRam}
-                                placeholder="Select or type (e.g. 4GB)..."
-                            />
-                            <p className="text-xs text-obsidian-muted mt-1">Select from list or type custom value</p>
+                            <label className="block text-xs font-medium text-obsidian-muted mb-1 uppercase">RAM Allocation (GB)</label>
+                            <div className="bg-obsidian-bg border border-obsidian-border rounded-lg p-4">
+                                <div className="flex justify-between text-white font-medium mb-4 text-lg">
+                                    <span>{parseInt(ram) || 0} GB</span>
+                                    <span className="text-obsidian-muted text-sm my-auto">Max: {server?.totalMem ? Math.floor(server.totalMem / (1024 * 1024 * 1024)) : 0} GB</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max={server?.totalMem ? Math.floor(server.totalMem / (1024 * 1024 * 1024)) : 16}
+                                    step="1"
+                                    value={parseInt(ram) || 1}
+                                    onChange={(e) => setRam(`${e.target.value}GB`)}
+                                    className="w-full h-2 bg-obsidian-border rounded-lg appearance-none cursor-pointer accent-obsidian-accent"
+                                />
+                                <div className="flex justify-between text-xs text-obsidian-muted mt-2">
+                                    <span>1 GB</span>
+                                    <span>{server?.totalMem ? Math.floor(server.totalMem / (1024 * 1024 * 1024)) / 2 : 8} GB</span>
+                                    <span>{server?.totalMem ? Math.floor(server.totalMem / (1024 * 1024 * 1024)) : 16} GB</span>
+                                </div>
+                            </div>
+                            <p className="text-xs text-obsidian-muted mt-1">Slide to adjust memory allocation (Max available system RAM)</p>
                         </div>
                     </div>
                     <div className="flex justify-end">
@@ -218,7 +232,7 @@ const ServerSettings = () => {
                     </div>
                 </form>
             </div>
-            { }
+
             <div className="bg-obsidian-surface border border-obsidian-border rounded-xl p-6">
                 <h2 className="text-xl font-bold text-white mb-6">Version Management</h2>
                 <div className="space-y-6">
@@ -298,7 +312,7 @@ const ServerSettings = () => {
                     <p>This will download <strong>server.jar</strong> for version <strong>{version}</strong> from Mojang's official servers. Ensure you have a backup if updating an existing world.</p>
                 </div>
             </Modal>
-        </div>
+        </div >
     );
 };
 const SettingsIcon = ({ className }) => (

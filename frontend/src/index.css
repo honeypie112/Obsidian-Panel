@@ -41,3 +41,28 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-obsidian-border;
 }
+
+/* Custom Range Slider */
+input[type="range"] {
+  @apply appearance-none bg-transparent cursor-pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  @apply h-2 bg-obsidian-surface rounded-full border border-obsidian-border;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  @apply appearance-none h-4 w-4 rounded-full bg-obsidian-accent -mt-1.5 transition-transform duration-200 border-2 border-white;
+}
+
+input[type="range"]:focus::-webkit-slider-thumb {
+  @apply scale-110 ring-2 ring-obsidian-accent/50;
+}
+
+input[type="range"]::-moz-range-track {
+  @apply h-2 bg-obsidian-surface rounded-full border border-obsidian-border;
+}
+
+input[type="range"]::-moz-range-thumb {
+  @apply h-4 w-4 rounded-full bg-obsidian-accent border-2 border-white transition-transform duration-200;
+}
