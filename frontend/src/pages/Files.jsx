@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Editor from '@monaco-editor/react';
 import { serverApi } from '../api/server';
 import { Folder, FileText, ChevronRight, Home, Download, Trash2, FileCode, FileJson, FileImage, Upload, Save, X, Archive, CheckSquare, Check } from 'lucide-react';
 import clsx from 'clsx';
 import Modal from '../components/Modal';
 import { useToast } from '../context/ToastContext';
+
 const FileManager = () => {
     const [files, setFiles] = useState([]);
     const [currentPath, setCurrentPath] = useState([]);
@@ -58,6 +60,31 @@ const FileManager = () => {
             setLoading(false);
         }
     };
+    const getLanguage = (fileName) => {
+        if (!fileName) return 'plaintext';
+        const ext = fileName.split('.').pop().toLowerCase();
+        // Handle dotfiles like .env
+        if (fileName.startsWith('.') && fileName.split('.').length === 2) return 'ini';
+
+        switch (ext) {
+            case 'json': return 'json';
+            case 'js': case 'jsx': return 'javascript';
+            case 'ts': case 'tsx': return 'typescript';
+            case 'html': return 'html';
+            case 'css': return 'css';
+            case 'yml': case 'yaml': return 'yaml';
+            case 'xml': return 'xml';
+            case 'md': return 'markdown';
+            case 'properties': case 'ini': case 'env': case 'conf': case 'config': return 'ini';
+            case 'sql': return 'sql';
+            case 'py': return 'python';
+            case 'sh': return 'shell';
+            case 'java': return 'java';
+            case 'log': return 'plaintext';
+            default: return 'plaintext';
+        }
+    };
+
     const getFileIcon = (name, type) => {
         if (type === 'folder') return <Folder className="text-obsidian-accent fill-obsidian-accent/20" size={24} />;
         if (name.endsWith('.json')) return <FileJson className="text-yellow-400" size={24} />;
@@ -498,12 +525,23 @@ const FileManager = () => {
                             </button>
                         </div>
                     </div>
-                    <div className="flex-1 p-4 overflow-hidden">
-                        <textarea
-                            className="w-full h-full bg-black/50 border border-obsidian-border rounded-lg p-4 font-mono text-sm text-gray-300 focus:outline-none focus:border-obsidian-accent resize-none custom-scrollbar"
+                    <div className="flex-1 overflow-hidden bg-[#1e1e1e]">
+                        <Editor
+                            height="100%"
+                            language={getLanguage(editorFile?.name)}
                             value={editorContent}
-                            onChange={(e) => setEditorContent(e.target.value)}
-                            spellCheck={false}
+                            theme="vs-dark"
+                            onChange={(value) => setEditorContent(value || '')}
+                            options={{
+                                minimap: { enabled: false },
+                                fontSize: 14,
+                                scrollBeyondLastLine: false,
+                                automaticLayout: true,
+                                padding: { top: 16, bottom: 16 },
+                                insertSpaces: true,
+                                tabSize: 2
+                            }}
+                            loading={<div className="text-obsidian-muted p-4">Loading editor...</div>}
                         />
                     </div>
                 </div>
