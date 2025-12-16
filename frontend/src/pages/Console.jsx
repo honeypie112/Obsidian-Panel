@@ -2,12 +2,24 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useServer } from '../context/ServerContext';
 import { serverApi } from '../api/server';
 import { Terminal as TerminalIcon, Send } from 'lucide-react';
+import Convert from 'ansi-to-html';
+
 const Console = () => {
     const [logs, setLogs] = useState([]);
     const [command, setCommand] = useState('');
     const logsEndRef = useRef(null);
     const [isConnected, setIsConnected] = useState(false);
     const { socket } = useServer();
+
+    const converter = React.useMemo(() => {
+        return new Convert({
+            fg: '#e5e7eb',
+            bg: '#000000',
+            newline: true,
+            escapeXML: true
+        });
+    }, []);
+
     useEffect(() => {
         if (!socket) return;
         setIsConnected(true);
@@ -18,7 +30,7 @@ const Console = () => {
             setLogs(prev => [...prev, '[System] Connection established.']);
         });
         socket.on('console_log', (log) => {
-            setLogs(prev => [...prev.slice(-299), log]);  
+            setLogs(prev => [...prev.slice(-299), log]);
         });
         return () => {
             setIsConnected(false);
@@ -53,19 +65,7 @@ const Console = () => {
             </div>
             <div className="flex-1 overflow-y-auto p-4 font-mono text-sm space-y-1 custom-scrollbar">
                 {logs.map((log, index) => (
-                    <div key={index} className="break-words">
-                        {log.startsWith('>') ? (
-                            <span className="text-obsidian-accent">{log}</span>
-                        ) : log.includes('INFO') ? (
-                            <span className="text-blue-300">{log}</span>
-                        ) : log.includes('WARN') ? (
-                            <span className="text-yellow-300">{log}</span>
-                        ) : log.includes('ERROR') ? (
-                            <span className="text-red-400">{log}</span>
-                        ) : (
-                            <span className="text-gray-300">{log}</span>
-                        )}
-                    </div>
+                    <div key={index} className="break-words" dangerouslySetInnerHTML={{ __html: converter.toHtml(log) }} />
                 ))}
                 <div ref={logsEndRef} />
             </div>

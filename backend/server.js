@@ -41,6 +41,7 @@ mongoose.connect(process.env.MONGO_URI, {
 app.use('/api/auth', authRoutes);
 app.use('/api/control', controlRoutes);
 app.use('/api/backups', require('./routes/backups'));
+app.use('/api/plugins', require('./routes/plugins'));
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (req, res) => {
     const indexPath = path.join(__dirname, 'public/index.html');

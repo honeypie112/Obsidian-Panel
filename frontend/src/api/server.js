@@ -1,7 +1,7 @@
 import { API_URL } from '../config';
 const BASE_URL = `${API_URL}/api`;
 const getHeaders = () => {
-    const token = localStorage.getItem('obsidian_token');  
+    const token = localStorage.getItem('obsidian_token');
     return {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
@@ -189,6 +189,25 @@ export const serverApi = {
             body: JSON.stringify(config)
         });
         if (!res.ok) throw new Error('Failed to update config');
+        return res.json();
+    },
+    searchPlugins: async (query) => {
+        const res = await fetch(`${BASE_URL}/plugins/search?query=${encodeURIComponent(query)}`, {
+            headers: getHeaders()
+        });
+        if (!res.ok) throw new Error('Failed to search plugins');
+        return res.json();
+    },
+    installPlugin: async (projectId) => {
+        const res = await fetch(`${BASE_URL}/plugins/install`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ projectId })
+        });
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.error || 'Installation failed');
+        }
         return res.json();
     }
 };

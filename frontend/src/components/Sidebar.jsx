@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Terminal, FolderOpen, Settings, Server, LogOut, Shield, HardDrive } from 'lucide-react';
+import { LayoutDashboard, Terminal, Folder, Settings, Shield, HardDrive, Server, LogOut, Package } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
 const Sidebar = ({ isOpen, onClose }) => {
@@ -8,10 +8,11 @@ const Sidebar = ({ isOpen, onClose }) => {
     const navItems = [
         { icon: LayoutDashboard, label: 'Overview', path: '/' },
         { icon: Terminal, label: 'Console', path: '/console' },
-        { icon: FolderOpen, label: 'Files', path: '/files' },
+        { icon: Folder, label: 'Files', path: '/files' },
+        { icon: Package, label: 'Plugin Store', path: '/plugins' },
         { icon: HardDrive, label: 'Backups', path: '/backups' },
         { icon: Settings, label: 'Server Settings', path: '/server-settings' },
-        { icon: Server, label: 'General Settings', path: '/general-settings' },
+        { icon: Shield, label: 'General Settings', path: '/general-settings' },
     ];
     const sidebarClasses = clsx(
         'bg-obsidian-surface border-r border-obsidian-border flex flex-col',

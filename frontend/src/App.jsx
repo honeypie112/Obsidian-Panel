@@ -13,6 +13,7 @@ import Files from './pages/Files';
 import ServerSettings from './pages/ServerSettings';
 import GeneralSettings from './pages/GeneralSettings';
 import Backups from './pages/Backups';
+import Plugins from './pages/Plugins';
 function App() {
   return (
     <AuthProvider>
@@ -30,6 +31,7 @@ function App() {
                   <Route path="/server-settings" element={<ServerSettings />} />
                   <Route path="/general-settings" element={<GeneralSettings />} />
                   <Route path="/backups" element={<Backups />} />
+                  <Route path="/plugins" element={<Plugins />} />
                 </Route>
               </Route>
               <Route path="*" element={<Navigate to="/" />} />
