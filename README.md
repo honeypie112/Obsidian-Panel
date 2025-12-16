@@ -24,6 +24,10 @@
     <br>
     ![Backups Page](images/backups_v2.png)
 
+-   **Plugin Store**: Search and install thousands of plugins from Modrinth directly to your server. 
+    <br>
+    ![Plugin Store](images/plugins.png)
+
 -   **Auto-Backup Scheduler**: Configure backups to run minutely, hourly, daily, or using custom Cron expressions.
     <br>
     ![Auto Backup Settings](images/auto_backup_v2.png)
