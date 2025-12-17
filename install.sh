@@ -22,6 +22,37 @@ echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}   Obsidian Panel Installer   ${NC}"
 echo -e "${BLUE}========================================${NC}"
 
+# 0. Docker Check
+echo -e "${BLUE}Checking Docker status...${NC}"
+if ! command -v docker &> /dev/null; then
+    echo -e "${RED}Docker is not installed! Please install Docker first.${NC}"
+    exit 1
+fi
+
+if ! docker info &> /dev/null; then
+    echo -e "${RED}Docker service is not running.${NC}"
+    echo -e "${BLUE}Attempting to start Docker service...${NC}"
+    
+    if command -v systemctl &> /dev/null; then
+        sudo systemctl start docker
+        sudo systemctl enable docker
+        sleep 3
+    elif command -v service &> /dev/null; then
+        sudo service docker start
+        sleep 3
+    fi
+    
+    # Check again
+    if ! docker info &> /dev/null; then
+        echo -e "${RED}Failed to start Docker. Please start the Docker service manually.${NC}"
+        exit 1
+    else
+        echo -e "${GREEN}Docker service started successfully.${NC}"
+    fi
+else
+    echo -e "${GREEN}Docker is running.${NC}"
+fi
+
 # 1. Repository Setup
 # 1. Repository Setup
 if [ -d "Obsidian-Panel" ]; then
@@ -143,6 +174,19 @@ if $COMMAND; then
         echo -e "External Access: http://$PUBLIC_IP:5000"
     fi
     echo -e "Admin Account: The first user to register will be Admin."
+
+    # Cleanup Option
+    echo -e "\n${BLUE}Cleanup:${NC}"
+    get_input "Do you want to remove the source code directory to save space? (y/n): " cleanup_choice
+    
+    if [[ "$cleanup_choice" =~ ^[Yy]$ ]]; then
+        echo -e "${RED}Removing source files...${NC}"
+        cd ..
+        rm -rf Obsidian-Panel
+        echo -e "${GREEN}✓ Cleanup complete. Your panel is running in the background.${NC}"
+    else
+        echo -e "${GREEN}Source files kept in 'Obsidian-Panel' directory.${NC}"
+    fi
 else
     echo -e "${RED}Failed to start container.${NC}"
     exit 1

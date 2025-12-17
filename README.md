@@ -65,6 +65,9 @@
 ### Prerequisites
 -   **Node.js** (v18+ recommended)
 -   **MongoDB** (running locally or a connection URI)
+-   **OS**: Linux (Ubuntu/Debian recommended)
+-   **Runtime**: Docker & Docker Compose (Must be installed and running)
+-   **RAM**: Minimum 2GB (4GB recommended)
 -   **Java** (installed on the host machine to run Minecraft)
 
 ### ⚡ One-Click Installation (Docker)
