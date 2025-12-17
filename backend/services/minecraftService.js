@@ -196,22 +196,47 @@ class MinecraftService extends EventEmitter {
     }
     async getPaperUrl(version) {
         return new Promise((resolve, reject) => {
-            const options = { headers: { 'User-Agent': 'ObsidianPanel/1.0' } };
-            https.get(`https://api.papermc.io/v2/projects/paper/versions/${version}/builds`, options, (res) => {
+            const options = {
+                headers: { 'User-Agent': 'ObsidianPanel/1.0' },
+                timeout: 5000 // 5s timeout for metadata check
+            };
+            const req = https.get(`https://api.papermc.io/v2/projects/paper/versions/${version}/builds`, options, (res) => {
+                if (res.statusCode === 404) {
+                    return reject(new Error(`Paper version ${version} not found (404)`));
+                }
+                if (res.statusCode >= 400) {
+                    return reject(new Error(`Paper API Error: ${res.statusCode}`));
+                }
+
                 let data = '';
                 res.on('data', c => data += c);
                 res.on('end', () => {
                     try {
                         const parsed = JSON.parse(data);
-                        if (!parsed.builds || parsed.builds.length === 0) return reject(new Error(`No Paper builds for ${version}`));
+                        if (!parsed.builds || parsed.builds.length === 0) {
+                            return reject(new Error(`No Paper builds found for version ${version}`));
+                        }
+
+                        // Sort builds to find latest efficient way, though usually they are ordered
+                        // Prefer 'default' channel if channel information is available (Paper V2 API)
+                        // If logic is needed to filter stable, we can check parsed.builds[i].channel === 'default'
+
                         const latestBuild = parsed.builds[parsed.builds.length - 1];
                         const buildNum = latestBuild.build;
                         const fileName = latestBuild.downloads.application.name;
                         const url = `https://api.papermc.io/v2/projects/paper/versions/${version}/builds/${buildNum}/downloads/${fileName}`;
                         resolve(url);
-                    } catch (e) { reject(e); }
+                    } catch (e) {
+                        reject(new Error(`Failed to parse Paper metadata: ${e.message}`));
+                    }
                 });
-            }).on('error', reject);
+            });
+
+            req.on('error', (err) => reject(new Error(`Network error checking Paper: ${err.message}`)));
+            req.on('timeout', () => {
+                req.destroy();
+                reject(new Error('Paper version check timed out'));
+            });
         });
     }
     async getPurpurUrl(version) {

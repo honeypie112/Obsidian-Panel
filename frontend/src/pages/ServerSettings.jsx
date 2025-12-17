@@ -18,9 +18,7 @@ const generateRamOptions = (totalBytes) => {
 const serverTypes = [
     { value: 'vanilla', label: 'Vanilla Minecraft' },
     { value: 'paper', label: 'Paper (Performance)' },
-    { value: 'spigot', label: 'Spigot' },
-    { value: 'forge', label: 'Forge (Modding)' },
-    { value: 'fabric', label: 'Fabric (Modding)' },
+    { value: 'purpur', label: 'Purpur (High Performance)' },
 ];
 
 const parseRam = (ramStr) => {

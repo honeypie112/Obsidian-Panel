@@ -2,31 +2,35 @@
 
 **Obsidian Panel** is a modern, dark-themed, and feature-rich Minecraft Server Management Panel designed to **manage a single server in the best way possible**. It provides a powerful web interface to manage your Minecraft server, handle files, schedule backups, and monitor performance.
 
-![Obsidian Panel Interface](images/main.png)
+![Obsidian Panel Interface](images/dashboard.png)
 
 ## ✨ Features
 
 -   **Server Control**: Start, stop, and restart your server with ease. Live console view via Socket.io.
 -   **Multi-Version Support**: Native support for **Paper**, **Purpur**, and **Vanilla** Minecraft servers.
     <br>
-    ![Server Console](images/console_v2.png)
+    ![Server Console](images/console.png)
 
 -   **Server Settings**: Manage server and versions through a simple UI.
     <br>
-    ![Server Settings](images/settings.png)
+    ![Server Settings](images/server-settings.png)
 
 -   **File Manager**: Full-featured web-based file manager with **Drag-and-Drop** support to upload, download, delete, and **extract (zip/tar)** server files. Use the **Built-in Text Editor** to edit configuration files directly.
     <br>
-    ![File Manager](images/file_manager_v2.png)
+    ![File Manager](images/file-manager.png)
+    <br>
+    ![Drag and Drop](images/drag-and-drop.png)
 
 -   **Infinite Server Backups**: Seamless integration with **GoFile** for unlimited cloud storage. Never worry about disk space again.
 -   **One-Click Restore**: Restore your server from any backup with a single click (includes safety safeguards).
     <br>
-    ![Backups Page](images/backups_v2.png)
+    ![Backup System](images/backup-system.png)
 
 -   **Plugin Store**: Unified search and install for thousands of plugins from **Modrinth**, **Hangar** (Paper), and **Spiget** (Spigot).
     <br>
-    ![Plugin Store](images/plugins.png)
+    ![Plugin Store](images/plugin-store.png)
+    <br>
+    ![Plugin Store Installation](images/plugin-store-2.png)
 
 -   **User Management & Granular Permissions**: Create **Sub-Admin** accounts with specific access rights. Grant granular control over:
     -   **Files**: View, Edit, Upload/Create, Delete.
@@ -34,11 +38,9 @@
     -   **Power**: Start/Stop/Restart.
     -   **Console**: Execute Command Access.
     <br>
-    ![User Management](images/user_management.png)
+    ![User Management](images/user-management.png)
 
 -   **Auto-Backup Scheduler**: Configure backups to run minutely, hourly, daily, or using custom Cron expressions.
-    <br>
-    ![Auto Backup Settings](images/auto_backup_v2.png)
 
 -   **Responsive Design**: fully optimized for desktop and **mobile** use with a collapsible sidebar.
 -   **Enterprise-Grade Security**:
