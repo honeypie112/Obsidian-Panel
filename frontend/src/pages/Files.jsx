@@ -219,7 +219,7 @@ const FileManager = () => {
         setUploadProgress(0);
         setUploadSpeed('0 B/s');
         try {
-            await serverApi.uploadFile(currentPath, file, (progress, speed) => {
+            await serverApi.uploadFileChunked(currentPath, file, (progress, speed) => {
                 setUploadProgress(progress);
                 if (speed) setUploadSpeed(speed);
             });
@@ -393,7 +393,7 @@ const FileManager = () => {
                 // Reset progress for each file
                 setUploadProgress(0);
                 setUploadSpeed('0 B/s');
-                await serverApi.uploadFile(currentPath, file, (progress, speed) => {
+                await serverApi.uploadFileChunked(currentPath, file, (progress, speed) => {
                     setUploadProgress(progress);
                     if (speed) setUploadSpeed(speed);
                 });

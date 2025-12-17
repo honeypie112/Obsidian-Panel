@@ -170,6 +170,72 @@ router.post('/files/download', auth, checkPermission('files.view'), (req, res) =
 });
 const uploadMiddleware = upload.single('file');
 
+// Chunked Upload Handler
+router.post('/files/upload-chunk', auth, checkPermission('files.upload'), (req, res) => {
+    uploadMiddleware(req, res, async function (err) {
+        if (err) {
+            console.error(`[ChunkUpload] Multer error:`, err);
+            return res.status(500).json({ message: `Upload error: ${err.message}` });
+        }
+
+        try {
+            if (!req.file) return res.status(400).json({ message: 'No chunk uploaded' });
+
+            const { path: relPath, fileName, chunkIndex, totalChunks } = req.body;
+            const index = parseInt(chunkIndex);
+            const total = parseInt(totalChunks);
+
+            // Validate inputs
+            if (!fileName || isNaN(index) || isNaN(total)) {
+                return res.status(400).json({ message: 'Missing chunk metadata' });
+            }
+
+            // Define paths
+            const tempDir = path.join(minecraftService.serverDir, '.temp_uploads');
+            const partFilePath = path.join(tempDir, `${fileName}.part`);
+            const chunkPath = req.file.path;
+
+            // Ensure temp dir exists (redundant if multer made it, but safe)
+            if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+            // Append chunk to .part file
+            const chunkBuffer = await fs.promises.readFile(chunkPath);
+
+            // If first chunk, overwrite/create new. Else append.
+            if (index === 0) {
+                await fs.promises.writeFile(partFilePath, chunkBuffer);
+            } else {
+                await fs.promises.appendFile(partFilePath, chunkBuffer);
+            }
+
+            // Delete the temp chunk file created by Multer
+            await fs.promises.unlink(chunkPath);
+
+            // Check if this was the last chunk
+            if (index === total - 1) {
+                const targetDir = getSafePath(relPath);
+                const targetPath = path.join(targetDir, fileName);
+
+                console.log(`[ChunkUpload] Finalizing file: ${targetPath}`);
+
+                // Move .part file to final destination
+                await fs.promises.rename(partFilePath, targetPath);
+                return res.json({ success: true, completed: true });
+            }
+
+            res.json({ success: true, chunkIndex: index });
+
+        } catch (err) {
+            console.error("[ChunkUpload] Error:", err);
+            // Try to cleanup current chunk
+            if (req.file && fs.existsSync(req.file.path)) {
+                try { fs.unlinkSync(req.file.path); } catch (e) { }
+            }
+            res.status(500).json({ message: err.message });
+        }
+    });
+});
+
 // Async upload handler to prevent event loop blocking
 router.post('/files/upload', auth, checkPermission('files.upload'), (req, res) => {
     console.log(`[Upload] Request received for: ${req.body.path}`);

@@ -129,71 +129,78 @@ export const serverApi = {
         return res.json();
     },
     uploadFile: (path, file, onProgress) => {
+        // ... (existing implementation)
         return new Promise((resolve, reject) => {
+            // ...
+        });
+    },
+    uploadFileChunked: async (path, file, onProgress) => {
+        const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        const fileName = file.name;
+        const startTime = Date.now();
+        let uploadedBytes = 0;
+
+        for (let i = 0; i < totalChunks; i++) {
+            const start = i * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const chunk = file.slice(start, end);
+
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', chunk);
             formData.append('path', path.join('/'));
+            formData.append('fileName', fileName);
+            formData.append('chunkIndex', i.toString());
+            formData.append('totalChunks', totalChunks.toString());
 
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', `${BASE_URL}/control/files/upload`);
-            xhr.setRequestHeader('Authorization', `Bearer ${localStorage.getItem('obsidian_token')}`);
+            await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', `${BASE_URL}/control/files/upload-chunk`);
+                xhr.setRequestHeader('Authorization', `Bearer ${localStorage.getItem('obsidian_token')}`);
 
-            let lastLoaded = 0;
-            let lastTime = Date.now();
-            let uploadSpeed = '0 B/s';
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable && onProgress) {
+                        // Calculate total progress including this partial chunk
+                        const currentChunkLoaded = event.loaded;
+                        const totalLoaded = uploadedBytes + currentChunkLoaded;
+                        const percentComplete = Math.round((totalLoaded / file.size) * 100);
 
-            xhr.upload.onprogress = (event) => {
-                if (event.lengthComputable && onProgress) {
-                    const now = Date.now();
-                    const diffTime = (now - lastTime) / 1000; // seconds
-
-                    // Update speed every 500ms
-                    if (diffTime >= 0.5 && event.loaded > lastLoaded) {
-                        const diffBytes = event.loaded - lastLoaded;
-                        const speedBytes = diffBytes / diffTime;
-
-                        if (speedBytes > 0) {
+                        // Calculate speed
+                        const now = Date.now();
+                        const diffTime = (now - startTime) / 1000;
+                        let uploadSpeed = '0 B/s';
+                        if (diffTime > 0) {
+                            const speedBytes = totalLoaded / diffTime;
                             const k = 1024;
                             const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
-                            const i = Math.floor(Math.log(speedBytes) / Math.log(k));
-                            // Ensure i is within bounds (0-3)
-                            const safeI = Math.min(Math.max(i, 0), sizes.length - 1);
+                            const iSize = Math.floor(Math.log(speedBytes) / Math.log(k));
+                            const safeI = Math.min(Math.max(iSize, 0), sizes.length - 1);
                             uploadSpeed = parseFloat((speedBytes / Math.pow(k, safeI)).toFixed(2)) + ' ' + sizes[safeI];
                         }
 
-                        lastLoaded = event.loaded;
-                        lastTime = now;
+                        onProgress(percentComplete, uploadSpeed);
                     }
+                };
 
-                    const percentComplete = Math.round((event.loaded / event.total) * 100);
-                    onProgress(percentComplete, uploadSpeed);
-                }
-            };
-
-            xhr.onload = () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    try {
-                        const response = JSON.parse(xhr.responseText);
-                        resolve(response);
-                    } catch (e) {
-                        resolve({ success: true });
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve();
+                    } else {
+                        try {
+                            const error = JSON.parse(xhr.responseText);
+                            reject(new Error(error.message || 'Chunk upload failed'));
+                        } catch (e) {
+                            reject(new Error(xhr.statusText || 'Chunk upload failed'));
+                        }
                     }
-                } else {
-                    try {
-                        const error = JSON.parse(xhr.responseText);
-                        reject(new Error(error.message || 'Upload failed'));
-                    } catch (e) {
-                        reject(new Error(xhr.statusText || 'Upload failed'));
-                    }
-                }
-            };
+                };
+                xhr.onerror = () => reject(new Error('Network error'));
+                xhr.send(formData);
+            });
 
-            xhr.onerror = () => {
-                reject(new Error('Network error during upload'));
-            };
-
-            xhr.send(formData);
-        });
+            uploadedBytes += chunk.size;
+        }
+        return { success: true };
     },
     downloadFile: async (path, name) => {
         const fullPath = [...path, name].join('/');
