@@ -37,13 +37,13 @@ const Plugins = () => {
     };
 
     const handleInstall = async (plugin) => {
-        setInstalling(plugin.project_id);
+        setInstalling(plugin.id);
         try {
-            await serverApi.installPlugin(plugin.project_id);
-            showToast(`Successfully installed ${plugin.title}`, 'success');
+            await serverApi.installPlugin(plugin.id, plugin.source);
+            showToast(`Successfully installed ${plugin.name}`, 'success');
         } catch (err) {
             console.error(err);
-            showToast(err.message || `Failed to install ${plugin.title}`, 'error');
+            showToast(err.message || `Failed to install ${plugin.name}`, 'error');
         } finally {
             setInstalling(null);
         }
@@ -59,7 +59,7 @@ const Plugins = () => {
                 <div className="text-center mb-8 space-y-2">
                     <h1 className="text-4xl font-bold text-white tracking-tight">Plugin Store</h1>
                     <p className="text-obsidian-muted text-lg max-w-md mx-auto">
-                        Search and install plugins directly from Modrinth.
+                        Search and install plugins from Modrinth, Hangar, and Spigot.
                     </p>
                 </div>
 
@@ -108,25 +108,33 @@ const Plugins = () => {
                 ) : plugins.length > 0 ? (
                     plugins.map((plugin, idx) => (
                         <div
-                            key={plugin.project_id}
+                            key={`${plugin.source}-${plugin.id}`}
                             className="group bg-obsidian-surface border border-obsidian-border rounded-xl p-5 flex flex-col hover:border-obsidian-accent/50 hover:bg-obsidian-surface/80 transition-all duration-300 hover:-translate-y-1 shadow-lg"
                             style={{ animationDelay: `${idx * 50}ms` }}
                         >
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center space-x-4">
-                                    {plugin.icon_url ? (
-                                        <img src={plugin.icon_url} alt={plugin.title} className="w-12 h-12 rounded-xl shadow-md bg-black/20" />
+                                    {plugin.iconUrl ? (
+                                        <img src={plugin.iconUrl} alt={plugin.name} className="w-12 h-12 rounded-xl shadow-md bg-black/20" />
                                     ) : (
                                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-obsidian-bg to-obsidian-surface border border-obsidian-border flex items-center justify-center shadow-md">
                                             <Package size={24} className="text-obsidian-muted" />
                                         </div>
                                     )}
                                     <div>
-                                        <h3 className="font-bold text-lg text-white line-clamp-1 group-hover:text-obsidian-accent transition-colors" title={plugin.title}>{plugin.title}</h3>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${plugin.source === 'Modrinth' ? 'text-green-400 border-green-400/20 bg-green-400/10' :
+                                                plugin.source === 'Hangar' ? 'text-blue-400 border-blue-400/20 bg-blue-400/10' :
+                                                    'text-orange-400 border-orange-400/20 bg-orange-400/10'
+                                                }`}>
+                                                {plugin.source}
+                                            </span>
+                                        </div>
+                                        <h3 className="font-bold text-lg text-white line-clamp-1 group-hover:text-obsidian-accent transition-colors" title={plugin.name}>{plugin.name}</h3>
                                         <div className="flex items-center text-xs text-obsidian-muted space-x-2 mt-0.5">
                                             <span>by {plugin.author}</span>
                                             <span className="w-1 h-1 rounded-full bg-obsidian-border" />
-                                            <span>{plugin.downloads.toLocaleString()} downls</span>
+                                            <span>{Number(plugin.downloads).toLocaleString()} downls</span>
                                         </div>
                                     </div>
                                 </div>
@@ -137,26 +145,22 @@ const Plugins = () => {
                             </p>
 
                             <div className="flex items-center justify-between mt-auto pt-4 border-t border-obsidian-border/40">
-                                <a
-                                    href={`https://modrinth.com/plugin/${plugin.slug}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs font-medium text-obsidian-muted hover:text-white flex items-center transition-colors"
-                                >
-                                    Modrinth <ExternalLink size={10} className="ml-1 opacity-50" />
-                                </a>
+                                <span className="text-xs font-medium text-obsidian-muted flex items-center">
+                                    {plugin.source === 'Modrinth' && <img src="https://avatars.githubusercontent.com/u/112328906?s=48&v=4" className="w-4 h-4 mr-1.5 grayscale opacity-50" />}
+                                    {plugin.source}
+                                </span>
 
                                 <button
                                     onClick={() => handleInstall(plugin)}
-                                    disabled={installing === plugin.project_id}
+                                    disabled={installing === plugin.id}
                                     className={clsx(
                                         "px-4 py-2 rounded-lg text-sm font-semibold flex items-center transition-all duration-200 transform active:scale-95",
-                                        installing === plugin.project_id
+                                        installing === plugin.id
                                             ? "bg-obsidian-surface text-obsidian-muted cursor-wait border border-obsidian-border"
                                             : "bg-gradient-to-r from-obsidian-accent to-purple-600 hover:from-obsidian-accent-hover hover:to-purple-500 text-white shadow-lg hover:shadow-obsidian-accent/25"
                                     )}
                                 >
-                                    {installing === plugin.project_id ? (
+                                    {installing === plugin.id ? (
                                         <>
                                             <Loader2 size={16} className="animate-spin mr-2" />
                                             Installing...
