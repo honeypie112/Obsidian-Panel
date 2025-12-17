@@ -171,7 +171,12 @@ const Backups = () => {
     };
 
     const formatBytes = (bytes) => {
-        if (bytes === 0) return '0 B';
+        if (typeof bytes === 'string' && (bytes.includes('MB') || bytes.includes('GB') || bytes.includes('KB') || bytes.includes('B'))) {
+            return bytes; // Return as-is if already formatted
+        }
+        if (typeof bytes === 'string') bytes = parseFloat(bytes); // Try parsing if string number
+        if (!bytes || isNaN(bytes) || bytes === 0) return '0 B';
+
         const k = 1024;
         const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
