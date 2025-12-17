@@ -103,3 +103,5 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+// Increase timeout to 0 (Infinity) for unlimited file upload duration
+server.setTimeout(0);

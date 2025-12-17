@@ -121,7 +121,7 @@ echo -e "\n${BLUE}Generating .env file...${NC}"
 cat <<EOF > .env
 # Backend Config
 MONGO_URI=$MONGO_URI
-MONGO_DB_NAME=minecraft-panel
+MONGO_DB_NAME=obsidian-panel
 JWT_SECRET=$JWT_SECRET
 PORT=5000
 MC_SERVER_BASE_PATH=/servers

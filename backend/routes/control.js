@@ -71,7 +71,10 @@ const storage = multer.diskStorage({
         cb(null, file.originalname);
     }
 });
-const upload = multer({ storage: storage });
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: Infinity } // Explicitly remove file size limit
+});
 const getSafePath = (reqPath) => {
     const serverDir = minecraftService.serverDir;
     const targetPath = path.join(serverDir, reqPath || '');
