@@ -7,8 +7,19 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Function to handle input (compatible with CI & TTY)
+get_input() {
+    local prompt="$1"
+    local var_name="$2"
+    if [ "$CI" = "true" ]; then
+        read -r "$var_name"
+    else
+        read -p "$prompt" "$var_name" < /dev/tty
+    fi
+}
+
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}   Obsidian Panel Installation Script   ${NC}"
+echo -e "${BLUE}   Obsidian Panel Installer   ${NC}"
 echo -e "${BLUE}========================================${NC}"
 
 # 1. Repository Setup
@@ -16,7 +27,8 @@ echo -e "${BLUE}========================================${NC}"
 if [ -d "Obsidian-Panel" ]; then
     echo -e "${GREEN}✓ Detected Obsidian-Panel directory.${NC}"
     echo -e "${BLUE}Do you want to perform a fresh reinstall? (This will delete the existing code)${NC}"
-    read -p "Reinstall fresh? (y/n): " reinstall_choice < /dev/tty
+    echo -e "${BLUE}Do you want to perform a fresh reinstall? (This will delete the existing code)${NC}"
+    get_input "Reinstall fresh? (y/n): " reinstall_choice
     
     if [[ "$reinstall_choice" =~ ^[Yy]$ ]]; then
         echo -e "${RED}Removing existing installation...${NC}"
@@ -60,7 +72,7 @@ echo -e "\n${BLUE}Configuration Setup:${NC}"
 
 # Mongo URI
 while true; do
-    read -p "Enter MongoDB URI (Required): " MONGO_URI < /dev/tty
+    get_input "Enter MongoDB URI (Required): " MONGO_URI
     if [ -n "$MONGO_URI" ]; then
         break
     else
@@ -93,10 +105,11 @@ echo -e "${GREEN}✓ .env file created.${NC}"
 PORTS="-p 5000:5000 -p 25565:25565 -p 19132:19132"
 echo -e "\n${BLUE}Port Configuration:${NC}"
 echo "Default ports exposed: 5000 (Panel), 25565 (Java), 19132 (Bedrock)"
-read -p "Do you want to expose additional ports? (y/n): " expose_more < /dev/tty
+get_input "Do you want to expose additional ports? (y/n): " expose_more
 
 if [[ "$expose_more" =~ ^[Yy]$ ]]; then
-    read -p "Enter additional ports (space separated, e.g., 8123 25566): " extra_ports < /dev/tty
+if [[ "$expose_more" =~ ^[Yy]$ ]]; then
+    get_input "Enter additional ports (space separated, e.g., 8123 25566): " extra_ports
     for port in $extra_ports; do
         PORTS="$PORTS -p $port:$port"
     done
