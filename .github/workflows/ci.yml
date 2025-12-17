@@ -35,11 +35,9 @@ jobs:
         # Prepare inputs:
         # 1. Java Version: 3 (Java 21)
         # 2. Mongo URI: Using gateway IP to access service on host
-        # 3. JWT Secret: ci_secret
-        # 4. GoFile Token: (empty)
-        # 5. Expose Ports: n
+        # 3. Expose Ports: n
         
-        printf "3\nmongodb://${{ env.GATEWAY_IP }}:27017/obsidian_test\nci_secret\n\nn\n" | ./install.sh
+        printf "3\nmongodb://${{ env.GATEWAY_IP }}:27017/obsidian_test\nn\n" | ./install.sh
 
     - name: Wait for Server to Start
       run: |
