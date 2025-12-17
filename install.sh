@@ -29,8 +29,8 @@ if [ -d "Obsidian-Panel" ]; then
 fi
 
 if [ ! -d "Obsidian-Panel" ]; then
-    echo -e "${BLUE}Cloning Obsidian-Panel repository...${NC}"
-    if git clone https://github.com/honeypie112/Obsidian-Panel.git; then
+    echo -e "${BLUE}Cloning Obsidian-Panel repository (master branch)...${NC}"
+    if git clone -b master https://github.com/honeypie112/Obsidian-Panel.git; then
         cd Obsidian-Panel || exit 1
         echo -e "${GREEN}✓ Cloned and entered directory.${NC}"
     else

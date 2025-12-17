@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useServer } from '../context/ServerContext';
 import { useToast } from '../context/ToastContext';
 import StatCard from '../components/StatCard';
-import { Activity, Cpu, HardDrive, MemoryStick, Play, Square, RefreshCw, Loader2 } from 'lucide-react';
+import { Activity, Cpu, HardDrive, MemoryStick, Play, Square, RefreshCw, Loader2, Server as ServerIcon } from 'lucide-react';
 
 const formatBytes = (bytes) => {
     if (bytes === 0) return '0 B';
@@ -74,7 +74,7 @@ const Overview = () => {
                 <div className="glass-panel rounded-2xl p-8 flex flex-col md:flex-row justify-between items-center gap-6 border-l-4 border-l-red-500">
                     <div className="flex items-center gap-4">
                         <div className="p-4 bg-red-500/10 rounded-xl text-red-500">
-                            <Server size={32} />
+                            <ServerIcon size={32} />
                         </div>
                         <div>
                             <h3 className="text-white font-bold text-xl mb-1">Server Not Installed</h3>
