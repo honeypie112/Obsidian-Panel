@@ -196,6 +196,16 @@ const Backups = () => {
 
     return (
         <div className="space-y-6 animate-fade-in content-container">
+            {isBackupInProgress && (
+                <div className="glass-panel rounded-xl p-4 bg-yellow-500/10 border-yellow-500/20 mb-6 flex items-center animate-pulse">
+                    <Loader2 className="text-yellow-500 animate-spin mr-3" size={24} />
+                    <div>
+                        <h3 className="text-white font-bold">Backup in Progress...</h3>
+                        <p className="text-obsidian-muted text-sm">A backup operation is currently running in the background. Please wait.</p>
+                    </div>
+                </div>
+            )}
+
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h1 className="text-3xl font-bold text-white tracking-tight mb-1">Backups</h1>
@@ -211,10 +221,17 @@ const Backups = () => {
                     </button>
                     <button
                         onClick={() => setIsCreateModalOpen(true)}
-                        disabled={isCreating}
-                        className="glass-button px-6 py-2 rounded-xl flex items-center gap-2 hover:scale-105 transition-transform disabled:opacity-50 disabled:scale-100"
+                        disabled={isCreating || isBackupInProgress}
+                        className="glass-button px-6 py-2 rounded-xl flex items-center gap-2 hover:scale-105 transition-transform disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed"
                     >
-                        {isCreating ? 'Creating...' : <><Plus size={20} /> Create Backup</>}
+                        {isCreating || isBackupInProgress ? (
+                            <>
+                                <Loader2 className="animate-spin" size={20} />
+                                {isCreating ? 'Creating...' : 'Backup Running'}
+                            </>
+                        ) : (
+                            <><Plus size={20} /> Create Backup</>
+                        )}
                     </button>
                 </div>
             </div>
@@ -333,7 +350,10 @@ const Backups = () => {
                     </div>
                     <div className="flex justify-end gap-3 mt-6">
                         <button onClick={() => setIsRestoreModalOpen(false)} disabled={isRestoring} className="px-4 py-2 text-obsidian-muted hover:text-white">Cancel</button>
-                        <button onClick={handleRestore} disabled={isRestoring} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">Confirm Restore</button>
+                        <button onClick={handleRestore} disabled={isRestoring} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg flex items-center gap-2 disabled:opacity-50">
+                            {isRestoring && <Loader2 className="animate-spin" size={16} />}
+                            {isRestoring ? 'Restoring...' : 'Confirm Restore'}
+                        </button>
                     </div>
                 </div>
             </Modal>
