@@ -108,7 +108,7 @@ echo "Default ports exposed: 5000 (Panel), 25565 (Java), 19132 (Bedrock)"
 get_input "Do you want to expose additional ports? (y/n): " expose_more
 
 if [[ "$expose_more" =~ ^[Yy]$ ]]; then
-if [[ "$expose_more" =~ ^[Yy]$ ]]; then
+
     get_input "Enter additional ports (space separated, e.g., 8123 25566): " extra_ports
     for port in $extra_ports; do
         PORTS="$PORTS -p $port:$port"
