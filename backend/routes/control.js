@@ -65,10 +65,17 @@ const fs = require('fs');
 const path = require('path');
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, '/tmp');
-    },
-    filename: function (req, file, cb) {
-        cb(null, file.originalname);
+        // Use a temp dir in the server directory to avoid /tmp partition size limits
+        const tempDir = path.join(minecraftService.serverDir, '.temp_uploads');
+        if (!fs.existsSync(tempDir)) {
+            try {
+                fs.mkdirSync(tempDir, { recursive: true });
+            } catch (e) {
+                console.error("Failed to create temp upload dir:", e);
+                return cb(e);
+            }
+        }
+        cb(null, tempDir);
     }
 });
 const upload = multer({

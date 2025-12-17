@@ -49,7 +49,7 @@ const io = new Server(server, {
 });
 minecraftService.setSocketIo(io);
 app.use(cors());
-app.use(express.json({ limit: '10kb' })); // Limit body size to prevent DoS
+app.use(express.json({ limit: '50mb' })); // Increased limit for large config files
 if (!process.env.MONGO_URI) {
     console.error('FATAL ERROR: MONGO_URI is not defined.');
     console.error('Please check your .env file or environment variables.');
