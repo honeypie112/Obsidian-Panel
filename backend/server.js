@@ -105,9 +105,30 @@ io.on('connection', (socket) => {
     });
 });
 app.set('io', io);
+// Global Error Handling Middleware
+app.use((err, req, res, next) => {
+    console.error('Unhandled Error:', err);
+    res.status(500).json({
+        message: 'Internal Server Error',
+        error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    });
+});
+
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+
+// Prevent server crash on unhandled exceptions
+process.on('uncaughtException', (err) => {
+    console.error('CRITICAL: Uncaught Exception:', err);
+    // Keep running if possible, or graceful shutdown
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('CRITICAL: Unhandled Rejection:', reason);
+    // Keep running
+});
+
 // Increase timeout to 0 (Infinity) for unlimited file upload duration
 server.setTimeout(0);
