@@ -366,18 +366,21 @@ class MinecraftService extends EventEmitter {
         }
         this.status = 'starting';
         this.broadcast('status', this.getStatus());
-        const ramMatch = this.config.ram.match(/(\d+)(GB|MB)/);
+        // Regex to match ram string like "4GB", "4G", "1024M", "1024 MB"
+        const ramMatch = this.config.ram.match(/(\d+)\s*([GgMm])[Bb]?/);
         let maxRam = '4096M';
         if (ramMatch) {
             const val = parseInt(ramMatch[1]);
-            const unit = ramMatch[2];
-            maxRam = unit === 'GB' ? `${val * 1024}M` : `${val}M`;
+            const unit = ramMatch[2].toUpperCase();
+            // unit will be 'G' or 'M' due to match group 2 excluding optional 'b'
+            maxRam = unit === 'G' ? `${val * 1024}M` : `${val}M`;
         }
         const args = [
             '-Xms1024M',
             `-Xmx${maxRam}`,
-            '-DTerminal.jline=true',
+            '-DTerminal.jline=false',
             '-DTerminal.ansi=true',
+            '-Dlog4j.skipJansi=false', // Force Log4j to recognize ANSI support
             '-jar',
             this.jarFile,
             'nogui'

@@ -155,27 +155,55 @@ router.post('/files/download', auth, checkPermission('files.view'), (req, res) =
         res.status(500).json({ message: err.message });
     }
 });
-router.post('/files/upload', auth, checkPermission('files.upload'), upload.single('file'), (req, res) => {
-    try {
-        const { path: relPath } = req.body;
-        const targetDir = getSafePath(relPath);
-        const tempPath = req.file.path;
-        const targetPath = path.join(targetDir, req.file.originalname);
-        try {
-            fs.renameSync(tempPath, targetPath);
-        } catch (error) {
-            if (error.code === 'EXDEV') {
-                fs.copyFileSync(tempPath, targetPath);
-                fs.unlinkSync(tempPath);
-            } else {
-                throw error;
+const uploadMiddleware = upload.single('file');
+
+router.post('/files/upload', auth, checkPermission('files.upload'), (req, res) => {
+    uploadMiddleware(req, res, function (err) {
+        if (err instanceof multer.MulterError) {
+            // A Multer error occurred when uploading.
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ message: 'File too large' });
             }
+            return res.status(500).json({ message: `Upload error: ${err.message}` });
+        } else if (err) {
+            // An unknown error occurred when uploading.
+            return res.status(500).json({ message: `Upload error: ${err.message}` });
         }
-        res.json({ success: true });
-    } catch (err) {
-        console.error("Upload error:", err);
-        res.status(500).json({ message: err.message });
-    }
+
+        // Everything went fine.
+        try {
+            if (!req.file) {
+                return res.status(400).json({ message: 'No file uploaded' });
+            }
+
+            const { path: relPath } = req.body;
+            const targetDir = getSafePath(relPath);
+            const tempPath = req.file.path;
+            const targetPath = path.join(targetDir, req.file.originalname);
+
+            // Check disk space (basic check) or write permission implicit in rename
+            try {
+                fs.renameSync(tempPath, targetPath);
+            } catch (error) {
+                if (error.code === 'EXDEV') {
+                    fs.copyFileSync(tempPath, targetPath);
+                    fs.unlinkSync(tempPath);
+                } else if (error.code === 'ENOSPC') {
+                    throw new Error('Disk full');
+                } else {
+                    throw error;
+                }
+            }
+            res.json({ success: true });
+        } catch (err) {
+            console.error("Upload error:", err);
+            // Clean up temp file if exists
+            if (req.file && fs.existsSync(req.file.path)) {
+                try { fs.unlinkSync(req.file.path); } catch (e) { }
+            }
+            res.status(500).json({ message: err.message });
+        }
+    });
 });
 router.post('/files/create', auth, checkPermission('files.upload'), (req, res) => {
     try {
@@ -247,6 +275,37 @@ router.post('/files/compress', auth, checkPermission('files.edit'), (req, res) =
         res.status(500).json({ message: err.message });
     }
 });
+// Rename File/Folder
+router.post('/files/rename', auth, checkPermission('files.edit'), (req, res) => {
+    try {
+        const { path: relPath, oldName, newName } = req.body;
+        // relPath is the folder path (e.g. "plugins") where the file exists
+        const currentDir = getSafePath(relPath);
+
+        const oldPath = path.join(currentDir, oldName);
+        const newPath = path.join(currentDir, newName);
+
+        // Security check: Ensure new path is still within safe directory
+        // Although getSafePath checked currentDir, newName could try ".." traversal
+        if (!newPath.startsWith(minecraftService.serverDir)) {
+            return res.status(400).json({ message: 'Invalid new name' });
+        }
+
+        if (!fs.existsSync(oldPath)) {
+            return res.status(404).json({ message: 'File not found' });
+        }
+
+        if (fs.existsSync(newPath)) {
+            return res.status(400).json({ message: 'A file with that name already exists' });
+        }
+
+        fs.renameSync(oldPath, newPath);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 router.post('/files/delete', auth, checkPermission('files.delete'), (req, res) => {
     try {
         const { path: relPath } = req.body;

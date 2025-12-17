@@ -97,6 +97,18 @@ export const serverApi = {
         if (!res.ok) throw new Error('Failed to delete item');
         return res.json();
     },
+    renameFile: async (path, oldName, newName) => {
+        const res = await fetch(`${BASE_URL}/control/files/rename`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ path: path.join('/'), oldName, newName })
+        });
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.message || 'Failed to rename item');
+        }
+        return res.json();
+    },
     extractFile: async (path, name) => {
         const fullPath = [...path, name].join('/');
         const res = await fetch(`${BASE_URL}/control/files/extract`, {
@@ -116,19 +128,72 @@ export const serverApi = {
         if (!res.ok) throw new Error('Failed to compress files');
         return res.json();
     },
-    uploadFile: async (path, file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('path', path.join('/'));
-        const res = await fetch(`${BASE_URL}/control/files/upload`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('obsidian_token')}`
-            },
-            body: formData
+    uploadFile: (path, file, onProgress) => {
+        return new Promise((resolve, reject) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('path', path.join('/'));
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `${BASE_URL}/control/files/upload`);
+            xhr.setRequestHeader('Authorization', `Bearer ${localStorage.getItem('obsidian_token')}`);
+
+            let lastLoaded = 0;
+            let lastTime = Date.now();
+            let uploadSpeed = '0 B/s';
+
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable && onProgress) {
+                    const now = Date.now();
+                    const diffTime = (now - lastTime) / 1000; // seconds
+
+                    // Update speed every 500ms
+                    if (diffTime >= 0.5 && event.loaded > lastLoaded) {
+                        const diffBytes = event.loaded - lastLoaded;
+                        const speedBytes = diffBytes / diffTime;
+
+                        if (speedBytes > 0) {
+                            const k = 1024;
+                            const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+                            const i = Math.floor(Math.log(speedBytes) / Math.log(k));
+                            // Ensure i is within bounds (0-3)
+                            const safeI = Math.min(Math.max(i, 0), sizes.length - 1);
+                            uploadSpeed = parseFloat((speedBytes / Math.pow(k, safeI)).toFixed(2)) + ' ' + sizes[safeI];
+                        }
+
+                        lastLoaded = event.loaded;
+                        lastTime = now;
+                    }
+
+                    const percentComplete = Math.round((event.loaded / event.total) * 100);
+                    onProgress(percentComplete, uploadSpeed);
+                }
+            };
+
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        resolve(response);
+                    } catch (e) {
+                        resolve({ success: true });
+                    }
+                } else {
+                    try {
+                        const error = JSON.parse(xhr.responseText);
+                        reject(new Error(error.message || 'Upload failed'));
+                    } catch (e) {
+                        reject(new Error(xhr.statusText || 'Upload failed'));
+                    }
+                }
+            };
+
+            xhr.onerror = () => {
+                reject(new Error('Network error during upload'));
+            };
+
+            xhr.send(formData);
         });
-        if (!res.ok) throw new Error('Failed to upload file');
-        return res.json();
     },
     downloadFile: async (path, name) => {
         const fullPath = [...path, name].join('/');

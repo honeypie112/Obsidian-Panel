@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { serverApi } from '../api/server';
-import { Folder, FileText, ChevronRight, Home, Download, Trash2, FileCode, FileJson, FileImage, Upload, Save, X, Archive, CheckSquare, Check, FolderPlus, RefreshCw, ArrowLeft, Loader2, FolderOpen } from 'lucide-react';
+import { Folder, FileText, ChevronRight, Home, Download, Trash2, FileCode, FileJson, FileImage, Upload, Save, X, Archive, CheckSquare, Check, FolderPlus, RefreshCw, ArrowLeft, Loader2, FolderOpen, Edit2 } from 'lucide-react';
 import clsx from 'clsx';
 import Modal from '../components/Modal';
 import { useToast } from '../context/ToastContext';
@@ -26,6 +26,26 @@ const FileManager = () => {
     const [isSelectMode, setIsSelectMode] = useState(false);
     const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+
+    // Rename State
+    const [isRenameOpen, setIsRenameOpen] = useState(false);
+    const [itemToRename, setItemToRename] = useState(null);
+    const [renameName, setRenameName] = useState('');
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadSpeed, setUploadSpeed] = useState('0 B/s');
+
+    // Prevent page refresh during upload
+    useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            if (uploading) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [uploading]);
 
     useEffect(() => {
         loadFiles();
@@ -164,6 +184,29 @@ const FileManager = () => {
         }
     };
 
+    const handleRename = async () => {
+        if (!itemToRename || !renameName) return;
+        setLoading(true);
+        try {
+            await serverApi.renameFile(currentPath, itemToRename, renameName);
+            await loadFiles();
+            showToast(`Renamed to "${renameName}"`, 'success');
+            setIsRenameOpen(false);
+            setItemToRename(null);
+            setRenameName('');
+        } catch (err) {
+            showToast(err.message, 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const openRenameModal = (name) => {
+        setItemToRename(name);
+        setRenameName(name);
+        setIsRenameOpen(true);
+    };
+
     const confirmDelete = (name) => {
         setItemToDelete(name);
         setIsDeleteOpen(true);
@@ -173,8 +216,13 @@ const FileManager = () => {
         const file = e.target.files?.[0];
         if (!file) return;
         setUploading(true);
+        setUploadProgress(0);
+        setUploadSpeed('0 B/s');
         try {
-            await serverApi.uploadFile(currentPath, file);
+            await serverApi.uploadFile(currentPath, file, (progress, speed) => {
+                setUploadProgress(progress);
+                if (speed) setUploadSpeed(speed);
+            });
             showToast('File uploaded successfully', 'success');
             await loadFiles();
         } catch (err) {
@@ -182,6 +230,7 @@ const FileManager = () => {
             showToast('Upload failed: ' + err.message, 'error');
         } finally {
             setUploading(false);
+            setUploadProgress(0);
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
@@ -330,11 +379,24 @@ const FileManager = () => {
         const files = Array.from(e.dataTransfer.files);
         if (files.length === 0) return;
         setUploading(true);
+        setUploadProgress(0);
+        setUploadSpeed('0 B/s');
         let successCount = 0;
         let failCount = 0;
+
+        // Note: For multi-file drag-drop, total progress is hard to estimate with single bar
+        // We will show progress for the *currently uploading field* or just generic loading
+        // For simplicity in this implementation, we'll process sequentially and show progress for each
+
         for (const file of files) {
             try {
-                await serverApi.uploadFile(currentPath, file);
+                // Reset progress for each file
+                setUploadProgress(0);
+                setUploadSpeed('0 B/s');
+                await serverApi.uploadFile(currentPath, file, (progress, speed) => {
+                    setUploadProgress(progress);
+                    if (speed) setUploadSpeed(speed);
+                });
                 successCount++;
             } catch (err) {
                 console.error(err);
@@ -345,6 +407,7 @@ const FileManager = () => {
         if (failCount > 0) showToast(`Failed to upload ${failCount} file${failCount > 1 ? 's' : ''}`, 'error');
         await loadFiles();
         setUploading(false);
+        setUploadProgress(0);
     };
 
     const handleSelectAll = () => {
@@ -442,10 +505,16 @@ const FileManager = () => {
                     <button
                         onClick={() => document.getElementById('file-upload').click()}
                         disabled={uploading}
-                        className="glass-button px-4 py-2 rounded-lg flex items-center text-sm whitespace-nowrap"
+                        className="glass-button px-4 py-2 rounded-lg flex items-center text-sm whitespace-nowrap overflow-hidden relative"
                     >
-                        <Upload size={16} className="md:mr-2" />
-                        <span className="hidden md:inline">{uploading ? 'Uploading...' : 'Upload'}</span>
+                        {uploading && (
+                            <div
+                                className="absolute left-0 top-0 bottom-0 bg-obsidian-accent/20 transition-all duration-300"
+                                style={{ width: `${uploadProgress}%` }}
+                            />
+                        )}
+                        <Upload size={16} className="md:mr-2 z-10" />
+                        <span className="hidden md:inline z-10">{uploading ? `Uploading ${uploadProgress}% (${uploadSpeed})...` : 'Upload'}</span>
                     </button>
                     <input
                         type="file"
@@ -577,6 +646,13 @@ const FileManager = () => {
                                                     </button>
                                                 )}
                                                 <button
+                                                    onClick={(e) => { e.stopPropagation(); openRenameModal(file.name); }}
+                                                    className="p-1.5 hover:bg-blue-500/20 hover:text-blue-400 rounded text-obsidian-muted transition-colors"
+                                                    title="Rename"
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button
                                                     onClick={(e) => { e.stopPropagation(); confirmDelete(file.name); }}
                                                     className="p-1.5 hover:bg-red-500/20 hover:text-red-400 rounded text-obsidian-muted transition-colors"
                                                     title="Delete"
@@ -650,6 +726,13 @@ const FileManager = () => {
                                                 <Archive size={14} />
                                             </button>
                                         )}
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); openRenameModal(file.name); }}
+                                            className="p-1.5 bg-black/40 hover:bg-blue-500 rounded-lg text-white transition-colors backdrop-blur-sm"
+                                            title="Rename"
+                                        >
+                                            <Edit2 size={14} />
+                                        </button>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); confirmDelete(file.name); }}
                                             className="p-1.5 bg-black/40 hover:bg-red-500 rounded-lg text-white transition-colors backdrop-blur-sm"
@@ -798,9 +881,30 @@ const FileManager = () => {
                         {Array.from(selectedFiles).slice(0, 5).map(name => (
                             <li key={name}>{name}</li>
                         ))}
-                        {selectedFiles.size > 5 && <li>...and {selectedFiles.size - 5} more</li>}
                     </ul>
+                    {selectedFiles.size > 5 && <p className="text-sm text-obsidian-muted mt-1">...and {selectedFiles.size - 5} more</p>}
                 </div>
+            </Modal>
+
+            <Modal
+                isOpen={isRenameOpen}
+                onClose={() => setIsRenameOpen(false)}
+                title="Rename Item"
+                footer={
+                    <>
+                        <button onClick={() => setIsRenameOpen(false)} className="px-4 py-2 text-obsidian-muted hover:text-white transition-colors">Cancel</button>
+                        <button onClick={handleRename} className="px-4 py-2 bg-obsidian-accent hover:bg-obsidian-accent-hover text-white rounded-lg">Rename</button>
+                    </>
+                }
+            >
+                <input
+                    type="text"
+                    value={renameName}
+                    onChange={(e) => setRenameName(e.target.value)}
+                    placeholder="Enter new name"
+                    className="w-full glass-input px-4 py-2"
+                    autoFocus
+                />
             </Modal>
         </div>
     );
