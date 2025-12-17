@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { serverApi } from '../api/server';
-import { Folder, FileText, ChevronRight, Home, Download, Trash2, FileCode, FileJson, FileImage, Upload, Save, X, Archive, CheckSquare, Check } from 'lucide-react';
+import { Folder, FileText, ChevronRight, Home, Download, Trash2, FileCode, FileJson, FileImage, Upload, Save, X, Archive, CheckSquare, Check, FolderPlus, RefreshCw, ArrowLeft, Loader2, FolderOpen } from 'lucide-react';
 import clsx from 'clsx';
 import Modal from '../components/Modal';
 import { useToast } from '../context/ToastContext';
@@ -10,6 +10,7 @@ const FileManager = () => {
     const [files, setFiles] = useState([]);
     const [currentPath, setCurrentPath] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
     const [isCreateFileOpen, setIsCreateFileOpen] = useState(false);
     const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -21,9 +22,16 @@ const FileManager = () => {
     const [isSaving, setIsSaving] = useState(false);
     const fileInputRef = useRef(null);
     const { showToast } = useToast();
+    const [selectedFiles, setSelectedFiles] = useState(new Set());
+    const [isSelectMode, setIsSelectMode] = useState(false);
+    const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+
     useEffect(() => {
         loadFiles();
+        setSelectedFiles(new Set());
     }, [currentPath]);
+
     const loadFiles = async () => {
         setLoading(true);
         try {
@@ -37,9 +45,20 @@ const FileManager = () => {
             setLoading(false);
         }
     };
+
+    const navigateTo = (path) => {
+        if (path === '/') {
+            setCurrentPath([]);
+        } else {
+            const parts = path.split('/').filter(Boolean);
+            setCurrentPath(parts);
+        }
+    };
+
     const handleNavigate = (folderName) => {
         setCurrentPath([...currentPath, folderName]);
     };
+
     const handleBreadcrumbClick = (index) => {
         if (index === -1) {
             setCurrentPath([]);
@@ -47,7 +66,7 @@ const FileManager = () => {
             setCurrentPath(currentPath.slice(0, index + 1));
         }
     };
-    const handleHome = () => setCurrentPath([]);
+
     const handleExtract = async (file) => {
         setLoading(true);
         try {
@@ -60,10 +79,10 @@ const FileManager = () => {
             setLoading(false);
         }
     };
+
     const getLanguage = (fileName) => {
         if (!fileName) return 'plaintext';
         const ext = fileName.split('.').pop().toLowerCase();
-        // Handle dotfiles like .env
         if (fileName.startsWith('.') && fileName.split('.').length === 2) return 'ini';
 
         switch (ext) {
@@ -94,6 +113,8 @@ const FileManager = () => {
         if (name.endsWith('.png') || name.endsWith('.jpg')) return <FileImage className="text-purple-400" size={24} />;
         return <FileText className="text-gray-400" size={24} />;
     };
+
+    // ... File Operations (Create, Delete, Upload etc) ...
     const handleCreateFolder = async () => {
         if (!newItemName) return;
         setLoading(true);
@@ -109,6 +130,7 @@ const FileManager = () => {
             setLoading(false);
         }
     };
+
     const handleCreateFile = async () => {
         if (!newItemName) return;
         setLoading(true);
@@ -124,13 +146,15 @@ const FileManager = () => {
             setLoading(false);
         }
     };
-    const handleDelete = async () => {
-        if (!itemToDelete) return;
+
+    const handleDelete = async (itemName) => { // Changed to take argument for direct call
+        const target = itemName || itemToDelete;
+        if (!target) return;
         setLoading(true);
         try {
-            await serverApi.deleteFile(currentPath, itemToDelete);
+            await serverApi.deleteFile(currentPath, target);
             await loadFiles();
-            showToast(`${itemToDelete} deleted`, 'success');
+            showToast(`${target} deleted`, 'success');
             setIsDeleteOpen(false);
             setItemToDelete(null);
         } catch (err) {
@@ -139,17 +163,16 @@ const FileManager = () => {
             setLoading(false);
         }
     };
+
     const confirmDelete = (name) => {
         setItemToDelete(name);
         setIsDeleteOpen(true);
     };
-    const triggerUpload = () => {
-        fileInputRef.current?.click();
-    };
+
     const handleUpload = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setLoading(true);
+        setUploading(true);
         try {
             await serverApi.uploadFile(currentPath, file);
             showToast('File uploaded successfully', 'success');
@@ -158,16 +181,17 @@ const FileManager = () => {
             console.error(err);
             showToast('Upload failed: ' + err.message, 'error');
         } finally {
-            setLoading(false);
+            setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
+
     const handleFileClick = async (file) => {
         if (file.type === 'folder') {
             handleNavigate(file.name);
             return;
         }
-        const isEditable = /\.(txt|log|properties|json|yml|yaml|md|js|xml)$/i.test(file.name);
+        const isEditable = /\.(txt|log|properties|json|yml|yaml|md|js|xml|sh|env|conf)$/i.test(file.name);
         if (!isEditable) {
             showToast('This file type is not editable', 'error');
             return;
@@ -185,6 +209,7 @@ const FileManager = () => {
             setLoading(false);
         }
     };
+
     const handleSaveFile = async () => {
         if (!editorFile) return;
         setIsSaving(true);
@@ -200,17 +225,14 @@ const FileManager = () => {
             setIsSaving(false);
         }
     };
-    const [selectedFiles, setSelectedFiles] = useState(new Set());
-    const [isSelectMode, setIsSelectMode] = useState(false);
-    useEffect(() => {
-        setSelectedFiles(new Set());
-    }, [currentPath]);
+
     const toggleSelectMode = () => {
         setIsSelectMode(prev => {
             if (prev) setSelectedFiles(new Set());
             return !prev;
         });
     };
+
     const handleSelect = (file, e) => {
         e.stopPropagation();
         const newSet = new Set(selectedFiles);
@@ -221,11 +243,28 @@ const FileManager = () => {
         }
         setSelectedFiles(newSet);
     };
-    const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+
+    const handleCompress = async () => {
+        if (selectedFiles.size === 0) return;
+        setLoading(true);
+        try {
+            await serverApi.compressFiles(currentPath, Array.from(selectedFiles));
+            showToast('Files compressed successfully', 'success');
+            setSelectedFiles(new Set());
+            setIsSelectMode(false);
+            await loadFiles();
+        } catch (err) {
+            showToast('Compression failed: ' + err.message, 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleBulkDelete = () => {
         if (selectedFiles.size === 0) return;
         setIsBulkDeleteOpen(true);
     };
+
     const executeBulkDelete = async () => {
         setIsBulkDeleteOpen(false);
         setLoading(true);
@@ -246,6 +285,7 @@ const FileManager = () => {
         await loadFiles();
         setLoading(false);
     };
+
     const handleDownload = async (file) => {
         setLoading(true);
         try {
@@ -265,21 +305,31 @@ const FileManager = () => {
             setLoading(false);
         }
     };
-    const [isDragging, setIsDragging] = useState(false);
-    const handleDragOver = (e) => {
-        e.preventDefault();
-        setIsDragging(true);
+
+    const formatSize = (bytes) => {
+        if (bytes === undefined || bytes === null) return '-';
+        // If it's already a formatted string (from backend), return it
+        if (typeof bytes === 'string' && isNaN(Number(bytes))) return bytes;
+
+        const numBytes = Number(bytes);
+        if (isNaN(numBytes)) return '-';
+        if (numBytes === 0) return '0 B';
+
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(numBytes) / Math.log(k));
+        return parseFloat((numBytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
-    const handleDragLeave = (e) => {
-        e.preventDefault();
-        setIsDragging(false);
-    };
+
+    // Drag and Drop
+    const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
+    const handleDragLeave = (e) => { e.preventDefault(); setIsDragging(false); };
     const handleDrop = async (e) => {
         e.preventDefault();
         setIsDragging(false);
         const files = Array.from(e.dataTransfer.files);
         if (files.length === 0) return;
-        setLoading(true);
+        setUploading(true);
         let successCount = 0;
         let failCount = 0;
         for (const file of files) {
@@ -294,11 +344,20 @@ const FileManager = () => {
         if (successCount > 0) showToast(`Uploaded ${successCount} file${successCount > 1 ? 's' : ''}`, 'success');
         if (failCount > 0) showToast(`Failed to upload ${failCount} file${failCount > 1 ? 's' : ''}`, 'error');
         await loadFiles();
-        setLoading(false);
+        setUploading(false);
     };
+
+    const handleSelectAll = () => {
+        if (selectedFiles.size === files.length) {
+            setSelectedFiles(new Set());
+        } else {
+            const allFileNames = new Set(files.map(f => f.name));
+            setSelectedFiles(allFileNames);
+        }
+    };
+
     return (
-        <div
-            className="bg-obsidian-surface border border-obsidian-border rounded-xl overflow-hidden flex flex-col h-[calc(100vh-8rem)] relative"
+        <div className="glass-panel rounded-2xl p-0 overflow-hidden shadow-2xl animate-fade-in flex flex-col h-[calc(100vh-8rem)] relative"
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -311,169 +370,207 @@ const FileManager = () => {
                     </div>
                 </div>
             )}
-            { }
-            <div className="p-4 border-b border-obsidian-border flex items-center justify-between bg-obsidian-surface/50 backdrop-blur">
-                <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar">
+
+
+            {/* Toolbar */}
+
+            {/* Top Bar */}
+            <div className="p-4 border-b border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 bg-white/5 backdrop-blur-md z-10">
+                <div className="flex items-center space-x-3 overflow-hidden w-full md:w-auto">
                     <button
                         onClick={() => handleBreadcrumbClick(-1)}
-                        className="p-1.5 rounded-md hover:bg-white/5 text-obsidian-muted hover:text-white transition-colors"
+                        disabled={currentPath.length === 0}
+                        className="p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent text-white"
                     >
-                        <Home size={18} />
+                        <ArrowLeft size={20} />
                     </button>
-                    {currentPath.map((folder, index) => (
-                        <React.Fragment key={index}>
-                            <ChevronRight size={16} className="text-obsidian-border flex-shrink-0" />
-                            <button
-                                onClick={() => handleBreadcrumbClick(index)}
-                                className="px-2 py-1 rounded-md hover:bg-white/5 text-sm font-medium text-white transition-colors whitespace-nowrap"
-                            >
-                                {folder}
-                            </button>
-                        </React.Fragment>
-                    ))}
+                    <div className="flex items-center space-x-2 text-sm text-obsidian-muted overflow-x-auto custom-scrollbar whitespace-nowrap mask-linear-fade">
+                        <FolderOpen size={16} className="shrink-0" />
+                        <span className="font-mono text-white/70">root</span>
+                        {currentPath.map((part, i) => (
+                            <React.Fragment key={i}>
+                                <ChevronRight size={14} className="shrink-0 text-white/30" />
+                                <span
+                                    className={`cursor-pointer hover:text-white transition-colors ${i === currentPath.length - 1 ? 'text-white font-bold' : ''}`}
+                                    onClick={() => handleBreadcrumbClick(i)}
+                                >
+                                    {part}
+                                </span>
+                            </React.Fragment>
+                        ))}
+                    </div>
                 </div>
-                <div className="flex items-center space-x-2">
+
+                <div className="flex items-center space-x-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
                     {selectedFiles.size > 0 && (
+                        <>
+                            <button
+                                onClick={handleCompress}
+                                className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg flex items-center text-sm border border-blue-500/20 whitespace-nowrap"
+                            >
+                                <Archive size={16} className="md:mr-2" />
+                                <span className="hidden md:inline">Compress</span>
+                            </button>
+                            <button
+                                onClick={handleBulkDelete}
+                                className="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-1.5 rounded-lg flex items-center text-sm border border-red-500/20 whitespace-nowrap"
+                            >
+                                <Trash2 size={16} className="md:mr-2" />
+                                <span className="hidden md:inline">Delete ({selectedFiles.size})</span>
+                            </button>
+                        </>
+                    )}
+                    {isSelectMode && (
                         <button
-                            onClick={handleBulkDelete}
-                            className="flex items-center px-3 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-colors text-sm font-medium animate-in fade-in slide-in-from-top-2"
+                            onClick={handleSelectAll}
+                            className="px-3 py-1.5 rounded-lg text-sm border border-white/10 bg-white/5 hover:bg-white/10 text-white transition-colors flex items-center whitespace-nowrap"
                         >
-                            <Trash2 size={16} className="mr-2" /> Delete ({selectedFiles.size})
+                            <CheckSquare size={16} className="md:mr-2 opacity-70" />
+                            <span className="hidden md:inline">{selectedFiles.size === files.length ? 'Deselect All' : 'Select All'}</span>
                         </button>
                     )}
                     <button
                         onClick={toggleSelectMode}
                         className={clsx(
-                            "flex items-center px-3 py-1.5 border rounded-lg transition-colors text-sm font-medium",
-                            isSelectMode
-                                ? "bg-obsidian-accent text-white border-obsidian-accent"
-                                : "bg-obsidian-surface hover:bg-white/5 border-obsidian-border text-white"
+                            "px-3 py-1.5 rounded-lg text-sm border transition-colors flex items-center whitespace-nowrap",
+                            isSelectMode ? "bg-obsidian-accent text-white border-obsidian-accent" : "bg-white/5 hover:bg-white/10 text-white border-white/10"
                         )}
-                        title="Toggle Selection Mode"
                     >
-                        <CheckSquare size={16} className="mr-2" /> {isSelectMode ? 'Done' : 'Select'}
+                        {isSelectMode ? <Check size={16} className="md:mr-2" /> : <CheckSquare size={16} className="md:mr-2" />}
+                        <span className="hidden md:inline">{isSelectMode ? 'Done' : 'Select'}</span>
                     </button>
-                    {isSelectMode && (
-                        <button
-                            onClick={() => {
-                                if (selectedFiles.size === files.length) {
-                                    setSelectedFiles(new Set());
-                                } else {
-                                    setSelectedFiles(new Set(files.map(f => f.name)));
-                                }
-                            }}
-                            className="flex items-center px-3 py-1.5 bg-obsidian-surface hover:bg-white/5 border border-obsidian-border text-white rounded-lg transition-colors text-sm font-medium animate-in fade-in slide-in-from-left-2"
-                        >
-                            <CheckSquare size={16} className="mr-2" />
-                            {selectedFiles.size === files.length ? 'Deselect All' : 'Select All'}
-                        </button>
-                    )}
+                    <button
+                        onClick={() => document.getElementById('file-upload').click()}
+                        disabled={uploading}
+                        className="glass-button px-4 py-2 rounded-lg flex items-center text-sm whitespace-nowrap"
+                    >
+                        <Upload size={16} className="md:mr-2" />
+                        <span className="hidden md:inline">{uploading ? 'Uploading...' : 'Upload'}</span>
+                    </button>
                     <input
                         type="file"
-                        ref={fileInputRef}
+                        id="file-upload"
+                        multiple
                         className="hidden"
                         onChange={handleUpload}
+                        ref={fileInputRef}
                     />
+                    <div className="h-6 w-px bg-white/10 mx-2"></div>
                     <button
-                        onClick={triggerUpload}
-                        className="flex items-center px-3 py-1.5 bg-obsidian-surface hover:bg-white/5 border border-obsidian-border text-white rounded-lg transition-colors text-sm font-medium"
-                        title="Upload File"
+                        onClick={() => setIsCreateFolderOpen(true)}
+                        className="p-2 hover:bg-white/10 text-white rounded-lg transition-colors border border-transparent hover:border-white/10"
+                        title="New Folder"
                     >
-                        <Upload size={16} className="mr-2" /> Upload
+                        <FolderPlus size={18} />
                     </button>
                     <button
                         onClick={() => setIsCreateFileOpen(true)}
-                        className="flex items-center px-3 py-1.5 bg-obsidian-accent/10 text-obsidian-accent hover:bg-obsidian-accent/20 rounded-lg transition-colors text-sm font-medium"
+                        className="p-2 hover:bg-white/10 text-white rounded-lg transition-colors border border-transparent hover:border-white/10"
+                        title="New File"
                     >
-                        <FileText size={16} className="mr-2" /> New File
+                        <FileText size={18} />
                     </button>
                     <button
-                        onClick={() => setIsCreateFolderOpen(true)}
-                        className="flex items-center px-3 py-1.5 bg-obsidian-accent/10 text-obsidian-accent hover:bg-obsidian-accent/20 rounded-lg transition-colors text-sm font-medium"
+                        onClick={loadFiles}
+                        className="p-2 hover:bg-white/10 text-white rounded-lg transition-colors border border-transparent hover:border-white/10"
+                        title="Refresh"
                     >
-                        <Folder size={16} className="mr-2" /> New Folder
+                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                     </button>
                 </div>
             </div>
-            { }
-            <div className="flex-1 overflow-y-auto p-2">
-                {loading ? (
-                    <div className="flex items-center justify-center h-full text-obsidian-muted">Loading files...</div>
-                ) : (
-                    <>
-                        {files.length === 0 && currentPath.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full text-obsidian-muted">
-                                <Folder size={48} className="mb-2 opacity-20" />
-                                <p>This folder is empty</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                                {currentPath.length > 0 && (
-                                    <div
-                                        className="group flex items-center p-3 rounded-lg border border-transparent hover:bg-white/5 hover:border-obsidian-border cursor-pointer select-none transition-all hover:shadow-lg hover:shadow-black/20"
-                                        onClick={() => setCurrentPath(prev => prev.slice(0, -1))}
-                                    >
-                                        <div className="flex items-center flex-1 min-w-0">
-                                            <div className="mr-3 flex-shrink-0 transition-transform group-hover:scale-110">
-                                                <Folder className="text-obsidian-muted fill-obsidian-muted/20" size={24} />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-sm font-medium text-obsidian-muted group-hover:text-white">..</p>
-                                                <p className="text-xs text-obsidian-muted/50">Parent Directory</p>
-                                            </div>
+
+            {/* File List */}
+            <div className="flex-1 overflow-auto custom-scrollbar relative">
+                {loading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm z-20">
+                        <Loader2 className="w-8 h-8 text-obsidian-accent animate-spin" />
+                    </div>
+                )}
+
+                {/* Mobile View: List */}
+                <div className="block md:hidden">
+                    <table className="w-full text-left text-sm text-obsidian-muted relative z-0">
+                        <tbody className="divide-y divide-white/5">
+                            {!loading && files.length === 0 && currentPath.length === 0 && (
+                                <tr>
+                                    <td colSpan="4" className="px-6 py-12 text-center text-obsidian-muted">
+                                        <div className="flex flex-col items-center opacity-50">
+                                            <FolderOpen size={48} className="mb-4" />
+                                            <p>This folder is empty</p>
                                         </div>
-                                    </div>
-                                )}
-                                {files.map((file, index) => {
-                                    const isArchive = file.name.endsWith('.zip') || file.name.endsWith('.tar.gz');
-                                    const isSelected = selectedFiles.has(file.name);
-                                    return (
-                                        <div
-                                            key={index}
-                                            className={clsx(
-                                                "group flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer select-none",
-                                                isSelected
-                                                    ? "bg-obsidian-accent/10 border-obsidian-accent"
-                                                    : "border-transparent hover:bg-white/5 hover:border-obsidian-border",
-                                                file.type === 'folder' ? "hover:shadow-lg hover:shadow-black/20" : ""
-                                            )}
-                                            onClick={() => handleFileClick(file)}
-                                        >
-                                            <div className="flex items-center flex-1 min-w-0">
+                                    </td>
+                                </tr>
+                            )}
+                            {currentPath.length > 0 && (
+                                <tr
+                                    className="hover:bg-white/5 transition-colors group cursor-pointer"
+                                    onClick={() => handleBreadcrumbClick(-1)}
+                                >
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center text-white">
+                                            <div className="p-2 rounded-lg mr-3 bg-white/5 text-white/50">
+                                                <Folder size={18} fill="currentColor" className="opacity-80" />
+                                            </div>
+                                            <span className="font-medium">..</span>
+                                        </div>
+                                    </td>
+                                    <td colSpan="3"></td>
+                                </tr>
+                            )}
+                            {files.map((file) => {
+                                const isSelected = selectedFiles.has(file.name);
+                                return (
+                                    <tr key={file.name}
+                                        className={clsx("hover:bg-white/5 transition-colors group", isSelected && "bg-white/5")}
+                                        onClick={() => isSelectMode ? handleSelect(file, { stopPropagation: () => { } }) : null}
+                                    >
+                                        <td className="px-6 py-4">
+                                            <div
+                                                className="flex items-center cursor-pointer text-white"
+                                                onClick={(e) => {
+                                                    if (isSelectMode) {
+                                                        handleSelect(file, e);
+                                                    } else {
+                                                        file.type === 'folder' ? handleNavigate(file.name) : handleFileClick(file)
+                                                    }
+                                                }}
+                                            >
                                                 {isSelectMode && (
-                                                    <div className="mr-3 flex-shrink-0" onClick={(e) => handleSelect(file, e)}>
+                                                    <div className="mr-3 flex-shrink-0">
                                                         <div className={clsx(
-                                                            "w-5 h-5 rounded border flex items-center justify-center transition-all cursor-pointer",
-                                                            isSelected
-                                                                ? "bg-obsidian-accent border-obsidian-accent shadow-[0_0_10px_rgba(139,92,246,0.3)]"
-                                                                : "border-obsidian-muted hover:border-obsidian-accent bg-black/20"
+                                                            "w-5 h-5 rounded border flex items-center justify-center transition-all",
+                                                            isSelected ? "bg-obsidian-accent border-obsidian-accent" : "border-white/20 bg-black/20"
                                                         )}>
-                                                            {isSelected && <Check size={12} className="text-white stroke-[3]" />}
+                                                            {isSelected && <Check size={12} className="text-white" />}
                                                         </div>
                                                     </div>
                                                 )}
-                                                <div className="mr-3 flex-shrink-0 transition-transform group-hover:scale-110">
+                                                <div className={`p-2 rounded-lg mr-3 ${file.type === 'folder' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-blue-500/10 text-blue-400'}`}>
                                                     {getFileIcon(file.name, file.type)}
                                                 </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <p className={clsx("text-sm font-medium truncate group-hover:text-white", isSelected ? "text-white" : "text-gray-200")}>{file.name}</p>
-                                                    <p className="text-xs text-obsidian-muted">{file.size}</p>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium group-hover:text-obsidian-accent transition-colors">{file.name}</span>
+                                                    <span className="text-xs text-obsidian-muted opacity-70 font-mono">{formatSize(file.size)}</span>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-all space-x-1">
+                                        </td>
+
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 {file.type !== 'folder' && (
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleDownload(file); }}
-                                                        className="p-1.5 text-obsidian-muted hover:text-blue-400 hover:bg-blue-500/10 rounded-md"
+                                                        className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
                                                         title="Download"
                                                     >
                                                         <Download size={16} />
                                                     </button>
                                                 )}
-                                                {isArchive && (
+                                                {(file.name.endsWith('.zip') || file.name.endsWith('.tar.gz')) && (
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleExtract(file); }}
-                                                        className="p-1.5 text-obsidian-muted hover:text-orange-400 hover:bg-orange-500/10 rounded-md"
+                                                        className="p-1.5 hover:bg-orange-500/20 hover:text-orange-400 rounded text-obsidian-muted transition-colors"
                                                         title="Extract"
                                                     >
                                                         <Archive size={16} />
@@ -481,29 +578,110 @@ const FileManager = () => {
                                                 )}
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); confirmDelete(file.name); }}
-                                                    className="p-1.5 text-obsidian-muted hover:text-red-400 hover:bg-red-500/10 rounded-md"
+                                                    className="p-1.5 hover:bg-red-500/20 hover:text-red-400 rounded text-obsidian-muted transition-colors"
                                                     title="Delete"
                                                 >
                                                     <Trash2 size={16} />
                                                 </button>
                                             </div>
+                                        </td>
+                                    </tr>
+                                )
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Desktop View: Grid */}
+                <div className="hidden md:grid grid-cols-4 lg:grid-cols-6 gap-4 p-4">
+                    {currentPath.length > 0 && (
+                        <div
+                            className="flex flex-col items-center p-4 rounded-xl hover:bg-white/5 transition-all text-white/50 hover:text-white cursor-pointer group"
+                            onClick={() => handleBreadcrumbClick(-1)}
+                        >
+                            <Folder size={48} className="mb-3 opacity-50 group-hover:opacity-100 transition-opacity" />
+                            <span className="text-sm font-medium">..</span>
+                        </div>
+                    )}
+                    {files.map((file) => {
+                        const isSelected = selectedFiles.has(file.name);
+                        return (
+                            <div
+                                key={file.name}
+                                className={clsx(
+                                    "flex flex-col items-center text-center p-4 rounded-xl transition-all cursor-pointer group relative",
+                                    isSelected ? "bg-obsidian-accent/20 border border-obsidian-accent/50" : "hover:bg-white/5 border border-transparent"
+                                )}
+                                onClick={(e) => {
+                                    if (isSelectMode) {
+                                        handleSelect(file, e);
+                                    } else {
+                                        file.type === 'folder' ? handleNavigate(file.name) : handleFileClick(file)
+                                    }
+                                }}
+                            >
+                                {isSelectMode && (
+                                    <div className="absolute top-2 right-2 z-10">
+                                        <div className={clsx(
+                                            "w-5 h-5 rounded-full border flex items-center justify-center transition-all bg-black/40",
+                                            isSelected ? "bg-obsidian-accent border-obsidian-accent" : "border-white/20"
+                                        )}>
+                                            {isSelected && <Check size={12} className="text-white" />}
                                         </div>
-                                    );
-                                })}
+                                    </div>
+                                )}
+                                {!isSelectMode && (
+                                    <div className="absolute top-2 left-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                        {file.type !== 'folder' && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDownload(file); }}
+                                                className="p-1.5 bg-black/40 hover:bg-obsidian-accent rounded-lg text-white transition-colors backdrop-blur-sm"
+                                                title="Download"
+                                            >
+                                                <Download size={14} />
+                                            </button>
+                                        )}
+                                        {(file.name.endsWith('.zip') || file.name.endsWith('.tar.gz')) && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleExtract(file); }}
+                                                className="p-1.5 bg-black/40 hover:bg-orange-500 rounded-lg text-white transition-colors backdrop-blur-sm"
+                                                title="Extract"
+                                            >
+                                                <Archive size={14} />
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); confirmDelete(file.name); }}
+                                            className="p-1.5 bg-black/40 hover:bg-red-500 rounded-lg text-white transition-colors backdrop-blur-sm"
+                                            title="Delete"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                )}
+                                <div className={clsx(
+                                    "p-3 rounded-2xl mb-3 shadow-lg transition-transform group-hover:scale-105",
+                                    file.type === 'folder' ? "bg-gradient-to-br from-yellow-500/20 to-yellow-600/5 text-yellow-400" : "bg-gradient-to-br from-blue-500/20 to-blue-600/5 text-blue-400"
+                                )}>
+                                    {/* Improve icon scaling here if needed, defaulting to inheriting size or explicit */}
+                                    {React.cloneElement(getFileIcon(file.name, file.type), { size: 48 })}
+                                </div>
+                                <span className="text-sm font-medium text-white truncate w-full px-2 group-hover:text-obsidian-accent transition-colors">
+                                    {file.name}
+                                </span>
+                                <span className="text-xs text-obsidian-muted mt-1 opacity-70">
+                                    {formatSize(file.size)}
+                                </span>
                             </div>
-                        )}
-                        {files.length === 0 && currentPath.length > 0 && (
-                            <div className="flex flex-col items-center justify-center py-12 text-obsidian-muted opacity-50">
-                                <p>This folder is empty</p>
-                            </div>
-                        )}
-                    </>
-                )}
+                        )
+                    })}
+                </div>
             </div>
-            { }
+
+            {/* Editor Modal */}
             {isEditorOpen && (
                 <div className="fixed inset-0 z-50 bg-obsidian-bg/95 flex flex-col animate-in fade-in duration-200">
-                    <div className="h-14 border-b border-obsidian-border flex items-center justify-between px-6 bg-obsidian-surface">
+                    <div className="h-14 border-b border-white/10 flex items-center justify-between px-6 bg-obsidian-surface">
                         <div className="flex items-center">
                             <FileCode className="text-obsidian-accent mr-3" size={20} />
                             <span className="font-bold text-white">{editorFile?.name}</span>
@@ -518,7 +696,7 @@ const FileManager = () => {
                             <button
                                 onClick={handleSaveFile}
                                 disabled={isSaving}
-                                className="px-4 py-1.5 bg-obsidian-accent hover:bg-obsidian-accent-hover text-white rounded-lg flex items-center disabled:opacity-50"
+                                className="glass-button px-4 py-1.5 rounded-lg flex items-center disabled:opacity-50"
                             >
                                 <Save size={16} className="mr-2" />
                                 {isSaving ? 'Saving...' : 'Save Changes'}
@@ -541,12 +719,12 @@ const FileManager = () => {
                                 insertSpaces: true,
                                 tabSize: 2
                             }}
-                            loading={<div className="text-obsidian-muted p-4">Loading editor...</div>}
+                            loading={<div className="text-white p-4">Loading editor...</div>}
                         />
                     </div>
                 </div>
             )}
-            { }
+
             <Modal
                 isOpen={isCreateFileOpen}
                 onClose={() => setIsCreateFileOpen(false)}
@@ -563,10 +741,11 @@ const FileManager = () => {
                     value={newItemName}
                     onChange={(e) => setNewItemName(e.target.value)}
                     placeholder="Enter file name (e.g. config.yml)"
-                    className="w-full bg-obsidian-bg border border-obsidian-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-obsidian-accent"
+                    className="w-full glass-input px-4 py-2"
                     autoFocus
                 />
             </Modal>
+
             <Modal
                 isOpen={isCreateFolderOpen}
                 onClose={() => setIsCreateFolderOpen(false)}
@@ -583,10 +762,11 @@ const FileManager = () => {
                     value={newItemName}
                     onChange={(e) => setNewItemName(e.target.value)}
                     placeholder="Enter folder name"
-                    className="w-full bg-obsidian-bg border border-obsidian-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-obsidian-accent"
+                    className="w-full glass-input px-4 py-2"
                     autoFocus
                 />
             </Modal>
+
             <Modal
                 isOpen={isDeleteOpen}
                 onClose={() => setIsDeleteOpen(false)}
@@ -594,13 +774,13 @@ const FileManager = () => {
                 footer={
                     <>
                         <button onClick={() => setIsDeleteOpen(false)} className="px-4 py-2 text-obsidian-muted hover:text-white transition-colors">Cancel</button>
-                        <button onClick={handleDelete} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">Delete</button>
+                        <button onClick={() => handleDelete()} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">Delete</button>
                     </>
                 }
             >
                 <p>Are you sure you want to delete <span className="font-bold text-white">{itemToDelete}</span>? This action cannot be undone.</p>
             </Modal>
-            { }
+
             <Modal
                 isOpen={isBulkDeleteOpen}
                 onClose={() => setIsBulkDeleteOpen(false)}
@@ -620,10 +800,10 @@ const FileManager = () => {
                         ))}
                         {selectedFiles.size > 5 && <li>...and {selectedFiles.size - 5} more</li>}
                     </ul>
-                    <p className="mt-2 text-red-400 text-sm">This action cannot be undone.</p>
                 </div>
             </Modal>
         </div>
     );
 };
+
 export default FileManager;

@@ -69,16 +69,12 @@ while true; do
 done
 
 # JWT Secret
-read -p "Enter JWT Secret (Leave empty to auto-generate): " JWT_SECRET
-if [ -z "$JWT_SECRET" ]; then
-    JWT_SECRET=$(openssl rand -hex 32)
-    echo -e "${GREEN}Generated JWT Secret: $JWT_SECRET${NC}"
-fi
+# JWT Secret
+echo -e "${BLUE}Generating JWT Secret...${NC}"
+JWT_SECRET=$(openssl rand -hex 32)
 
-# GoFile Token
-read -p "Enter GoFile API Token (Optional, for backups): " GOFILE_API_TOKEN
-if [ -z "$GOFILE_API_TOKEN" ]; then
-    GOFILE_API_TOKEN=""
+
+    echo -e "${GREEN}Generated JWT Secret: $JWT_SECRET${NC}"
 fi
 
 # Create .env file
@@ -94,7 +90,6 @@ TEMP_BACKUP_PATH=/tmp
 NODE_ENV=production
 
 # Optional
-GOFILE_API_TOKEN=$GOFILE_API_TOKEN
 EOF
 echo -e "${GREEN}✓ .env file created.${NC}"
 

@@ -17,7 +17,7 @@ router.post('/action', auth, (req, res) => {
                 break;
             case 'restart':
                 minecraftService.stop();
-                setTimeout(() => minecraftService.start(), 5000);  
+                setTimeout(() => minecraftService.start(), 5000);
                 break;
             default:
                 return res.status(400).json({ message: 'Invalid action' });
@@ -40,7 +40,7 @@ router.post('/install', auth, async (req, res) => {
     console.log("Install request received. Body:", req.body);
     console.log("Installing version:", version);
     try {
-        await minecraftService.install(version);  
+        await minecraftService.install(version);
         res.json({ message: 'Installation started' });
     } catch (err) {
         console.error("Install failed:", err);
@@ -152,7 +152,7 @@ router.post('/files/download', auth, (req, res) => {
 });
 router.post('/files/upload', auth, upload.single('file'), (req, res) => {
     try {
-        const { path: relPath } = req.body;  
+        const { path: relPath } = req.body;
         const targetDir = getSafePath(relPath);
         const tempPath = req.file.path;
         const targetPath = path.join(targetDir, req.file.originalname);
@@ -207,6 +207,36 @@ router.post('/files/extract', auth, (req, res) => {
                 return res.status(500).json({ message: 'Extraction failed. Ensure unzip/tar is installed.' });
             }
             res.json({ success: true });
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+router.post('/files/compress', auth, (req, res) => {
+    try {
+        const { files, currentPath } = req.body; // files is array of filenames, currentPath is relative path
+        if (!files || !Array.isArray(files) || files.length === 0) {
+            return res.status(400).json({ message: 'No files selected' });
+        }
+
+        const safeCurrentDir = getSafePath(currentPath);
+        const archiveName = `archive_${Date.now()}.zip`;
+        const targetArchive = path.join(safeCurrentDir, archiveName);
+
+        // Escape filenames for shell command
+        const fileArgs = files.map(f => `"${f}"`).join(' ');
+
+        const { exec } = require('child_process');
+        // cd to directory first so zip doesn't include full absolute paths
+        const cmd = `cd "${safeCurrentDir}" && zip -r "${archiveName}" ${fileArgs}`;
+
+        exec(cmd, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Zip error: ${error}`);
+                return res.status(500).json({ message: 'Compression failed. Ensure zip is installed.' });
+            }
+            res.json({ success: true, archiveName });
         });
     } catch (err) {
         res.status(500).json({ message: err.message });

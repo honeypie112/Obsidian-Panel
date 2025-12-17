@@ -1,68 +1,183 @@
 @import "tailwindcss";
 
 @theme {
-  --color-obsidian-bg: #0f0f0f;
-  --color-obsidian-surface: #1a1a1a;
-  --color-obsidian-accent: #7c3aed;
-  --color-obsidian-accent-hover: #6d28d9;
-  --color-obsidian-text: #e4e4e7;
-  --color-obsidian-muted: #a1a1aa;
-  --color-obsidian-border: #27272a;
+  --color-obsidian-bg: #050505;
+  --color-obsidian-surface: #0a0a0a;
+  --color-obsidian-surface-glass: rgba(15, 15, 15, 0.6);
+  --color-obsidian-overlay: rgba(0, 0, 0, 0.4);
 
-  --font-sans: 'Inter', sans-serif;
-  --font-mono: 'Fira Code', monospace;
+  --color-obsidian-accent: #8b5cf6;
+  /* Violet-500 optimized */
+  --color-obsidian-accent-hover: #7c3aed;
+  /* Violet-600 */
+  --color-obsidian-accent-glass: rgba(139, 92, 246, 0.15);
+
+  --color-obsidian-text: #f4f4f5;
+  --color-obsidian-muted: #a1a1aa;
+  --color-obsidian-border: rgba(255, 255, 255, 0.08);
+  --color-obsidian-border-hover: rgba(255, 255, 255, 0.15);
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  --animate-fade-in: fade-in 0.4s ease-out forwards;
+  --animate-slide-up: slide-up 0.5s ease-out forwards;
+  --animate-pulse-slow: pulse-glow 3s infinite;
+  --animate-float: float 6s ease-in-out infinite;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulse-glow {
+
+    0%,
+    100% {
+      opacity: 1;
+      box-shadow: 0 0 0 rgba(139, 92, 246, 0);
+    }
+
+    50% {
+      opacity: 0.9;
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+    }
+  }
+
+  @keyframes float {
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-10px);
+    }
+  }
 }
 
 @layer base {
   body {
-    @apply text-obsidian-text antialiased;
-    background-image: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.85)), url('/obsidian-background.jpg');
+    @apply text-obsidian-text antialiased bg-obsidian-bg selection:bg-obsidian-accent selection:text-white;
+    background-image:
+      radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.08), transparent 25%),
+      radial-gradient(circle at 85% 30%, rgba(56, 189, 248, 0.05), transparent 25%),
+      url('/obsidian-background.jpg');
+    /* Graceful fallback if image exists, else gradients take over styled darkness */
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
-    background-repeat: no-repeat;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Modern Input Reset */
+  input,
+  textarea,
+  select {
+    @apply outline-none ring-0;
+  }
+}
+
+@layer components {
+
+  /* Glassmorphism Utilities */
+  .glass-panel {
+    @apply bg-obsidian-surface-glass backdrop-blur-xl border border-obsidian-border shadow-xl;
+  }
+
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-md border border-white/5 shadow-lg transition-all duration-300;
+  }
+
+  .glass-card:hover {
+    @apply bg-white/10 border-white/10 transform -translate-y-1 shadow-2xl shadow-obsidian-accent/10;
+  }
+
+  .glass-button {
+    @apply relative overflow-hidden bg-obsidian-accent text-white font-medium transition-all duration-200 shadow-lg shadow-obsidian-accent/20 hover:shadow-obsidian-accent/40 hover:bg-obsidian-accent-hover active:scale-95;
+  }
+
+  .glass-button-secondary {
+    @apply bg-white/5 border border-white/10 text-obsidian-text transition-all duration-200 hover:bg-white/10 hover:border-white/20 hover:text-white hover:shadow-lg;
+  }
+
+  .glass-input {
+    @apply bg-white/5 border border-white/10 text-white placeholder-white/30 focus:border-obsidian-accent focus:bg-white/10 focus:ring-1 focus:ring-obsidian-accent hover:bg-white/10 hover:border-white/20 transition-all duration-200 rounded-lg backdrop-blur-sm;
+  }
+
+  /* Select specific fix if needed */
+  select.glass-input option {
+    @apply bg-obsidian-surface text-white;
   }
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-obsidian-bg;
+  @apply bg-transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-obsidian-surface rounded-full border border-obsidian-bg;
+  @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-obsidian-border;
-}
-
-/* Custom Range Slider */
+/* Beautiful Range Slider */
 input[type="range"] {
-  @apply appearance-none bg-transparent cursor-pointer;
-}
-
-input[type="range"]::-webkit-slider-runnable-track {
-  @apply h-2 bg-obsidian-surface rounded-full border border-obsidian-border;
+  @apply w-full h-2 bg-black/40 rounded-full appearance-none cursor-pointer border border-white/5;
 }
 
 input[type="range"]::-webkit-slider-thumb {
-  @apply appearance-none h-4 w-4 rounded-full bg-obsidian-accent -mt-1.5 transition-transform duration-200 border-2 border-white;
+  @apply appearance-none w-5 h-5 rounded-full bg-white border-2 border-obsidian-accent cursor-pointer transition-all duration-200 transform hover:scale-110 active:scale-95 relative z-10;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  margin-top: -6px;
+  /* Center thumb */
 }
 
-input[type="range"]:focus::-webkit-slider-thumb {
-  @apply scale-110 ring-2 ring-obsidian-accent/50;
+input[type="range"]::-webkit-slider-runnable-track {
+  @apply w-full h-2 bg-gradient-to-r from-obsidian-accent/50 to-white/10 rounded-full;
 }
 
-input[type="range"]::-moz-range-track {
-  @apply h-2 bg-obsidian-surface rounded-full border border-obsidian-border;
+/* Custom Toggle Switch for Checkboxes */
+.toggle-checkbox {
+  @apply appearance-none w-12 h-6 rounded-full bg-black/40 border border-white/10 relative cursor-pointer transition-all duration-300 ease-in-out;
 }
 
-input[type="range"]::-moz-range-thumb {
-  @apply h-4 w-4 rounded-full bg-obsidian-accent border-2 border-white transition-transform duration-200;
+.toggle-checkbox::after {
+  content: '';
+  @apply absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white/50 shadow-sm transition-all duration-300 ease-in-out;
+}
+
+.toggle-checkbox:checked {
+  @apply bg-obsidian-accent/20 border-obsidian-accent/50;
+}
+
+.toggle-checkbox:checked::after {
+  @apply translate-x-6 bg-obsidian-accent;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+}
+
+.toggle-checkbox:hover {
+  @apply border-white/20;
 }

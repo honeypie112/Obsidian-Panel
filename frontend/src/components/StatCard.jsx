@@ -1,21 +1,23 @@
 import React from 'react';
 import clsx from 'clsx';
-const StatCard = ({ title, value, subtext, icon: Icon, color = 'blue' }) => {
-    const colorStyles = {
-        blue: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-        purple: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
-        green: 'text-green-400 bg-green-500/10 border-green-500/20',
-        orange: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
-    };
+const StatCard = ({ title, value, subtext, icon: Icon, color }) => {
     return (
-        <div className="bg-obsidian-surface border border-obsidian-border rounded-xl p-6 flex items-start justify-between hover:border-obsidian-accent/30 transition-colors">
-            <div>
-                <p className="text-obsidian-muted text-xs font-medium uppercase tracking-wider mb-1">{title}</p>
-                <h3 className="text-2xl font-bold text-white">{value}</h3>
-                {subtext && <p className="text-xs text-obsidian-muted mt-1">{subtext}</p>}
+        <div className="glass-card rounded-xl p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
+            <div className={`absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity ${color}`}>
+                <Icon size={64} />
             </div>
-            <div className={clsx("p-3 rounded-lg border", colorStyles[color])}>
-                <Icon size={24} />
+
+            <div className="flex items-start justify-between relative z-10">
+                <div>
+                    <p className="text-obsidian-muted text-sm font-medium uppercase tracking-wider">{title}</p>
+                    <h3 className="text-2xl font-bold text-white mt-1 group-hover:bg-clip-text group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-300 transition-all">
+                        {value}
+                    </h3>
+                    {subtext && <p className="text-xs text-obsidian-muted mt-1 opacity-70">{subtext}</p>}
+                </div>
+                <div className={`p-3 rounded-lg bg-white/5 border border-white/10 ${color.replace('text-', 'text-')} shadow-lg backdrop-blur-md`}>
+                    <Icon size={24} className={color} />
+                </div>
             </div>
         </div>
     );

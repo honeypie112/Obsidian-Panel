@@ -37,7 +37,7 @@ const BackupService = {
             throw new Error('Backup already in progress');
         }
 
-        let token = process.env.GOFILE_API_TOKEN || process.env.YOUR_API_TOKEN;
+        let token = minecraftService.config.gofileToken || process.env.GOFILE_API_TOKEN || process.env.YOUR_API_TOKEN;
 
         // Auto-generate guest token if no token provided
         if (!token) {
@@ -63,7 +63,12 @@ const BackupService = {
         }
         const tempZipPath = path.resolve(tempDir, backupName);
         try {
-            const encryptionPassword = crypto.randomBytes(6).toString('hex');
+            // Generate a strong password: 32 chars, mixed case, numbers, special chars
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+            const encryptionPassword = Array.from(crypto.randomBytes(32))
+                .map(byte => chars[byte % chars.length])
+                .join('');
+
             console.log(`[BackupService] Starting backup: ${backupName}`);
             const zipCmd = `zip -r -q -P "${encryptionPassword}" "${tempZipPath}" .`;
             await new Promise((resolve, reject) => {

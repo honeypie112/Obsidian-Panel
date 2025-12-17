@@ -21,7 +21,8 @@ class MinecraftService extends EventEmitter {
             ram: '4GB',
             port: 25565,
             version: '1.20.4',
-            type: 'vanilla'
+            type: 'vanilla',
+            gofileToken: ''
         };
         this.isOperationLocked = false;
         if (!fs.existsSync(this.serverDir)) {
@@ -40,7 +41,8 @@ class MinecraftService extends EventEmitter {
                 ram: configDoc.ram,
                 version: configDoc.version,
                 type: configDoc.type || 'vanilla',
-                port: configDoc.port
+                port: configDoc.port,
+                gofileToken: configDoc.gofileToken || ''
             };
             console.log("Loaded ServerConfig from MongoDB:", this.config);
         } catch (err) {

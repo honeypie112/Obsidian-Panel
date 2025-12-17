@@ -107,6 +107,15 @@ export const serverApi = {
         if (!res.ok) throw new Error('Failed to extract file');
         return res.json();
     },
+    compressFiles: async (path, files) => {
+        const res = await fetch(`${BASE_URL}/control/files/compress`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ currentPath: path.join('/'), files })
+        });
+        if (!res.ok) throw new Error('Failed to compress files');
+        return res.json();
+    },
     uploadFile: async (path, file) => {
         const formData = new FormData();
         formData.append('file', file);

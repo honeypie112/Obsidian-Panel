@@ -50,97 +50,132 @@ const Overview = () => {
     const ramPercent = stats.ram.total > 0 ? (stats.ram.used / stats.ram.total) * 100 : 0;
     const storagePercent = stats.storage.total > 0 ? (stats.storage.used / stats.storage.total) * 100 : 0;
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center">
+
+        <div className="space-y-8 animate-fade-in pb-10">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Server Overview</h1>
+                    <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">Server Overview</h1>
                     <p className="text-obsidian-muted">Manage and monitor your Minecraft server instance.</p>
                 </div>
-                <div className="flex items-center space-x-2">
-                    <span className={`inline-flex h-3 w-3 rounded-full ${server.status === 'online' ? 'bg-green-500' :
-                        server.status === 'starting' ? 'bg-yellow-500' : 'bg-red-500'
-                        }`}></span>
-                    <span className="text-white font-medium capitalize">{server.status}</span>
+                <div className="flex items-center space-x-3 bg-white/5 border border-white/10 px-4 py-2 rounded-full backdrop-blur-md">
+                    <span className={`relative flex h-3 w-3`}>
+                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${server.status === 'online' ? 'bg-green-500' :
+                            server.status === 'starting' ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}></span>
+                        <span className={`relative inline-flex rounded-full h-3 w-3 ${server.status === 'online' ? 'bg-green-500' :
+                            server.status === 'starting' ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}></span>
+                    </span>
+                    <span className="text-white font-medium capitalize tracking-wide">{server.status}</span>
                 </div>
             </div>
-            { }
+
             {server.isInstalled === false && server.status === 'offline' && (
-                <div className="bg-obsidian-surface border border-obsidian-border rounded-xl p-6 flex justify-between items-center">
-                    <div>
-                        <h3 className="text-white font-bold text-lg mb-1">Server Not Installed</h3>
-                        <p className="text-obsidian-muted text-sm">Server JAR not found. Please install to start.</p>
+                <div className="glass-panel rounded-2xl p-8 flex flex-col md:flex-row justify-between items-center gap-6 border-l-4 border-l-red-500">
+                    <div className="flex items-center gap-4">
+                        <div className="p-4 bg-red-500/10 rounded-xl text-red-500">
+                            <Server size={32} />
+                        </div>
+                        <div>
+                            <h3 className="text-white font-bold text-xl mb-1">Server Not Installed</h3>
+                            <p className="text-obsidian-muted">Server file (server.jar) is missing. Install a version to get started.</p>
+                        </div>
                     </div>
                     <button
                         onClick={handleReinstall}
-                        className="bg-obsidian-surface hover:bg-white/5 border border-obsidian-border text-white px-4 py-2 rounded-lg transition-colors flex items-center"
+                        className="glass-button px-6 py-3 rounded-xl flex items-center hover:scale-105 transition-transform"
                     >
-                        <RefreshCw size={16} className="mr-2" />
+                        <RefreshCw size={20} className="mr-2" />
                         Install Server
                     </button>
                 </div>
             )}
+
             {isInstalling && (
-                <div className="bg-obsidian-surface border border-obsidian-border rounded-xl p-6 text-center">
-                    <Loader2 size={32} className="text-obsidian-accent animate-spin mx-auto mb-3" />
-                    <h3 className="text-white font-bold text-lg">Installing Server...</h3>
-                    <p className="text-obsidian-muted">Please wait while the server files are downloaded.</p>
+                <div className="glass-panel rounded-2xl p-12 text-center relative overflow-hidden">
+                    <div className="absolute inset-0 bg-obsidian-accent/5 animate-pulse-slow"></div>
+                    <Loader2 size={48} className="text-obsidian-accent animate-spin mx-auto mb-6 relative z-10" />
+                    <h3 className="text-white font-bold text-2xl mb-2 relative z-10">Installing Server...</h3>
+                    <p className="text-obsidian-muted relative z-10">Please wait while the server files are downloaded and configured.</p>
                 </div>
             )}
-            { }
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard
-                    title="Status"
-                    value={server.status}
-                    subtext={isOnline ? "Running" : "Stopped"}
-                    icon={Activity}
-                    color="text-blue-400"
-                />
-                <StatCard
-                    title="CPU Usage"
-                    value={`${stats.cpu}%`}
-                    subtext={`${stats.cores} Cores`}
-                    icon={Cpu}
-                    color="text-obsidian-accent"
-                />
-                <StatCard
-                    title="RAM Usage"
-                    value={formatBytes(stats.ram.used)}
-                    subtext={`of ${formatBytes(stats.ram.total)} (${Math.round(ramPercent)}%)`}
-                    icon={MemoryStick}
-                    color="text-purple-400"
-                />
-                <StatCard
-                    title="Storage"
-                    value={formatBytes(stats.storage.used)}
-                    subtext={`of ${formatBytes(stats.storage.total)} Used`}
-                    icon={HardDrive}
-                    color="text-green-400"
-                />
+                <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
+                    <StatCard
+                        title="Status"
+                        value={server.status}
+                        subtext={isOnline ? "Server is active" : "Server is offline"}
+                        icon={Activity}
+                        color="text-blue-400"
+                    />
+                </div>
+                <div className="animate-slide-up" style={{ animationDelay: '100ms' }}>
+                    <StatCard
+                        title="CPU Usage"
+                        value={`${stats.cpu}%`}
+                        subtext={`${stats.cores} Cores Active`}
+                        icon={Cpu}
+                        color="text-obsidian-accent"
+                    />
+                </div>
+                <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
+                    <StatCard
+                        title="RAM Usage"
+                        value={formatBytes(stats.ram.used)}
+                        subtext={`of ${formatBytes(stats.ram.total)} (${Math.round(ramPercent)}%)`}
+                        icon={MemoryStick}
+                        color="text-purple-400"
+                    />
+                </div>
+                <div className="animate-slide-up" style={{ animationDelay: '300ms' }}>
+                    <StatCard
+                        title="Storage"
+                        value={formatBytes(stats.storage.used)}
+                        subtext={`of ${formatBytes(stats.storage.total)} Used`}
+                        icon={HardDrive}
+                        color="text-green-400"
+                    />
+                </div>
             </div>
-            { }
-            <div className="bg-obsidian-surface border border-obsidian-border rounded-xl p-6">
-                <h3 className="text-white font-bold mb-4">Power Controls</h3>
-                <div className="flex space-x-4">
+
+            <div className="glass-panel rounded-2xl p-8">
+                <h3 className="text-white font-bold mb-6 flex items-center">
+                    <Play size={20} className="mr-2 text-obsidian-accent" />
+                    Power Controls
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <button
                         onClick={handleStart}
                         disabled={isOnline || isInstalling || server.status === 'stopping'}
-                        className="flex-1 bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 py-3 rounded-lg font-medium transition-colors flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="group relative overflow-hidden bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 py-4 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(34,197,94,0.2)] active:scale-95"
                     >
-                        <Play size={18} className="mr-2" /> Start
+                        <span className="flex items-center justify-center relative z-10">
+                            <Play size={20} className="mr-2 fill-current" /> Start Server
+                        </span>
+                        <div className="absolute inset-0 bg-green-500/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                     </button>
+
                     <button
                         onClick={() => performAction('restart')}
                         disabled={!isOnline || isInstalling}
-                        className="flex-1 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 border border-yellow-500/20 py-3 rounded-lg font-medium transition-colors flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="group relative overflow-hidden bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 border border-yellow-500/20 py-4 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(234,179,8,0.2)] active:scale-95"
                     >
-                        <RefreshCw size={18} className="mr-2" /> Restart
+                        <span className="flex items-center justify-center relative z-10">
+                            <RefreshCw size={20} className="mr-2" /> Restart
+                        </span>
+                        <div className="absolute inset-0 bg-yellow-500/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                     </button>
+
                     <button
                         onClick={() => performAction('stop')}
                         disabled={!isOnline || isInstalling}
-                        className="flex-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 py-3 rounded-lg font-medium transition-colors flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="group relative overflow-hidden bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 py-4 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] active:scale-95"
                     >
-                        <Square size={18} className="mr-2 fill-current" /> Stop
+                        <span className="flex items-center justify-center relative z-10">
+                            <Square size={20} className="mr-2 fill-current" /> Stop Server
+                        </span>
+                        <div className="absolute inset-0 bg-red-500/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                     </button>
                 </div>
             </div>

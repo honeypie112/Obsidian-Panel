@@ -26,11 +26,14 @@ const Console = () => {
         socket.emit('request_log_history');
         socket.on('log_history', (history) => {
             const limitedHistory = (history || []).slice(-300);
-            setLogs(limitedHistory);
-            setLogs(prev => [...prev, '[System] Connection established.']);
+            const filteredHistory = limitedHistory.filter(log => !log.includes('[System] Connection established'));
+            setLogs(filteredHistory);
+            // setLogs(prev => [...prev, '[System] Connection established.']); // Removed explicit connection message
         });
         socket.on('console_log', (log) => {
-            setLogs(prev => [...prev.slice(-299), log]);
+            if (!log.includes('[System] Connection established')) {
+                setLogs(prev => [...prev.slice(-299), log]);
+            }
         });
         return () => {
             setIsConnected(false);
@@ -52,38 +55,52 @@ const Console = () => {
         setCommand('');
     };
     return (
-        <div className="h-[calc(100vh-8rem)] flex flex-col bg-black rounded-xl border border-obsidian-border overflow-hidden shadow-2xl">
-            <div className="bg-obsidian-surface border-b border-obsidian-border px-4 py-2 flex items-center justify-between">
-                <div className="flex items-center space-x-2 text-obsidian-muted">
-                    <TerminalIcon size={16} />
-                    <span className="text-sm font-medium">Server Console</span>
+        <div className="h-[calc(100vh-8rem)] flex flex-col glass-panel rounded-2xl overflow-hidden shadow-2xl relative animate-fade-in border border-white/5">
+            {/* Terminal Glow Effect */}
+            <div className="absolute top-0 right-0 w-96 h-96 bg-obsidian-accent/5 rounded-full blur-[100px] pointer-events-none"></div>
+
+            <div className="bg-black/40 backdrop-blur-md border-b border-white/5 px-6 py-3 flex items-center justify-between z-10">
+                <div className="flex items-center space-x-3 text-obsidian-muted">
+                    <div className="p-2 bg-white/5 rounded-lg text-white">
+                        <TerminalIcon size={18} />
+                    </div>
+                    <span className="text-sm font-semibold tracking-wide text-white uppercase opacity-80">Server Console</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                    <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                    <span className="text-xs text-obsidian-muted">{isConnected ? 'Connected' : 'Disconnected'}</span>
+                <div className="flex items-center space-x-3 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+                    <span className={`w-2.5 h-2.5 rounded-full shadow-[0_0_8px] ${isConnected ? 'bg-green-500 shadow-green-500/50 animate-pulse' : 'bg-red-500 shadow-red-500/50'
+                        }`}></span>
+                    <span className="text-xs font-medium text-white/80">{isConnected ? 'LIVE CONNECTION' : 'DISCONNECTED'}</span>
                 </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 font-mono text-sm space-y-1 custom-scrollbar">
+
+            <div className="flex-1 overflow-y-auto p-6 font-mono text-sm space-y-1 custom-scrollbar bg-black/20 backdrop-blur-sm z-0">
+                {logs.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full text-obsidian-muted opacity-30">
+                        <TerminalIcon size={48} className="mb-4" />
+                        <p>Waiting for logs...</p>
+                    </div>
+                )}
                 {logs.map((log, index) => (
-                    <div key={index} className="break-words" dangerouslySetInnerHTML={{ __html: converter.toHtml(log) }} />
+                    <div key={index} className="break-words leading-relaxed animate-fade-in" dangerouslySetInnerHTML={{ __html: converter.toHtml(log) }} />
                 ))}
                 <div ref={logsEndRef} />
             </div>
-            <form onSubmit={handleSendCommand} className="bg-obsidian-surface p-2 border-t border-obsidian-border flex items-center">
-                <span className="text-obsidian-accent px-2 font-mono">{'>'}</span>
+
+            <form onSubmit={handleSendCommand} className="bg-black/40 p-4 border-t border-white/5 flex items-center relative z-20 backdrop-blur-md">
+                <span className="text-obsidian-accent px-3 font-mono text-lg font-bold animate-pulse">{'>'}</span>
                 <input
                     type="text"
                     value={command}
                     onChange={(e) => setCommand(e.target.value)}
-                    className="flex-1 bg-transparent border-none focus:ring-0 text-white font-mono text-sm placeholder-obsidian-muted"
-                    placeholder="Type a command..."
+                    className="flex-1 bg-transparent border-none focus:ring-0 text-white font-mono text-sm placeholder-white/20 py-2"
+                    placeholder="Type server command..."
                 />
                 <button
                     type="submit"
                     disabled={!command.trim()}
-                    className="p-2 text-obsidian-muted hover:text-white transition-colors disabled:opacity-50"
+                    className="p-3 text-white/50 hover:text-white hover:bg-white/10 rounded-xl transition-all disabled:opacity-30 hover:scale-105 active:scale-95"
                 >
-                    <Send size={16} />
+                    <Send size={18} />
                 </button>
             </form>
         </div>
