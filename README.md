@@ -72,7 +72,7 @@
 Run the following command to install and configure Obsidian Panel automatically:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/honeypie112/Obsidian-Panel/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/honeypie112/Obsidian-Panel/master/install.sh | bash
 ```
 
 This script will:
