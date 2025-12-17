@@ -108,15 +108,22 @@ const Users = () => {
         }
     };
 
-    const handleDelete = async (userId) => {
-        if (!window.confirm('Are you sure you want to delete this user?')) return;
+    const [userToDelete, setUserToDelete] = useState(null);
+
+    const confirmDelete = async () => {
+        if (!userToDelete) return;
         try {
-            await serverApi.deleteUser(userId);
+            await serverApi.deleteUser(userToDelete._id);
             toast.success('User deleted');
+            setUserToDelete(null);
             fetchUsers();
         } catch (err) {
             toast.error('Failed to delete user');
         }
+    };
+
+    const handleDeleteClick = (user) => {
+        setUserToDelete(user);
     };
 
     return (
@@ -173,7 +180,7 @@ const Users = () => {
                                 </button>
                                 {currentUser?._id !== user._id && (
                                     <button
-                                        onClick={() => handleDelete(user._id)}
+                                        onClick={() => handleDeleteClick(user)}
                                         className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 text-obsidian-muted hover:text-red-400 transition-colors"
                                         title="Delete User"
                                     >
@@ -306,6 +313,39 @@ const Users = () => {
                         </button>
                     </div>
                 </form>
+            </Modal>
+
+            <Modal isOpen={!!userToDelete} onClose={() => setUserToDelete(null)} title="Delete User">
+                <div className="space-y-4">
+                    <div className="flex items-center gap-4 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+                        <Trash2 size={24} />
+                        <div>
+                            <p className="font-bold text-sm uppercase tracking-wider">Warning</p>
+                            <p className="text-sm opacity-90">This action cannot be undone.</p>
+                        </div>
+                    </div>
+
+                    <p className="text-gray-300">
+                        Are you sure you want to delete user <strong className="text-white">{userToDelete?.username}</strong>?
+                        They will lose all access to the panel immediately.
+                    </p>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                        <button
+                            onClick={() => setUserToDelete(null)}
+                            className="px-4 py-2 rounded-lg text-obsidian-muted hover:text-white hover:bg-white/5 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmDelete}
+                            className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-semibold shadow-lg hover:shadow-red-900/20 transition-all flex items-center gap-2"
+                        >
+                            <Trash2 size={18} />
+                            Confirm Delete
+                        </button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );
