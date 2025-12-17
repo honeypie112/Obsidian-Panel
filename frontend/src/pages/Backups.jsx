@@ -165,9 +165,34 @@ const Backups = () => {
         }
     };
 
-    const handleCopyPassword = (password) => {
-        navigator.clipboard.writeText(password);
-        showToast('Password copied to clipboard', 'success');
+    const handleCopyPassword = async (password) => {
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(password);
+                showToast('Password copied to clipboard', 'success');
+            } else {
+                // Fallback for non-secure contexts
+                const textArea = document.createElement("textarea");
+                textArea.value = password;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                textArea.style.top = "0";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('Password copied to clipboard', 'success');
+                } catch (err) {
+                    console.error('Fallback: Oops, unable to copy', err);
+                    showToast('Failed to copy password: ' + err.message, 'error');
+                }
+                document.body.removeChild(textArea);
+            }
+        } catch (err) {
+            console.error('Copy failed', err);
+            showToast('Failed to copy password', 'error');
+        }
     };
 
     const formatBytes = (bytes) => {
