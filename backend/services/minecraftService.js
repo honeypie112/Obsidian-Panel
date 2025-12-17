@@ -387,7 +387,12 @@ class MinecraftService extends EventEmitter {
         ];
         this.process = spawn('java', args, {
             cwd: this.serverDir,
-            stdio: ['pipe', 'pipe', 'pipe']
+            stdio: ['pipe', 'pipe', 'pipe'],
+            env: {
+                ...process.env,
+                TERM: 'xterm-256color',
+                FORCE_COLOR: 'true'
+            }
         });
         this.process.stdout.on('data', (data) => {
             const line = data.toString();
