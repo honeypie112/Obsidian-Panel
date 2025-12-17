@@ -31,8 +31,9 @@ class PluginService {
                     try {
                         resolve(JSON.parse(data));
                     } catch (e) {
-                        // Fallback for non-JSON responses if needed, though mostly we expect JSON
-                        resolve(data);
+                        // Parse error means response was not JSON (likely HTML error or plain text)
+                        const snippet = data.substring(0, 200).replace(/\n/g, ' ');
+                        reject(new Error(`API Error (Invalid JSON): ${e.message}. Body: ${snippet}`));
                     }
                 });
             }).on('error', reject);
@@ -175,9 +176,21 @@ class PluginService {
 
             // Helper to handle redirects manually for the stream
             const download = (url) => {
+                if (!url) return reject(new Error('Download URL is empty'));
+                try {
+                    new URL(url); // Validate URL format to prevent crash
+                } catch (e) {
+                    return reject(new Error(`Invalid URL detected: ${url}`));
+                }
+
                 https.get(url, { headers: { 'User-Agent': this.userAgent } }, (res) => {
                     if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                        return download(res.headers.location);
+                        try {
+                            const redirectUrl = new URL(res.headers.location, url).toString();
+                            return download(redirectUrl);
+                        } catch (e) {
+                            return reject(new Error(`Failed to parse redirect URL: ${res.headers.location}`));
+                        }
                     }
                     if (res.statusCode >= 400) {
                         return reject(new Error(`Download failed: ${res.statusCode}`));
