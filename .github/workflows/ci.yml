@@ -9,6 +9,9 @@ on:
 jobs:
   test-install:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java-choice: [1, 2, 3] # 1=Java8, 2=Java17, 3=Java21
     
     services:
       mongo:
@@ -28,16 +31,16 @@ jobs:
         echo "GATEWAY_IP=$GATEWAY_IP" >> $GITHUB_ENV
         echo "Detected Docker Gateway: $GATEWAY_IP"
 
-    - name: Run Install Script
+    - name: Run Install Script (Option ${{ matrix.java-choice }})
       run: |
         chmod +x install.sh
         
         # Prepare inputs:
-        # 1. Java Version: 3 (Java 21)
+        # 1. Java Version: ${{ matrix.java-choice }}
         # 2. Mongo URI: Using gateway IP to access service on host
         # 3. Expose Ports: n
         
-        printf "3\nmongodb://${{ env.GATEWAY_IP }}:27017/obsidian_test\nn\n" | ./install.sh
+        printf "${{ matrix.java-choice }}\nmongodb://${{ env.GATEWAY_IP }}:27017/obsidian_test\nn\n" | ./install.sh
 
     - name: Wait for Server to Start
       run: |
