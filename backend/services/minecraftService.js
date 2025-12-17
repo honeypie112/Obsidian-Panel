@@ -349,6 +349,8 @@ class MinecraftService extends EventEmitter {
         const args = [
             '-Xms1024M',
             `-Xmx${maxRam}`,
+            '-DTerminal.jline=true',
+            '-DTerminal.ansi=true',
             '-jar',
             this.jarFile,
             'nogui'

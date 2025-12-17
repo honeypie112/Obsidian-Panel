@@ -124,7 +124,7 @@ echo -e "\n${BLUE}Starting Container...${NC}"
 # Stop existing container if running
 docker rm -f obsidian-panel &>/dev/null
 
-COMMAND="docker run -d --restart unless-stopped --env-file .env $PORTS --name obsidian-panel obsidian-panel"
+COMMAND="docker run -itd --restart unless-stopped --env-file .env $PORTS --name obsidian-panel obsidian-panel"
 echo "Running: $COMMAND"
 
 if $COMMAND; then
