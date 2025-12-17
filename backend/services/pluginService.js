@@ -50,6 +50,7 @@ class PluginService {
                 name: hit.title,
                 description: hit.description,
                 source: 'Modrinth',
+                webUrl: `https://modrinth.com/plugin/${hit.slug}`,
                 iconUrl: hit.icon_url,
                 downloads: hit.downloads,
                 author: hit.author
@@ -68,6 +69,7 @@ class PluginService {
                 name: p.name,
                 description: p.description,
                 source: 'Hangar',
+                webUrl: `https://hangar.papermc.io/${p.namespace.owner}/${p.namespace.slug}`,
                 iconUrl: p.avatarUrl,
                 downloads: p.stats.downloads,
                 author: p.namespace.owner
@@ -86,6 +88,7 @@ class PluginService {
                 name: r.name,
                 description: r.tag,
                 source: 'Spigot',
+                webUrl: `https://www.spigotmc.org/resources/${r.id}`,
                 iconUrl: r.icon ? `https://www.spigotmc.org/${r.icon.url}` : null,
                 downloads: r.downloads,
                 author: r.author ? r.author.id : 'Unknown' // Spiget author is an object or ID

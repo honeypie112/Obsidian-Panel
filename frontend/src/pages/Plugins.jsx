@@ -123,12 +123,27 @@ const Plugins = () => {
                                     )}
                                     <div>
                                         <div className="flex items-center gap-2 mb-1">
-                                            <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${plugin.source === 'Modrinth' ? 'text-green-400 border-green-400/20 bg-green-400/10' :
-                                                plugin.source === 'Hangar' ? 'text-blue-400 border-blue-400/20 bg-blue-400/10' :
-                                                    'text-orange-400 border-orange-400/20 bg-orange-400/10'
-                                                }`}>
-                                                {plugin.source}
-                                            </span>
+                                            {plugin.webUrl ? (
+                                                <a
+                                                    href={plugin.webUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()} // Prevent card click
+                                                    className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border hover:underline cursor-pointer flex items-center gap-1 ${plugin.source === 'Modrinth' ? 'text-green-400 border-green-400/20 bg-green-400/10' :
+                                                        plugin.source === 'Hangar' ? 'text-blue-400 border-blue-400/20 bg-blue-400/10' :
+                                                            'text-orange-400 border-orange-400/20 bg-orange-400/10'
+                                                        }`}
+                                                >
+                                                    {plugin.source}
+                                                </a>
+                                            ) : (
+                                                <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${plugin.source === 'Modrinth' ? 'text-green-400 border-green-400/20 bg-green-400/10' :
+                                                    plugin.source === 'Hangar' ? 'text-blue-400 border-blue-400/20 bg-blue-400/10' :
+                                                        'text-orange-400 border-orange-400/20 bg-orange-400/10'
+                                                    }`}>
+                                                    {plugin.source}
+                                                </span>
+                                            )}
                                         </div>
                                         <h3 className="font-bold text-lg text-white line-clamp-1 group-hover:text-obsidian-accent transition-colors" title={plugin.name}>{plugin.name}</h3>
                                         <div className="flex items-center text-xs text-obsidian-muted space-x-2 mt-0.5">
