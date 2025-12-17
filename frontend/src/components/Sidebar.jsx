@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Terminal, Folder, Settings, Shield, HardDrive, Server, LogOut, Package, User } from 'lucide-react';
+import { LayoutDashboard, Terminal, Folder, Settings, Shield, HardDrive, Server, LogOut, Package, User, Github, Coffee } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
 
@@ -97,6 +97,26 @@ const Sidebar = ({ isOpen, onClose }) => {
                     ))}
                 </nav>
                 <div className="p-4 border-t border-white/5">
+                    <div className="mb-4 grid grid-cols-2 gap-2">
+                        <a
+                            href="https://github.com/honeypie112/Obsidian-Panel"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all text-xs border border-white/5 hover:border-white/20"
+                            title="Project Source"
+                        >
+                            <Github size={14} className="mr-1.5" /> Source
+                        </a>
+                        <a
+                            href="https://buymeacoffee.com/alex5402"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center p-2 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500/70 hover:text-yellow-400 transition-all text-xs border border-yellow-500/10 hover:border-yellow-500/30"
+                            title="Buy Me a Coffee"
+                        >
+                            <Coffee size={14} className="mr-1.5" /> Donate
+                        </a>
+                    </div>
                     <button
                         onClick={logout}
                         className="flex items-center w-full px-4 py-3 text-obsidian-muted hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300 group border border-transparent hover:border-red-500/20"

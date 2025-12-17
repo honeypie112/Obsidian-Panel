@@ -514,7 +514,15 @@ const FileManager = () => {
                             />
                         )}
                         <Upload size={16} className="md:mr-2 z-10" />
-                        <span className="hidden md:inline z-10">{uploading ? `Uploading ${uploadProgress}% (${uploadSpeed})...` : 'Upload'}</span>
+                        <span className={`z-10 ${uploading ? 'inline' : 'hidden md:inline'}`}>
+                            {uploading ? (
+                                <span className="md:hidden">{uploadProgress}% ({uploadSpeed})</span>
+                            ) : null}
+                            <span className="hidden md:inline">
+                                {uploading ? `Uploading ${uploadProgress}% (${uploadSpeed})...` : 'Upload'}
+                            </span>
+                            {!uploading && <span className="md:hidden">Upload</span>}
+                        </span>
                     </button>
                     <input
                         type="file"
