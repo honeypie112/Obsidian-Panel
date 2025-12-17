@@ -207,16 +207,56 @@ export const serverApi = {
         if (!res.ok) throw new Error('Failed to search plugins');
         return res.json();
     },
-    installPlugin: async (projectId) => {
+    installPlugin: async (projectId, source) => {
         const res = await fetch(`${BASE_URL}/plugins/install`, {
             method: 'POST',
             headers: getHeaders(),
-            body: JSON.stringify({ projectId })
+            body: JSON.stringify({ projectId, source })
         });
         if (!res.ok) {
             const error = await res.json();
             throw new Error(error.error || 'Installation failed');
         }
+        return res.json();
+    },
+    // User Management
+    getUsers: async () => {
+        const res = await fetch(`${BASE_URL}/users`, {
+            headers: getHeaders()
+        });
+        if (!res.ok) throw new Error('Failed to fetch users');
+        return res.json();
+    },
+    createUser: async (userData) => {
+        const res = await fetch(`${BASE_URL}/users`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify(userData)
+        });
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.message || 'Failed to create user');
+        }
+        return res.json();
+    },
+    updateUser: async (id, userData) => {
+        const res = await fetch(`${BASE_URL}/users/${id}`, {
+            method: 'PUT',
+            headers: getHeaders(),
+            body: JSON.stringify(userData)
+        });
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.message || 'Failed to update user');
+        }
+        return res.json();
+    },
+    deleteUser: async (id) => {
+        const res = await fetch(`${BASE_URL}/users/${id}`, {
+            method: 'DELETE',
+            headers: getHeaders()
+        });
+        if (!res.ok) throw new Error('Failed to delete user');
         return res.json();
     }
 };

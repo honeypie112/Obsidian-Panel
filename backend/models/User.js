@@ -13,8 +13,12 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['admin', 'user'],
-        default: 'admin'  
+        enum: ['admin', 'sub-admin', 'user'],
+        default: 'admin'
+    },
+    permissions: {
+        type: [String],
+        default: [] // Admins get all permissions implicitly in logic, sub-admins rely on this list
     },
     createdAt: {
         type: Date,

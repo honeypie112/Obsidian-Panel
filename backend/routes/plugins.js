@@ -3,8 +3,10 @@ const router = express.Router();
 const pluginService = require('../services/pluginService');
 const minecraftService = require('../services/minecraftService');
 
+const { auth, checkPermission } = require('../middleware');
+
 // Search Plugins
-router.get('/search', async (req, res) => {
+router.get('/search', auth, async (req, res) => {
     try {
         const { query } = req.query;
         if (!query) {
@@ -19,7 +21,7 @@ router.get('/search', async (req, res) => {
 });
 
 // Install Plugin
-router.post('/install', async (req, res) => {
+router.post('/install', auth, checkPermission('plugins.manage'), async (req, res) => {
     try {
         const { projectId, source = 'Modrinth' } = req.body;
 

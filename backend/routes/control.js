@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const minecraftService = require('../services/minecraftService');
-const auth = require('../middleware/auth');
+const { auth, checkPermission } = require('../middleware');
+
 router.get('/status', auth, (req, res) => {
     res.json(minecraftService.getStatus());
 });
-router.post('/action', auth, (req, res) => {
+
+router.post('/action', auth, checkPermission('overview.control'), (req, res) => {
     const { action } = req.body;
     try {
         switch (action) {
@@ -27,7 +29,8 @@ router.post('/action', auth, (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
-router.post('/command', auth, (req, res) => {
+
+router.post('/command', auth, checkPermission('console.command'), (req, res) => {
     const { command } = req.body;
     if (!command) {
         return res.status(400).json({ message: 'Command required' });
@@ -35,7 +38,8 @@ router.post('/command', auth, (req, res) => {
     minecraftService.sendCommand(command);
     res.json({ success: true });
 });
-router.post('/install', auth, async (req, res) => {
+
+router.post('/install', auth, checkPermission('settings.edit'), async (req, res) => {
     const { version } = req.body;
     console.log("Install request received. Body:", req.body);
     console.log("Installing version:", version);
@@ -47,7 +51,8 @@ router.post('/install', auth, async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
-router.post('/config', auth, (req, res) => {
+
+router.post('/config', auth, checkPermission('settings.edit'), (req, res) => {
     try {
         minecraftService.saveConfig(req.body);
         res.json(minecraftService.getStatus());
@@ -75,7 +80,7 @@ const getSafePath = (reqPath) => {
     }
     return targetPath;
 };
-router.post('/files/list', auth, (req, res) => {
+router.post('/files/list', auth, checkPermission('files.view'), (req, res) => {
     try {
         const targetPath = getSafePath(req.body.path);
         if (!fs.existsSync(targetPath)) {
@@ -112,7 +117,7 @@ router.post('/files/list', auth, (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
-router.post('/files/read', auth, (req, res) => {
+router.post('/files/read', auth, checkPermission('files.view'), (req, res) => {
     try {
         const targetPath = getSafePath(req.body.path);
         if (!fs.existsSync(targetPath)) return res.status(404).json({ message: 'File not found' });
@@ -122,7 +127,7 @@ router.post('/files/read', auth, (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
-router.post('/files/save', auth, (req, res) => {
+router.post('/files/save', auth, checkPermission('files.edit'), (req, res) => {
     try {
         const { path: relPath, content } = req.body;
         const targetPath = getSafePath(relPath);
@@ -132,7 +137,7 @@ router.post('/files/save', auth, (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
-router.post('/files/download', auth, (req, res) => {
+router.post('/files/download', auth, checkPermission('files.view'), (req, res) => {
     try {
         const { path: relPath } = req.body;
         const targetPath = getSafePath(relPath);
@@ -150,7 +155,7 @@ router.post('/files/download', auth, (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
-router.post('/files/upload', auth, upload.single('file'), (req, res) => {
+router.post('/files/upload', auth, checkPermission('files.upload'), upload.single('file'), (req, res) => {
     try {
         const { path: relPath } = req.body;
         const targetDir = getSafePath(relPath);
@@ -172,7 +177,7 @@ router.post('/files/upload', auth, upload.single('file'), (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
-router.post('/files/create', auth, (req, res) => {
+router.post('/files/create', auth, checkPermission('files.upload'), (req, res) => {
     try {
         const { path: relPath, name, type } = req.body;
         const currentDir = getSafePath(relPath);
@@ -187,7 +192,7 @@ router.post('/files/create', auth, (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
-router.post('/files/extract', auth, (req, res) => {
+router.post('/files/extract', auth, checkPermission('files.edit'), (req, res) => {
     try {
         const { path: relPath } = req.body;
         const targetPath = getSafePath(relPath);
@@ -213,7 +218,7 @@ router.post('/files/extract', auth, (req, res) => {
     }
 });
 
-router.post('/files/compress', auth, (req, res) => {
+router.post('/files/compress', auth, checkPermission('files.edit'), (req, res) => {
     try {
         const { files, currentPath } = req.body; // files is array of filenames, currentPath is relative path
         if (!files || !Array.isArray(files) || files.length === 0) {
@@ -242,7 +247,7 @@ router.post('/files/compress', auth, (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
-router.post('/files/delete', auth, (req, res) => {
+router.post('/files/delete', auth, checkPermission('files.delete'), (req, res) => {
     try {
         const { path: relPath } = req.body;
         const targetPath = getSafePath(relPath);

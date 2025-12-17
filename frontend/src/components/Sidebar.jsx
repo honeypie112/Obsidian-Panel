@@ -1,19 +1,42 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Terminal, Folder, Settings, Shield, HardDrive, Server, LogOut, Package } from 'lucide-react';
+import { LayoutDashboard, Terminal, Folder, Settings, Shield, HardDrive, Server, LogOut, Package, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
+
 const Sidebar = ({ isOpen, onClose }) => {
-    const { logout } = useAuth();
-    const navItems = [
-        { icon: LayoutDashboard, label: 'Overview', path: '/' },
-        { icon: Terminal, label: 'Console', path: '/console' },
-        { icon: Folder, label: 'Files', path: '/files' },
-        { icon: Package, label: 'Plugin Store', path: '/plugins' },
-        { icon: HardDrive, label: 'Backups', path: '/backups' },
-        { icon: Settings, label: 'Server Settings', path: '/server-settings' },
-        { icon: Shield, label: 'General Settings', path: '/general-settings' },
+    const { logout, user } = useAuth();
+
+    const allNavItems = [
+        { icon: LayoutDashboard, label: 'Overview', path: '/', permission: 'overview.view' }, // Default for all usually, but can be explicit
+        { icon: Terminal, label: 'Console', path: '/console', permission: 'console.command' }, // Using console.command as gate
+        { icon: Folder, label: 'Files', path: '/files', permission: 'files.view' },
+        { icon: Package, label: 'Plugin Store', path: '/plugins', permission: 'plugins.manage' },
+        { icon: HardDrive, label: 'Backups', path: '/backups', permission: 'backups.view' },
+        { icon: Settings, label: 'Server Settings', path: '/server-settings', permission: 'settings.edit' },
+        { icon: Shield, label: 'General Settings', path: '/general-settings', permission: 'settings.edit' },
+        { icon: User, label: 'Users', path: '/users', adminOnly: true },
     ];
+
+    const navItems = allNavItems.filter(item => {
+        if (user?.role === 'admin') return true;
+
+        // Sub-admin or User checks
+        if (item.adminOnly) return false;
+
+        // If no specific permission required (and not adminOnly), show it (e.g. Overview default behavior)
+        // However, user said "bas server dashboard access kr sake by default", so maybe EVERYTHING else needs perms?
+        // Let's assume Overview is always shown for authed users, as it's the landing page.
+        // I marked Overview with 'overview.view', but I didn't add 'overview.view' to Users.jsx.
+        // Let's treat Overview as public-for-authed.
+        if (item.label === 'Overview') return true;
+
+        if (item.permission) {
+            return user?.permissions?.includes(item.permission);
+        }
+
+        return true;
+    });
     const sidebarClasses = clsx(
         'bg-obsidian-surface-glass backdrop-blur-xl border-r border-obsidian-border flex flex-col',
         'fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out md:static md:translate-x-0',
