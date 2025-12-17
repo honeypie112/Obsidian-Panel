@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useServer } from '../context/ServerContext';
 import { useToast } from '../context/ToastContext';
 import StatCard from '../components/StatCard';
-import { Activity, Cpu, HardDrive, MemoryStick, Play, Square, RefreshCw, Loader2, Server as ServerIcon } from 'lucide-react';
+import { Activity, Cpu, HardDrive, MemoryStick, Play, Square, RefreshCw, Loader2, Server as ServerIcon, Zap } from 'lucide-react';
 
 const formatBytes = (bytes) => {
     if (bytes === 0) return '0 B';
@@ -176,6 +176,17 @@ const Overview = () => {
                             <Square size={20} className="mr-2 fill-current" /> Stop Server
                         </span>
                         <div className="absolute inset-0 bg-red-500/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                    </button>
+
+                    <button
+                        onClick={() => performAction('kill')}
+                        disabled={server.status === 'offline' || isInstalling}
+                        className="group relative overflow-hidden bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 border border-purple-500/20 py-4 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(168,85,247,0.2)] active:scale-95"
+                    >
+                        <span className="flex items-center justify-center relative z-10">
+                            <Zap size={20} className="mr-2 fill-current" /> Force Kill
+                        </span>
+                        <div className="absolute inset-0 bg-purple-500/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                     </button>
                 </div>
             </div>

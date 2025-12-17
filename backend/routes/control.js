@@ -21,6 +21,9 @@ router.post('/action', auth, checkPermission('overview.control'), (req, res) => 
                 minecraftService.stop();
                 setTimeout(() => minecraftService.start(), 5000);
                 break;
+            case 'kill':
+                minecraftService.kill();
+                break;
             default:
                 return res.status(400).json({ message: 'Invalid action' });
         }
@@ -167,20 +170,18 @@ router.post('/files/download', auth, checkPermission('files.view'), (req, res) =
 });
 const uploadMiddleware = upload.single('file');
 
+// Async upload handler to prevent event loop blocking
 router.post('/files/upload', auth, checkPermission('files.upload'), (req, res) => {
-    uploadMiddleware(req, res, function (err) {
+    uploadMiddleware(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
-            // A Multer error occurred when uploading.
             if (err.code === 'LIMIT_FILE_SIZE') {
                 return res.status(400).json({ message: 'File too large' });
             }
             return res.status(500).json({ message: `Upload error: ${err.message}` });
         } else if (err) {
-            // An unknown error occurred when uploading.
             return res.status(500).json({ message: `Upload error: ${err.message}` });
         }
 
-        // Everything went fine.
         try {
             if (!req.file) {
                 return res.status(400).json({ message: 'No file uploaded' });
@@ -191,15 +192,14 @@ router.post('/files/upload', auth, checkPermission('files.upload'), (req, res) =
             const tempPath = req.file.path;
             const targetPath = path.join(targetDir, req.file.originalname);
 
-            // Check disk space (basic check) or write permission implicit in rename
             try {
-                fs.renameSync(tempPath, targetPath);
+                // Use async rename to avoid blocking event loop for large files
+                await fs.promises.rename(tempPath, targetPath);
             } catch (error) {
                 if (error.code === 'EXDEV') {
-                    fs.copyFileSync(tempPath, targetPath);
-                    fs.unlinkSync(tempPath);
-                } else if (error.code === 'ENOSPC') {
-                    throw new Error('Disk full');
+                    // Fallback for cross-device move (though unlikely with our setup)
+                    await fs.promises.copyFile(tempPath, targetPath);
+                    await fs.promises.unlink(tempPath);
                 } else {
                     throw error;
                 }

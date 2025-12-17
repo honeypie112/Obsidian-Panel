@@ -439,6 +439,14 @@ class MinecraftService extends EventEmitter {
             this.process.kill();
         }
     }
+    kill() {
+        if (!this.process) return;
+        this.process.kill('SIGKILL');
+        this.process = null;
+        this.status = 'offline';
+        this.broadcast('status', this.getStatus());
+        this.pushLog('Server was forcefully killed.');
+    }
     sendCommand(command) {
         if (this.status === 'online' && this.process && this.process.stdin.writable) {
             this.process.stdin.write(command + '\n');
