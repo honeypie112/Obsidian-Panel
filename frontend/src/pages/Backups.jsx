@@ -196,19 +196,16 @@ const Backups = () => {
 
     return (
         <div className="space-y-6 animate-fade-in content-container">
-            {isBackupInProgress && (
-                <div className="glass-panel rounded-xl p-4 bg-yellow-500/10 border-yellow-500/20 mb-6 flex items-center animate-pulse">
-                    <Loader2 className="text-yellow-500 animate-spin mr-3" size={24} />
-                    <div>
-                        <h3 className="text-white font-bold">Backup in Progress...</h3>
-                        <p className="text-obsidian-muted text-sm">A backup operation is currently running in the background. Please wait.</p>
-                    </div>
-                </div>
-            )}
-
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight mb-1">Backups</h1>
+                    <h1 className="text-3xl font-bold text-white tracking-tight mb-1 flex items-center gap-3">
+                        Backups
+                        {isBackupInProgress && (
+                            <span className="flex items-center gap-2 px-3 py-1 bg-yellow-500/10 text-yellow-500 text-xs font-bold rounded-full border border-yellow-500/20 animate-pulse">
+                                <Loader2 size={12} className="animate-spin" /> In Progress
+                            </span>
+                        )}
+                    </h1>
                     <p className="text-obsidian-muted text-sm">Manage and restore server snapshots.</p>
                 </div>
                 <div className="flex gap-2">
