@@ -69,13 +69,9 @@ while true; do
 done
 
 # JWT Secret
-# JWT Secret
 echo -e "${BLUE}Generating JWT Secret...${NC}"
 JWT_SECRET=$(openssl rand -hex 32)
-
-
-    echo -e "${GREEN}Generated JWT Secret: $JWT_SECRET${NC}"
-fi
+echo -e "${GREEN}Generated JWT Secret: $JWT_SECRET${NC}"
 
 # Create .env file
 echo -e "\n${BLUE}Generating .env file...${NC}"
