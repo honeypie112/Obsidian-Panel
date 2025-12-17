@@ -16,7 +16,7 @@ echo -e "${BLUE}========================================${NC}"
 if [ -d "Obsidian-Panel" ]; then
     echo -e "${GREEN}✓ Detected Obsidian-Panel directory.${NC}"
     echo -e "${BLUE}Do you want to perform a fresh reinstall? (This will delete the existing code)${NC}"
-    read -p "Reinstall fresh? (y/n): " reinstall_choice
+    read -p "Reinstall fresh? (y/n): " reinstall_choice < /dev/tty
     
     if [[ "$reinstall_choice" =~ ^[Yy]$ ]]; then
         echo -e "${RED}Removing existing installation...${NC}"
@@ -44,7 +44,7 @@ echo -e "\n${BLUE}Select Java Version needed for your Minecraft Server:${NC}"
 echo "1) Java 8  (Old versions like 1.8 - 1.12)"
 echo "2) Java 17 (Versions 1.16 - 1.20.4)"
 echo "3) Java 21 (Latest versions 1.20.5+)"
-read -p "Enter choice [1-3]: " java_choice
+read -p "Enter choice [1-3]: " java_choice < /dev/tty
 
 case $java_choice in
     1) DOCKERFILE="Dockerfile.java8" ;;
@@ -60,7 +60,7 @@ echo -e "\n${BLUE}Configuration Setup:${NC}"
 
 # Mongo URI
 while true; do
-    read -p "Enter MongoDB URI (Required): " MONGO_URI
+    read -p "Enter MongoDB URI (Required): " MONGO_URI < /dev/tty
     if [ -n "$MONGO_URI" ]; then
         break
     else
@@ -93,10 +93,10 @@ echo -e "${GREEN}✓ .env file created.${NC}"
 PORTS="-p 5000:5000 -p 25565:25565 -p 19132:19132"
 echo -e "\n${BLUE}Port Configuration:${NC}"
 echo "Default ports exposed: 5000 (Panel), 25565 (Java), 19132 (Bedrock)"
-read -p "Do you want to expose additional ports? (y/n): " expose_more
+read -p "Do you want to expose additional ports? (y/n): " expose_more < /dev/tty
 
 if [[ "$expose_more" =~ ^[Yy]$ ]]; then
-    read -p "Enter additional ports (space separated, e.g., 8123 25566): " extra_ports
+    read -p "Enter additional ports (space separated, e.g., 8123 25566): " extra_ports < /dev/tty
     for port in $extra_ports; do
         PORTS="$PORTS -p $port:$port"
     done
