@@ -15,6 +15,32 @@ const controlRoutes = require('./routes/control');
 const minecraftService = require('./services/minecraftService');
 const app = express();
 const server = http.createServer(app);
+
+// Security Middleware
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const rateLimit = require('express-rate-limit');
+
+// Set Security Headers
+app.use(helmet({
+    contentSecurityPolicy: false, // Disable CSP for now as it conflicts with inline scripts/React if not tuned perfect. React Dev needs it loose.
+}));
+
+// Prevent NoSQL Injection
+app.use(mongoSanitize());
+
+// Prevent XSS
+app.use(xss());
+
+// Global Rate Limiting (DDoS Protection)
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 200, // Limit each IP to 200 requests per windowMs
+    message: 'Too many requests from this IP, please try again later.'
+});
+app.use('/api', limiter);
+
 const io = new Server(server, {
     cors: {
         origin: "*",
@@ -23,7 +49,7 @@ const io = new Server(server, {
 });
 minecraftService.setSocketIo(io);
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10kb' })); // Limit body size to prevent DoS
 if (!process.env.MONGO_URI) {
     console.error('FATAL ERROR: MONGO_URI is not defined.');
     console.error('Please check your .env file or environment variables.');

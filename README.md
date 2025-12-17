@@ -24,16 +24,28 @@
     <br>
     ![Backups Page](images/backups_v2.png)
 
--   **Plugin Store**: Search and install thousands of plugins from Modrinth directly to your server. 
+-   **Plugin Store**: Unified search and install for thousands of plugins from **Modrinth**, **Hangar** (Paper), and **Spiget** (Spigot).
     <br>
     ![Plugin Store](images/plugins.png)
+
+-   **User Management & Granular Permissions**: Create **Sub-Admin** accounts with specific access rights. Grant granular control over:
+    -   **Files**: View, Edit, Upload/Create, Delete.
+    -   **Backups**: Create, Restore, Delete, Settings.
+    -   **Power**: Start/Stop/Restart.
+    -   **Console**: Execute Command Access.
+    <br>
+    ![User Management](images/user_management.png)
 
 -   **Auto-Backup Scheduler**: Configure backups to run minutely, hourly, daily, or using custom Cron expressions.
     <br>
     ![Auto Backup Settings](images/auto_backup_v2.png)
 
 -   **Responsive Design**: fully optimized for desktop and **mobile** use with a collapsible sidebar.
--   **Secure**: JWT-based authentication with role-based access control.
+-   **Enterprise-Grade Security**:
+    -   **DDoS Protection**: Global rate limiting to prevent flood attacks.
+    -   **Brute-Force Protection**: Smart locking for login attempts.
+    -   **Secure Headers**: Helmet integration and XSS sanitization.
+    -   **RBAC**: Role-Based Access Control key security.
     <br>
     ![Profile Settings](images/profile_settings_v2.png)
 

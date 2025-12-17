@@ -3,7 +3,16 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
-router.post('/register', async (req, res) => {
+const rateLimit = require('express-rate-limit');
+
+// Brute-Force Protection for Auth
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // Limit each IP to 10 login/register requests per windowMs
+    message: { message: 'Too many login attempts. Please try again after 15 minutes.' }
+});
+
+router.post('/register', authLimiter, async (req, res) => {
     const { username, password } = req.body;
     try {
         let user = await User.findOne({ username });
@@ -36,7 +45,7 @@ router.post('/register', async (req, res) => {
         res.status(500).send('Server error');
     }
 });
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
     const { username, password } = req.body;
     try {
         let user = await User.findOne({ username });
@@ -92,7 +101,7 @@ router.put('/profile', auth, async (req, res) => {
             if (!isMatch) {
                 return res.status(400).json({ message: 'Invalid current password' });
             }
-            user.password = newPassword;  
+            user.password = newPassword;
         }
         await user.save();
         res.json({
