@@ -37,8 +37,14 @@ app.use(xss());
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 200, // Limit each IP to 200 requests per windowMs
-    message: 'Too many requests from this IP, please try again later.'
+    message: 'Too many requests from this IP, please try again later.',
+    skip: (req) => {
+        // Skip rate limiting for file uploads as they are single large requests
+        if (req.originalUrl.includes('/files/upload')) return true;
+        return false;
+    }
 });
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/api', limiter);
 
 const io = new Server(server, {

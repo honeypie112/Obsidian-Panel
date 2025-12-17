@@ -172,30 +172,39 @@ const uploadMiddleware = upload.single('file');
 
 // Async upload handler to prevent event loop blocking
 router.post('/files/upload', auth, checkPermission('files.upload'), (req, res) => {
+    console.log(`[Upload] Request received for: ${req.body.path}`);
     uploadMiddleware(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
+            console.error(`[Upload] Multer error: ${err.message}`, err);
             if (err.code === 'LIMIT_FILE_SIZE') {
                 return res.status(400).json({ message: 'File too large' });
             }
             return res.status(500).json({ message: `Upload error: ${err.message}` });
         } else if (err) {
+            console.error(`[Upload] Unknown error: ${err.message}`, err);
             return res.status(500).json({ message: `Upload error: ${err.message}` });
         }
 
         try {
             if (!req.file) {
+                console.error("[Upload] No file in request");
                 return res.status(400).json({ message: 'No file uploaded' });
             }
 
+            console.log(`[Upload] File received: ${req.file.originalname} (${req.file.size} bytes) at ${req.file.path}`);
             const { path: relPath } = req.body;
             const targetDir = getSafePath(relPath);
             const tempPath = req.file.path;
             const targetPath = path.join(targetDir, req.file.originalname);
 
+            console.log(`[Upload] Moving from ${tempPath} to ${targetPath}`);
+
             try {
                 // Use async rename to avoid blocking event loop for large files
                 await fs.promises.rename(tempPath, targetPath);
+                console.log("[Upload] Move successful");
             } catch (error) {
+                console.error(`[Upload] Move failed: ${error.message}`);
                 if (error.code === 'EXDEV') {
                     // Fallback for cross-device move (though unlikely with our setup)
                     await fs.promises.copyFile(tempPath, targetPath);
@@ -206,7 +215,7 @@ router.post('/files/upload', auth, checkPermission('files.upload'), (req, res) =
             }
             res.json({ success: true });
         } catch (err) {
-            console.error("Upload error:", err);
+            console.error("[Upload] Handler error:", err);
             // Clean up temp file if exists
             if (req.file && fs.existsSync(req.file.path)) {
                 try { fs.unlinkSync(req.file.path); } catch (e) { }

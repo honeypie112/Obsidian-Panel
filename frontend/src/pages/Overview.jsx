@@ -178,15 +178,27 @@ const Overview = () => {
                         <div className="absolute inset-0 bg-red-500/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                     </button>
 
+
+                </div>
+            </div>
+
+            {/* Danger Zone */}
+            <div className="glass-panel rounded-2xl p-6 border border-red-500/20">
+                <h3 className="text-red-400 font-bold mb-4 flex items-center text-sm uppercase tracking-wider">
+                    <Zap size={16} className="mr-2" />
+                    Danger Zone
+                </h3>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h4 className="text-white font-medium">Force Kill Server</h4>
+                        <p className="text-sm text-obsidian-muted">Immediately terminate the server process. Data may be lost.</p>
+                    </div>
                     <button
                         onClick={() => performAction('kill')}
                         disabled={server.status === 'offline' || isInstalling}
-                        className="group relative overflow-hidden bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 border border-purple-500/20 py-4 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(168,85,247,0.2)] active:scale-95"
+                        className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                     >
-                        <span className="flex items-center justify-center relative z-10">
-                            <Zap size={20} className="mr-2 fill-current" /> Force Kill
-                        </span>
-                        <div className="absolute inset-0 bg-purple-500/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                        Kill Process
                     </button>
                 </div>
             </div>
