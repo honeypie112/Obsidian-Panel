@@ -783,6 +783,8 @@ const FileManager = () => {
                             <FileCode className="text-obsidian-accent mr-3" size={20} />
                             <span className="font-bold text-white">{editorFile?.name}</span>
                         </div>
+
+
                         <div className="flex items-center space-x-3">
                             <button
                                 onClick={() => { setIsEditorOpen(false); setEditorFile(null); }}
@@ -807,6 +809,23 @@ const FileManager = () => {
                             value={editorContent}
                             theme="vs-dark"
                             onChange={(value) => setEditorContent(value || '')}
+                            onMount={(editor, monaco) => {
+                                // Bind Ctrl+S (or Cmd+S on Mac) to save
+                                editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, async () => {
+                                    if (!editorFile) return;
+                                    const content = editor.getValue();
+                                    setIsSaving(true);
+                                    try {
+                                        await serverApi.saveFile(editorFile.path, content);
+                                        showToast('File saved successfully (Shortcut)', 'success');
+                                        loadFiles();
+                                    } catch (err) {
+                                        showToast('Failed to save: ' + err.message, 'error');
+                                    } finally {
+                                        setIsSaving(false);
+                                    }
+                                });
+                            }}
                             options={{
                                 minimap: { enabled: false },
                                 fontSize: 14,
@@ -818,6 +837,8 @@ const FileManager = () => {
                             }}
                             loading={<div className="text-white p-4">Loading editor...</div>}
                         />
+
+
                     </div>
                 </div>
             )}

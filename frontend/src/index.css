@@ -181,3 +181,25 @@ input[type="range"]::-webkit-slider-runnable-track {
 .toggle-checkbox:hover {
   @apply border-white/20;
 }
+
+/* Fix Monaco Editor Find Widget Z-Index (Keep Top Default) */
+.monaco-editor .find-widget {
+  z-index: 99999 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8) !important;
+  pointer-events: auto !important;
+  cursor: default !important;
+}
+
+/* Force clickability on inner elements including icons */
+.monaco-editor .find-widget .button,
+.monaco-editor .find-widget .monaco-inputbox,
+.monaco-editor .find-widget .monaco-checkbox {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Force details/tooltips to appear lower (below the widget) */
+.monaco-editor-hover,
+.monaco-hover {
+  transform: translateY(70px) !important;
+}
