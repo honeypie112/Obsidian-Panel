@@ -79,6 +79,12 @@ const FileManager = () => {
         setCurrentPath([...currentPath, folderName]);
     };
 
+    const handleGoUp = () => {
+        if (currentPath.length > 0) {
+            setCurrentPath(currentPath.slice(0, -1));
+        }
+    };
+
     const handleBreadcrumbClick = (index) => {
         if (index === -1) {
             setCurrentPath([]);
@@ -441,7 +447,7 @@ const FileManager = () => {
             <div className="p-4 border-b border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 bg-white/5 backdrop-blur-md z-10">
                 <div className="flex items-center space-x-3 overflow-hidden w-full md:w-auto">
                     <button
-                        onClick={() => handleBreadcrumbClick(-1)}
+                        onClick={handleGoUp}
                         disabled={currentPath.length === 0}
                         className="p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent text-white"
                     >
@@ -582,7 +588,7 @@ const FileManager = () => {
                             {currentPath.length > 0 && (
                                 <tr
                                     className="hover:bg-white/5 transition-colors group cursor-pointer"
-                                    onClick={() => handleBreadcrumbClick(-1)}
+                                    onClick={handleGoUp}
                                 >
                                     <td className="px-6 py-4">
                                         <div className="flex items-center text-white">
@@ -681,7 +687,7 @@ const FileManager = () => {
                     {currentPath.length > 0 && (
                         <div
                             className="flex flex-col items-center p-4 rounded-xl hover:bg-white/5 transition-all text-white/50 hover:text-white cursor-pointer group"
-                            onClick={() => handleBreadcrumbClick(-1)}
+                            onClick={handleGoUp}
                         >
                             <Folder size={48} className="mb-3 opacity-50 group-hover:opacity-100 transition-opacity" />
                             <span className="text-sm font-medium">..</span>

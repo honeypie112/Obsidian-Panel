@@ -49,7 +49,7 @@
     -   **Secure Headers**: Helmet integration and XSS sanitization.
     -   **RBAC**: Role-Based Access Control key security.
     <br>
-    ![Profile Settings](images/profile_settings_v2.png)
+    ![Profile Settings](images/profile.png)
 
 -   **Aesthetic UI**: "Obsidian" dark mode design with glassmorphism effects and smooth animations.
 -   **Easy Deployment**: Fully compatible with **Coolify** and **Dockploy** for hassle-free hosting.

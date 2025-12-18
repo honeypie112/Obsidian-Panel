@@ -133,9 +133,9 @@ EOF
 echo -e "${GREEN}✓ .env file created.${NC}"
 
 # 4. Port Management
-PORTS="-p 5000:5000 -p 25565:25565 -p 19132:19132"
+PORTS="-p 5000:5000 -p 25565:25565 -p 19132:19132 -p 24454:24454/udp"
 echo -e "\n${BLUE}Port Configuration:${NC}"
-echo "Default ports exposed: 5000 (Panel), 25565 (Java), 19132 (Bedrock)"
+echo "Default ports exposed: 5000 (Panel), 25565 (Java), 19132 (Bedrock), 24454 (Voice Chat UDP)"
 get_input "Do you want to expose additional ports? (y/n): " expose_more
 
 if [[ "$expose_more" =~ ^[Yy]$ ]]; then
