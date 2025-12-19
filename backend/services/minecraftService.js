@@ -11,7 +11,10 @@ const CACHE_DURATION = 1000 * 60 * 60;
 class MinecraftService extends EventEmitter {
     constructor() {
         super();
-        this.serverDir = path.join(__dirname, '../minecraft_server');
+        this.serverDir = process.env.MC_SERVER_BASE_PATH
+            ? path.resolve(process.env.MC_SERVER_BASE_PATH)
+            : path.join(__dirname, '../minecraft_server');
+
         this.jarFile = path.join(this.serverDir, 'server.jar');
         this.process = null;
         this.status = 'offline';

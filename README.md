@@ -83,6 +83,52 @@ This script will:
 - Help you select the Java version.
 - Configure your `.env` file (MongoDB, etc.).
 - Set up Docker containers.
+- **Auto-Detect Old Data**: If you are upgrading, it automatically detects your old data volume or legacy configuration and offers to keep it.
+
+### 🔄 Migration Guide (For Upgrading from Legacy Versions)
+If you are upgrading from an older version of Obsidian Panel where data was stored *inside* the container (not in a volume), follow these steps to save your data:
+
+**Step 1: Check Connectivity**
+Ensure your old `obsidian-panel` container exists (even if stopped).
+
+**Step 2: Run Migration Script**
+This script extracts your server data specific path and moves it to a safe Docker Volume (`obsidian-data`).
+
+*Option A: Standard Migration (Default)*
+Use this if your server files are in the standard location (`/app/backend/minecraft_server`).
+```bash
+chmod +x migrate.sh
+./migrate.sh
+```
+
+*Option B: Custom Path Migration*
+Use this if you know your server files are in a different folder inside the container.
+```bash
+chmod +x migrate.sh
+./migrate.sh /app/backend/your_custom_folder
+```
+
+**Step 3: Run Installer**
+Once migration says "Migration Complete!", run the installer to update the panel and mount your data.
+```bash
+./install.sh
+```
+1. Select **"Reinstall fresh"** (y).
+2. When asked **"Do you want to reuse the existing server data?"**, type **"y"**.
+
+Your server is now updated and your data is safe!
+
+### 💾 Backup Tools
+We provide a helper script to backup your server files locally from the container (even if it's stopped).
+
+```bash
+# Backup the main server directory
+sudo ./backup_volume.sh
+
+# Backup any specific folder inside the container
+sudo ./backup_volume.sh /app/backend/config
+```
+Backups are saved to the `./backups` directory.
 
 ## 📖 Usage
 

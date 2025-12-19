@@ -6,6 +6,8 @@ const crypto = require('crypto');
 const Backup = require('../models/Backup');
 const Settings = require('../models/Settings');
 const minecraftService = require('./minecraftService');
+const axios = require('axios');
+const FormData = require('form-data');
 let scheduledTask = null;
 let isBackupInProgress = false;
 const DEFAULT_CONFIG = {
@@ -94,20 +96,19 @@ const BackupService = {
             const stats = fs.statSync(tempZipPath);
             const fileSize = (stats.size / (1024 * 1024)).toFixed(2) + ' MB';
             console.log(`[BackupService] Uploading to GoFile...`);
-            const fileBuffer = fs.readFileSync(tempZipPath);
-            const fileBlob = new Blob([fileBuffer]);
             const formData = new FormData();
-            formData.append('file', fileBlob, backupName);
-            const uploadRes = await fetch('https://upload.gofile.io/uploadfile', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData
+            formData.append('file', fs.createReadStream(tempZipPath), backupName);
+
+            const uploadRes = await axios.post('https://upload.gofile.io/uploadfile', formData, {
+                headers: {
+                    ...formData.getHeaders(),
+                    'Authorization': `Bearer ${token}`
+                },
+                maxBodyLength: Infinity,
+                maxContentLength: Infinity
             });
-            if (!uploadRes.ok) {
-                const text = await uploadRes.text();
-                throw new Error(`GoFile upload failed: ${uploadRes.status} ${text}`);
-            }
-            const data = await uploadRes.json();
+
+            const data = uploadRes.data;
             if (data.status === 'ok') {
                 const newBackup = new Backup({
                     fileName: data.data.fileName || backupName,
