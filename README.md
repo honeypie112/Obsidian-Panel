@@ -6,10 +6,12 @@
 
 ## ✨ Features
 
--   **Server Control**: Start, stop, and restart your server with ease. Live console view via Socket.io.
--   **Multi-Version Support**: Native support for **Paper**, **Purpur**, and **Vanilla** Minecraft servers.
+-   **Server Control**: Live console view via Socket.io.
     <br>
     ![Server Console](images/console.png)
+-   **Multi-Version Support**: Native support for **Paper**, **Purpur**, and **Vanilla** Minecraft servers.
+    <br>
+    ![Multi-Version Support](images/multi-version.png)
 
 -   **Server Settings**: Manage server and versions through a simple UI.
     <br>
