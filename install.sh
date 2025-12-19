@@ -127,7 +127,7 @@ MONGO_URI=$MONGO_URI
 MONGO_DB_NAME=obsidian-panel
 JWT_SECRET=$JWT_SECRET
 PORT=5000
-MC_SERVER_BASE_PATH=$FINAL_MC_PATH
+MC_SERVER_BASE_PATH=/minecraft_server
 TEMP_BACKUP_PATH=/tmp
 NODE_ENV=production
 
@@ -161,11 +161,12 @@ fi
 echo -e "\n${BLUE}Starting Container...${NC}"
 
 # Stop existing container if running
+# Stop existing container if running
 docker rm -f "$OLD_CONTAINER" &>/dev/null
 
 # Prepare Volume Args (Always use obsidian-data volume mapped to standard path)
-VOLUME_ARGS="-v obsidian-data:$FINAL_MC_PATH"
-echo -e "${GREEN}Using Volume: obsidian-data -> $FINAL_MC_PATH${NC}"
+VOLUME_ARGS="-v obsidian-data:/minecraft_server"
+echo -e "${GREEN}Using Volume: obsidian-data -> /minecraft_server${NC}"
 
 COMMAND="docker run -itd --restart unless-stopped --env-file .env $PORTS $VOLUME_ARGS --name obsidian-panel obsidian-panel"
 echo "Running: $COMMAND"
