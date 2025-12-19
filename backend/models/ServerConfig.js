@@ -5,6 +5,7 @@ const ServerConfigSchema = new mongoose.Schema({
     port: { type: Number, default: 25565 },
     version: { type: String, default: '1.20.4' },
     type: { type: String, enum: ['vanilla', 'paper', 'purpur'], default: 'vanilla' },
-    gofileToken: { type: String, default: '' }
+    gofileToken: { type: String, default: '' },
+    javaVersion: { type: Number, default: 21 }
 }, { collection: 'server_config' });
 module.exports = mongoose.model('ServerConfig', ServerConfigSchema);

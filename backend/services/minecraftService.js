@@ -406,10 +406,66 @@ class MinecraftService extends EventEmitter {
             });
         } catch (error) {
             this.status = 'offline';
-            this.broadcast('status', this.getStatus());
-            throw error;
         }
     }
+    resolveJavaPath(version) {
+        console.log(`[JavaPath] DEBUG: Configured version is: '${version}' (Type: ${typeof version})`);
+
+        // Normalize version
+        const v = parseInt(version);
+
+        // Exact paths from user's /usr/lib/jvm listing
+        // Listing: default-jvm, java-1.8-openjdk, java-17-openjdk, java-21-openjdk, java-8-openjdk
+        const paths = {
+            8: ['/usr/lib/jvm/java-1.8-openjdk/bin/java', '/usr/lib/jvm/java-8-openjdk/bin/java'],
+            17: ['/usr/lib/jvm/java-17-openjdk/bin/java'],
+            21: ['/usr/lib/jvm/java-21-openjdk/bin/java']
+        };
+
+        if (paths[v]) {
+            for (const p of paths[v]) {
+                if (fs.existsSync(p)) {
+                    console.log(`[JavaPath] ✓ Found binary at: ${p}`);
+                    return p;
+                } else {
+                    console.log(`[JavaPath] ✗ Path not found: ${p}`);
+                }
+            }
+        } else {
+            console.warn(`[JavaPath] No hardcoded paths defined for version ${v}`);
+        }
+
+        // Fallback: Dynamic Search in /usr/lib/jvm
+        const jvmDir = '/usr/lib/jvm';
+        if (!fs.existsSync(jvmDir)) {
+            console.error(`[JavaPath] JVM Directory ${jvmDir} not found!`);
+            return 'java';
+        }
+
+        try {
+            const files = fs.readdirSync(jvmDir);
+            console.log(`[JavaPath] JVM Directory contents:`, files);
+
+            // Format search: "java-17-openjdk" or "java-1.8-openjdk" for version 8
+            let searchPrefix = `java-${version}-openjdk`;
+            if (version === 8) searchPrefix = 'java-1.8-openjdk';
+
+            const match = files.find(f => f.startsWith(searchPrefix));
+            if (match) {
+                const fullPath = path.join(jvmDir, match, 'bin/java');
+                if (fs.existsSync(fullPath)) {
+                    console.log(`[JavaPath] Found binary dynamically at: ${fullPath}`);
+                    return fullPath;
+                }
+            }
+        } catch (e) {
+            console.error("Error resolving Java path:", e);
+        }
+
+        console.warn(`[JavaPath] Could not resolve specific path. Falling back to system default 'java'.`);
+        return 'java';
+    }
+
     start() {
         if (this.status !== 'offline') return;
         if (!fs.existsSync(this.jarFile)) {
@@ -419,22 +475,8 @@ class MinecraftService extends EventEmitter {
         this.broadcast('status', this.getStatus());
 
         // Resolve Java Path based on version
-        let javaPath = 'java'; // Default system java
         const selectedVersion = parseInt(this.config.javaVersion || 21);
-
-        if (selectedVersion === 8) {
-            javaPath = '/usr/lib/jvm/java-1.8-openjdk/bin/java';
-        } else if (selectedVersion === 17) {
-            javaPath = '/usr/lib/jvm/java-17-openjdk/bin/java';
-        } else if (selectedVersion === 21) {
-            javaPath = '/usr/lib/jvm/java-21-openjdk/bin/java';
-        }
-
-        // Fallback: If specific path doesn't exist, try just 'java' (e.g. dev environment)
-        if (javaPath !== 'java' && !fs.existsSync(javaPath)) {
-            console.warn(`Warning: Java binary at ${javaPath} not found. Falling back to default 'java'.`);
-            javaPath = 'java';
-        }
+        let javaPath = this.resolveJavaPath(selectedVersion);
 
         console.log(`Starting server with Java ${selectedVersion} using binary: ${javaPath}`);
 
