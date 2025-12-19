@@ -6,8 +6,7 @@ const crypto = require('crypto');
 const Backup = require('../models/Backup');
 const Settings = require('../models/Settings');
 const minecraftService = require('./minecraftService');
-const axios = require('axios');
-const FormData = require('form-data');
+
 let scheduledTask = null;
 let isBackupInProgress = false;
 const DEFAULT_CONFIG = {
@@ -96,19 +95,34 @@ const BackupService = {
             const stats = fs.statSync(tempZipPath);
             const fileSize = (stats.size / (1024 * 1024)).toFixed(2) + ' MB';
             console.log(`[BackupService] Uploading to GoFile...`);
-            const formData = new FormData();
-            formData.append('file', fs.createReadStream(tempZipPath), backupName);
 
-            const uploadRes = await axios.post('https://upload.gofile.io/uploadfile', formData, {
-                headers: {
-                    ...formData.getHeaders(),
-                    'Authorization': `Bearer ${token}`
-                },
-                maxBodyLength: Infinity,
-                maxContentLength: Infinity
-            });
+            // Use curl for upload to avoid Node.js stream/buffering issues with large files
+            const curlCmd = `curl -s -X POST https://upload.gofile.io/uploadfile -H "Authorization: Bearer ${token}" -F "file=@${tempZipPath}"`;
 
-            const data = uploadRes.data;
+            let curlOutput;
+            try {
+                curlOutput = await new Promise((resolve, reject) => {
+                    exec(curlCmd, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+                        if (error) {
+                            reject(new Error(`Curl upload failed: ${stderr || error.message}`));
+                        } else {
+                            resolve(stdout);
+                        }
+                    });
+                });
+            } catch (curlErr) {
+                // If curl fails, it might be a network issue or the file is too big for some reason (unlikely with curl)
+                throw new Error(`Upload failed: ${curlErr.message}`);
+            }
+
+            let data;
+            try {
+                data = JSON.parse(curlOutput);
+            } catch (parseErr) {
+                console.error('[BackupService] Failed to parse curl output:', curlOutput);
+                throw new Error(`Invalid response from GoFile: ${curlOutput}`);
+            }
+
             if (data.status === 'ok') {
                 const newBackup = new Backup({
                     fileName: data.data.fileName || backupName,
