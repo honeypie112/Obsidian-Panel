@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useServer } from '../context/ServerContext';
 import { useToast } from '../context/ToastContext';
 import StatCard from '../components/StatCard';
-import { Activity, Cpu, HardDrive, MemoryStick, Play, Square, RefreshCw, Loader2, Server as ServerIcon, Zap } from 'lucide-react';
+import { Activity, Cpu, HardDrive, MemoryStick, Play, Square, RefreshCw, Loader2, Server as ServerIcon, Zap, ArrowDown, ArrowUp } from 'lucide-react';
 
 const formatBytes = (bytes) => {
     if (bytes === 0) return '0 B';
@@ -20,7 +20,8 @@ const Overview = () => {
         cpu: 0,
         cores: 0,
         ram: { total: 0, used: 0 },
-        storage: { total: 0, used: 0 }
+        storage: { total: 0, used: 0 },
+        network: { rx: 0, tx: 0 }
     });
 
     const handleStart = () => {
@@ -32,7 +33,7 @@ const Overview = () => {
     };
     useEffect(() => {
         if (!socket) return;
-        const onStats = (data) => setStats(data);
+        const onStats = (data) => setStats(prev => ({ ...prev, ...data }));
         socket.on('stats', onStats);
         return () => socket.off('stats', onStats);
     }, [socket]);
@@ -100,7 +101,7 @@ const Overview = () => {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
                     <StatCard
                         title="Status"
@@ -135,6 +136,24 @@ const Overview = () => {
                         subtext={`of ${formatBytes(stats.storage.total)} Used`}
                         icon={HardDrive}
                         color="text-green-400"
+                    />
+                </div>
+                <div className="animate-slide-up" style={{ animationDelay: '400ms' }}>
+                    <StatCard
+                        title="Network In"
+                        value={stats.network ? `${formatBytes(stats.network.rx)}/s` : '0 B/s'}
+                        subtext="Incoming Traffic"
+                        icon={ArrowDown}
+                        color="text-cyan-400"
+                    />
+                </div>
+                <div className="animate-slide-up" style={{ animationDelay: '500ms' }}>
+                    <StatCard
+                        title="Network Out"
+                        value={stats.network ? `${formatBytes(stats.network.tx)}/s` : '0 B/s'}
+                        subtext="Outgoing Traffic"
+                        icon={ArrowUp}
+                        color="text-orange-400"
                     />
                 </div>
             </div>

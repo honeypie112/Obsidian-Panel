@@ -85,21 +85,9 @@ if [ ! -d "Obsidian-Panel" ]; then
     fi
 fi
 
-# 2. Java Version Selection
-echo -e "\n${BLUE}Select Java Version needed for your Minecraft Server:${NC}"
-echo "1) Java 8  (Old versions like 1.8 - 1.12)"
-echo "2) Java 17 (Versions 1.16 - 1.20.4)"
-echo "3) Java 21 (Latest versions 1.20.5+)"
-read -p "Enter choice [1-3]: " java_choice < /dev/tty
-
-case $java_choice in
-    1) DOCKERFILE="Dockerfile.java8" ;;
-    2) DOCKERFILE="Dockerfile.java17" ;;
-    3) DOCKERFILE="Dockerfile.java21" ;;
-    *) echo -e "${RED}Invalid choice. Defaulting to Java 21.${NC}"; DOCKERFILE="Dockerfile.java21" ;;
-esac
-
-echo -e "${GREEN}Selected: ${DOCKERFILE}${NC}"
+# 2. Universal Container Setup
+echo -e "\n${BLUE}Using Universal Java Container (Java 8, 17, 21)...${NC}"
+DOCKERFILE="Dockerfile"
 
 # 3. Configuration (.env setup)
 echo -e "\n${BLUE}Configuration Setup:${NC}"

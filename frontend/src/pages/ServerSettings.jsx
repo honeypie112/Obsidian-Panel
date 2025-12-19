@@ -45,6 +45,7 @@ const ServerSettings = () => {
     const [type, setType] = useState('vanilla');
     const [gofileToken, setGofileToken] = useState('');
     const [version, setVersion] = useState('');
+    const [javaVersion, setJavaVersion] = useState('21');
 
     const [availableVersions, setAvailableVersions] = useState([]);
     const [isLoadingVersions, setIsLoadingVersions] = useState(false);
@@ -62,6 +63,7 @@ const ServerSettings = () => {
             setRam(server.ram || '2G');
             setType(server.type || 'vanilla');
             setGofileToken(server.gofileToken || '');
+            setJavaVersion(server.javaVersion ? String(server.javaVersion) : '21');
             if (server.version) setVersion(server.version);
             if (server.totalMem) {
                 setTotalRamMB(Math.floor(server.totalMem / (1024 * 1024)));
@@ -167,7 +169,7 @@ const ServerSettings = () => {
         }
         setIsSaving(true);
         try {
-            await updateServer({ name, ram, type, version, gofileToken });
+            await updateServer({ name, ram, type, version, gofileToken, javaVersion });
             showToast('Settings saved successfully', 'success');
         } catch (error) {
             console.error(error);
@@ -236,6 +238,20 @@ const ServerSettings = () => {
                             options={serverTypes}
                             value={type}
                             onChange={(val) => setType(val)}
+                            className="w-full"
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-obsidian-muted uppercase tracking-wider ml-1">Java Version</label>
+                        <Select
+                            options={[
+                                { value: '21', label: 'Java 21 (Recommended)' },
+                                { value: '17', label: 'Java 17 (Legacy)' },
+                                { value: '8', label: 'Java 8 (Ancient)' },
+                            ]}
+                            value={javaVersion}
+                            onChange={(val) => setJavaVersion(val)}
                             className="w-full"
                         />
                     </div>
