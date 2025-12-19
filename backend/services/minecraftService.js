@@ -408,62 +408,52 @@ class MinecraftService extends EventEmitter {
             this.status = 'offline';
         }
     }
-    resolveJavaPath(version) {
-        console.log(`[JavaPath] DEBUG: Configured version is: '${version}' (Type: ${typeof version})`);
+    getJavaHome(version) {
+        console.log(`[JavaHome] Resolving JAVA_HOME for version: ${version}`);
 
-        // Normalize version
         const v = parseInt(version);
 
-        // Exact paths from user's /usr/lib/jvm listing
-        // Listing: default-jvm, java-1.8-openjdk, java-17-openjdk, java-21-openjdk, java-8-openjdk
-        const paths = {
-            8: ['/usr/lib/jvm/java-1.8-openjdk/bin/java', '/usr/lib/jvm/java-8-openjdk/bin/java'],
-            17: ['/usr/lib/jvm/java-17-openjdk/bin/java'],
-            21: ['/usr/lib/jvm/java-21-openjdk/bin/java']
+        // JAVA_HOME paths for Alpine
+        const homes = {
+            8: ['/usr/lib/jvm/java-1.8-openjdk', '/usr/lib/jvm/java-8-openjdk'],
+            17: ['/usr/lib/jvm/java-17-openjdk'],
+            21: ['/usr/lib/jvm/java-21-openjdk']
         };
 
-        if (paths[v]) {
-            for (const p of paths[v]) {
-                if (fs.existsSync(p)) {
-                    console.log(`[JavaPath] ✓ Found binary at: ${p}`);
-                    return p;
-                } else {
-                    console.log(`[JavaPath] ✗ Path not found: ${p}`);
+        if (homes[v]) {
+            for (const home of homes[v]) {
+                if (fs.existsSync(home)) {
+                    console.log(`[JavaHome] ✓ Found JAVA_HOME at: ${home}`);
+                    return home;
                 }
             }
-        } else {
-            console.warn(`[JavaPath] No hardcoded paths defined for version ${v}`);
         }
 
-        // Fallback: Dynamic Search in /usr/lib/jvm
+        // Fallback or if unknown version, try to find dynamically
         const jvmDir = '/usr/lib/jvm';
-        if (!fs.existsSync(jvmDir)) {
-            console.error(`[JavaPath] JVM Directory ${jvmDir} not found!`);
-            return 'java';
-        }
+        if (fs.existsSync(jvmDir)) {
+            try {
+                const files = fs.readdirSync(jvmDir);
+                let searchPrefix = `java-${version}-openjdk`;
+                if (version === 8) searchPrefix = 'java-1.8-openjdk';
 
-        try {
-            const files = fs.readdirSync(jvmDir);
-            console.log(`[JavaPath] JVM Directory contents:`, files);
-
-            // Format search: "java-17-openjdk" or "java-1.8-openjdk" for version 8
-            let searchPrefix = `java-${version}-openjdk`;
-            if (version === 8) searchPrefix = 'java-1.8-openjdk';
-
-            const match = files.find(f => f.startsWith(searchPrefix));
-            if (match) {
-                const fullPath = path.join(jvmDir, match, 'bin/java');
-                if (fs.existsSync(fullPath)) {
-                    console.log(`[JavaPath] Found binary dynamically at: ${fullPath}`);
-                    return fullPath;
+                const match = files.find(f => f.startsWith(searchPrefix));
+                if (match) {
+                    const fullPath = path.join(jvmDir, match);
+                    if (fs.existsSync(fullPath)) {
+                        console.log(`[JavaHome] Found JAVA_HOME dynamically at: ${fullPath}`);
+                        return fullPath;
+                    }
                 }
+            } catch (e) {
+                console.error("Error resolving JAVA_HOME:", e);
             }
-        } catch (e) {
-            console.error("Error resolving Java path:", e);
         }
 
-        console.warn(`[JavaPath] Could not resolve specific path. Falling back to system default 'java'.`);
-        return 'java';
+        // If all else fails, return a default (likely existing system default)
+        // Or return null -> start() can handle default
+        console.warn(`[JavaHome] Could not resolve specific home. Using system default.`);
+        return null;
     }
 
     start() {
@@ -474,11 +464,22 @@ class MinecraftService extends EventEmitter {
         this.status = 'starting';
         this.broadcast('status', this.getStatus());
 
-        // Resolve Java Path based on version
+        // Resolve JAVA_HOME based on version
         const selectedVersion = parseInt(this.config.javaVersion || 21);
-        let javaPath = this.resolveJavaPath(selectedVersion);
+        const javaHome = this.getJavaHome(selectedVersion);
 
-        console.log(`Starting server with Java ${selectedVersion} using binary: ${javaPath}`);
+        // Prepare Environment
+        const env = { ...process.env };
+
+        if (javaHome) {
+            env.JAVA_HOME = javaHome;
+            // Prepend to PATH so this java version takes precedence
+            env.PATH = `${path.join(javaHome, 'bin')}:${env.PATH}`;
+            console.log(`[Start] Set JAVA_HOME=${javaHome}`);
+            console.log(`[Start] Updated PATH=${env.PATH}`);
+        } else {
+            console.log(`[Start] Using system default Java (no specific JAVA_HOME resolved)`);
+        }
 
         // Regex to match ram string like "4GB", "4G", "1024M", "1024 MB"
         const ramMatch = this.config.ram.match(/(\d+)\s*([GgMm])[Bb]?/);
@@ -486,7 +487,6 @@ class MinecraftService extends EventEmitter {
         if (ramMatch) {
             const val = parseInt(ramMatch[1]);
             const unit = ramMatch[2].toUpperCase();
-            // unit will be 'G' or 'M' due to match group 2 excluding optional 'b'
             maxRam = unit === 'G' ? `${val * 1024}M` : `${val}M`;
         }
         const args = [
@@ -494,16 +494,18 @@ class MinecraftService extends EventEmitter {
             `-Xmx${maxRam}`,
             '-DTerminal.jline=false',
             '-DTerminal.ansi=true',
-            '-Dlog4j.skipJansi=false', // Force Log4j to recognize ANSI support
+            '-Dlog4j.skipJansi=false',
             '-jar',
             this.jarFile,
             'nogui'
         ];
-        this.process = spawn(javaPath, args, {
+
+        // Use 'java' command - it will pick up the correct one from PATH
+        this.process = spawn('java', args, {
             cwd: this.serverDir,
             stdio: ['pipe', 'pipe', 'pipe'],
             env: {
-                ...process.env,
+                ...env, // Use our modified env
                 TERM: 'xterm-256color',
                 FORCE_COLOR: 'true'
             }

@@ -57,6 +57,7 @@ router.post('/install', auth, checkPermission('settings.edit'), async (req, res)
 
 router.post('/config', auth, checkPermission('settings.edit'), (req, res) => {
     try {
+        console.log("Received config update request:", req.body);
         minecraftService.saveConfig(req.body);
         res.json(minecraftService.getStatus());
     } catch (err) {
