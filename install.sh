@@ -198,7 +198,6 @@ VOLUME_ARGS=""
 if [ -n "$EXISTING_DATA_PATH" ]; then
     get_input "Do you want to reuse the existing server data? (y/n): " reuse_data
     if [[ "$reuse_data" =~ ^[Yy]$ ]]; then
-    if [[ "$reuse_data" =~ ^[Yy]$ ]]; then
         VOLUME_ARGS="-v $EXISTING_DATA_PATH:$FINAL_MC_PATH"
         echo -e "${GREEN}Will reuse data from: $EXISTING_DATA_PATH${NC}"
     else

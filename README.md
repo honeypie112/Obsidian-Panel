@@ -85,17 +85,38 @@ This script will:
 - Set up Docker containers.
 - **Auto-Detect Old Data**: If you are upgrading, it automatically detects your old data volume or legacy configuration and offers to keep it.
 
-### 🔄 Migration (For Legacy Users)
-If you are upgrading from an older version where data was stored *inside* the container (not in a volume), run the migration tool first:
+### 🔄 Migration Guide (For Upgrading from Legacy Versions)
+If you are upgrading from an older version of Obsidian Panel where data was stored *inside* the container (not in a volume), follow these steps to save your data:
 
+**Step 1: Check Connectivity**
+Ensure your old `obsidian-panel` container exists (even if stopped).
+
+**Step 2: Run Migration Script**
+This script extracts your server data specific path and moves it to a safe Docker Volume (`obsidian-data`).
+
+*Option A: Standard Migration (Default)*
+Use this if your server files are in the standard location (`/app/backend/minecraft_server`).
 ```bash
-# Default (looks in /app/backend/minecraft_server)
+chmod +x migrate.sh
 ./migrate.sh
-
-# Or specify your custom data path
-./migrate.sh /your/custom/data/path
 ```
-This moves your data to a safe volume (`obsidian-data`), which the installer will then automatically use.
+
+*Option B: Custom Path Migration*
+Use this if you know your server files are in a different folder inside the container.
+```bash
+chmod +x migrate.sh
+./migrate.sh /app/backend/your_custom_folder
+```
+
+**Step 3: Run Installer**
+Once migration says "Migration Complete!", run the installer to update the panel and mount your data.
+```bash
+./install.sh
+```
+1. Select **"Reinstall fresh"** (y).
+2. When asked **"Do you want to reuse the existing server data?"**, type **"y"**.
+
+Your server is now updated and your data is safe!
 
 ### 💾 Backup Tools
 We provide a helper script to backup your server files locally from the container (even if it's stopped).
