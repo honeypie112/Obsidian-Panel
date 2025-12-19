@@ -85,52 +85,49 @@ This script will:
 - Set up Docker containers.
 - **Auto-Detect Old Data**: If you are upgrading, it automatically detects your old data volume or legacy configuration and offers to keep it.
 
-### 🔄 Migration Guide (For Upgrading from Legacy Versions)
-If you are upgrading from an older version of Obsidian Panel where data was stored *inside* the container (not in a volume), follow these steps to save your data:
+### 🔄 Migration (For Legacy Users)
+If you are transitioning from an older setup, run this script to rescue your data.
+> **Note**: This script extracts your server files from the old container and moves them into the `obsidian-data` volume safely.
 
-**Step 1: Check Connectivity**
-Ensure your old `obsidian-panel` container exists (even if stopped).
-
-**Step 2: Run Migration Script**
-This script extracts your server data specific path and moves it to a safe Docker Volume (`obsidian-data`).
-
-*Option A: Standard Migration (Default)*
-Use this if your server files are in the standard location (`/app/backend/minecraft_server`).
 ```bash
-chmod +x migrate.sh
+# Standard Migration
 ./migrate.sh
+
+# Custom Path (if your data isn't in /app/backend/minecraft_server)
+./migrate.sh /custom/internal/path
 ```
+Once complete, the installer will automatically pick up your data from the volume.
 
-*Option B: Custom Path Migration*
-Use this if you know your server files are in a different folder inside the container.
+### 💾 Backup Tools (`backup_volume.sh`)
+Use this helper script to create backups of your server files.
+
+**1. Full Server Backup (Default)**
+Backs up the entire server directory (`/minecraft_server`) defined in your config.
 ```bash
-chmod +x migrate.sh
-./migrate.sh /app/backend/your_custom_folder
-```
-
-**Step 3: Run Installer**
-Once migration says "Migration Complete!", run the installer to update the panel and mount your data.
-```bash
-./install.sh
-```
-1. Select **"Reinstall fresh"** (y).
-2. When asked **"Do you want to reuse the existing server data?"**, type **"y"**.
-
-Your server is now updated and your data is safe!
-
-### 💾 Backup Tools
-We provide a helper script to backup your server files locally from the container (even if it's stopped).
-
-```bash
-# Backup the main server directory
 sudo ./backup_volume.sh
-
-# Backup any specific folder inside the container
-sudo ./backup_volume.sh /app/backend/config
 ```
-Backups are saved to the `./backups` directory.
 
-## 📖 Usage
+**2. Specific Folder Backup**
+Backs up a specific internal path. Useful for config files or worlds only.
+```bash
+sudo ./backup_volume.sh /minecraft_server/plugins
+```
+*Backups are saved in the `./backups` folder with a timestamp.*
+
+### ⚙️ Configuration (`.env`)
+The installer generates a `.env` file for you.
+> [!WARNING]
+> **Advanced Configuration**: Do NOT change paths like `MC_SERVER_BASE_PATH` unless you fully understand Docker Volumes and internal mapping.
+> Changing these paths can break the connection between the backend and your server files.
+
+**Safe to Change:**
+- `MONGO_URI`: Remote database connection string.
+- `JWT_SECRET`: Your security key.
+- `PORT`: The panel's web port (default 5000).
+
+**Critical Variables (Do Not Touch):**
+- `MC_SERVER_BASE_PATH`: Must match the Docker volume mount point.
+- `NODE_ENV`: Should remain `production`.
 
 1.  Open your browser and navigate to the frontend URL.
 2.  **First Login**: The first account registered automatically becomes the **Admin**.
