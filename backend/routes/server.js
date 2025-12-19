@@ -5,7 +5,7 @@ const path = require('path');
 const auth = require('../middleware/auth');
 
 // Base path for Minecraft server files (configurable)
-const SERVER_PATH = process.env.MC_SERVER_BASE_PATH || './servers';
+const SERVER_PATH = process.env.MC_SERVER_BASE_PATH || './server';
 
 // Ensure server directory exists
 if (!fs.existsSync(SERVER_PATH)) {

@@ -83,6 +83,31 @@ This script will:
 - Help you select the Java version.
 - Configure your `.env` file (MongoDB, etc.).
 - Set up Docker containers.
+- **Auto-Detect Old Data**: If you are upgrading, it automatically detects your old data volume or legacy configuration and offers to keep it.
+
+### 🔄 Migration (For Legacy Users)
+If you are upgrading from an older version where data was stored *inside* the container (not in a volume), run the migration tool first:
+
+```bash
+# Default (looks in /app/backend/minecraft_server)
+./migrate.sh
+
+# Or specify your custom data path
+./migrate.sh /your/custom/data/path
+```
+This moves your data to a safe volume (`obsidian-data`), which the installer will then automatically use.
+
+### 💾 Backup Tools
+We provide a helper script to backup your server files locally from the container (even if it's stopped).
+
+```bash
+# Backup the main server directory
+sudo ./backup_volume.sh
+
+# Backup any specific folder inside the container
+sudo ./backup_volume.sh /app/backend/config
+```
+Backups are saved to the `./backups` directory.
 
 ## 📖 Usage
 
