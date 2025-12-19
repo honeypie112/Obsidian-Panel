@@ -57,16 +57,8 @@ echo -e "${BLUE}Copying data from container... This may take a while.${NC}"
 # 1. Create a dummy container with the volume monted
 docker container create --name migration-helper -v obsidian-data:/target alpine
 
-# 2. Copy from Old Container -> Host Temp -> New Volume?  
-# efficient way: docker cp from old container to host, then host to volume.
-# Or: docker cp old_container:/app/backend/minecraft_server ./temp_migration_data
-
 # 2. Check if Legacy Path exists inside container
 echo -e "${BLUE}Checking if files exist at ${LEGACY_PATH}...${NC}"
-# Use docker exec to check existence. We need to start it momentarily if stopped? 
-# No, we can copy from stopped. But to check existence reliably without copying?
-# We can try to copy *one* file or list.
-# 'docker cp' errors if path not found.
 
 rm -rf ./current_migration_data
 mkdir -p ./current_migration_data
@@ -77,6 +69,7 @@ if docker cp "$CONTAINER_NAME:$LEGACY_PATH/." ./current_migration_data; then
    if [ -z "$(ls -A ./current_migration_data)" ]; then
        echo -e "${RED}Error: Source directory '$LEGACY_PATH' appears to be empty or copy failed.${NC}"
        rm -rf ./current_migration_data
+       docker rm -f migration-helper
        exit 1
    fi
    
@@ -98,6 +91,7 @@ if docker cp "$CONTAINER_NAME:$LEGACY_PATH/." ./current_migration_data; then
            echo -e "${GREEN}========================================${NC}"
            echo -e "Your data is now safe in the volume named: ${BLUE}obsidian-data${NC}"
            echo -e "You can now run ${BLUE}./install.sh${NC}"
+           echo -e "Select 'Reinstall fresh', and it will automatically use 'obsidian-data'."
            
            # CLEANUP
            docker rm -f migration-helper
