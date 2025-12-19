@@ -53,36 +53,14 @@ else
     echo -e "${GREEN}Docker is running.${NC}"
 fi
 
-# 0.5 Check for existing installation & configuration
+# 0.5 Configuration
 OLD_CONTAINER="obsidian-panel"
-DETECTED_MC_PATH=""
-EXISTING_DATA_PATH=""
+FINAL_MC_PATH="/minecraft_server"
+echo -e "${GREEN}Server Data Path set to: ${FINAL_MC_PATH}${NC}"
 
-if docker ps -a --format '{{.Names}}' | grep -q "^${OLD_CONTAINER}$"; then
-    echo -e "${BLUE}Detected existing installation...${NC}"
-    
-    # 1. Get the internal path used by the old container (default to /app/backend/minecraft_server)
-    DETECTED_MC_PATH=$(docker inspect --format='{{range .Config.Env}}{{println .}}{{end}}' "$OLD_CONTAINER" | grep "^MC_SERVER_BASE_PATH=" | cut -d= -f2)
-    
-    # 2. Extract mount source for this path
-    [ -z "$DETECTED_MC_PATH" ] && SEARCH_PATH="/minecraft_server" || SEARCH_PATH="$DETECTED_MC_PATH"
-    
-    EXISTING_DATA_PATH=$(docker inspect --format='{{range .Mounts}}{{if eq .Destination "'"$SEARCH_PATH"'"}}{{if eq .Type "volume"}}{{.Name}}{{else}}{{.Source}}{{end}}{{end}}{{end}}' "$OLD_CONTAINER")
-fi
-
-# Default if nothing detected
-if [ -z "$DETECTED_MC_PATH" ]; then
-    FINAL_MC_PATH="/minecraft_server"
-else
-    FINAL_MC_PATH="$DETECTED_MC_PATH"
-    echo -e "${GREEN} inherited MC_SERVER_BASE_PATH: $FINAL_MC_PATH ${NC}"
-fi
-
-# 1. Repository Setup
 # 1. Repository Setup
 if [ -d "Obsidian-Panel" ]; then
     echo -e "${GREEN}✓ Detected Obsidian-Panel directory.${NC}"
-    echo -e "${BLUE}Do you want to perform a fresh reinstall? (This will delete the existing code)${NC}"
     echo -e "${BLUE}Do you want to perform a fresh reinstall? (This will delete the existing code)${NC}"
     get_input "Reinstall fresh? (y/n): " reinstall_choice
     
@@ -149,9 +127,7 @@ MONGO_URI=$MONGO_URI
 MONGO_DB_NAME=obsidian-panel
 JWT_SECRET=$JWT_SECRET
 PORT=5000
-PORT=5000
 MC_SERVER_BASE_PATH=$FINAL_MC_PATH
-TEMP_BACKUP_PATH=/tmp
 TEMP_BACKUP_PATH=/tmp
 NODE_ENV=production
 
@@ -184,30 +160,12 @@ fi
 
 echo -e "\n${BLUE}Starting Container...${NC}"
 
-# Check for existing data volume/mount from the old container
-# Logic moved to top of script to capture env vars
-if [ -n "$EXISTING_DATA_PATH" ]; then
-    echo -e "${GREEN}Found existing server data: ${EXISTING_DATA_PATH} (Mapped to $FINAL_MC_PATH)${NC}"
-fi
-
 # Stop existing container if running
 docker rm -f "$OLD_CONTAINER" &>/dev/null
 
-# Prepare Volume Args
-VOLUME_ARGS=""
-if [ -n "$EXISTING_DATA_PATH" ]; then
-    get_input "Do you want to reuse the existing server data? (y/n): " reuse_data
-    if [[ "$reuse_data" =~ ^[Yy]$ ]]; then
-        VOLUME_ARGS="-v $EXISTING_DATA_PATH:$FINAL_MC_PATH"
-        echo -e "${GREEN}Will reuse data from: $EXISTING_DATA_PATH${NC}"
-    else
-        echo -e "${RED}Warning: Starting fresh. Old data remains at $EXISTING_DATA_PATH but won't be used.${NC}"
-        VOLUME_ARGS="-v obsidian-data:$FINAL_MC_PATH"
-    fi
-else
-    # Default behavior for new installs
-    VOLUME_ARGS="-v obsidian-data:$FINAL_MC_PATH"
-fi
+# Prepare Volume Args (Always use obsidian-data volume mapped to standard path)
+VOLUME_ARGS="-v obsidian-data:$FINAL_MC_PATH"
+echo -e "${GREEN}Using Volume: obsidian-data -> $FINAL_MC_PATH${NC}"
 
 COMMAND="docker run -itd --restart unless-stopped --env-file .env $PORTS $VOLUME_ARGS --name obsidian-panel obsidian-panel"
 echo "Running: $COMMAND"

@@ -61,28 +61,63 @@ docker container create --name migration-helper -v obsidian-data:/target alpine
 # efficient way: docker cp from old container to host, then host to volume.
 # Or: docker cp old_container:/app/backend/minecraft_server ./temp_migration_data
 
-rm -rf ./current_migration_data
-docker cp "$CONTAINER_NAME:$LEGACY_PATH" ./current_migration_data
+# 2. Check if Legacy Path exists inside container
+echo -e "${BLUE}Checking if files exist at ${LEGACY_PATH}...${NC}"
+# Use docker exec to check existence. We need to start it momentarily if stopped? 
+# No, we can copy from stopped. But to check existence reliably without copying?
+# We can try to copy *one* file or list.
+# 'docker cp' errors if path not found.
 
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}Data extracted to local './current_migration_data'.${NC}"
-    
-    echo -e "${BLUE}Uploading to 'obsidian-data' volume...${NC}"
-    # Copy from local to helper container which writes to volume
-    docker cp ./current_migration_data/. migration-helper:/target/
-    
-    echo -e "${BLUE}Cleaning up...${NC}"
-    docker rm migration-helper
-    rm -rf ./current_migration_data
-    
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}   Migration Complete!               ${NC}"
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "Your data is now safe in the volume named: ${BLUE}obsidian-data${NC}"
-    echo -e "You can now run ${BLUE}./install.sh${NC}"
-    echo -e "Select 'Reinstall fresh', and it will automatically use 'obsidian-data'."
+rm -rf ./current_migration_data
+mkdir -p ./current_migration_data
+
+echo -e "${BLUE}Extracting data from container...${NC}"
+if docker cp "$CONTAINER_NAME:$LEGACY_PATH/." ./current_migration_data; then
+   # Check if empty
+   if [ -z "$(ls -A ./current_migration_data)" ]; then
+       echo -e "${RED}Error: Source directory '$LEGACY_PATH' appears to be empty or copy failed.${NC}"
+       rm -rf ./current_migration_data
+       exit 1
+   fi
+   
+   echo -e "${GREEN}✓ Successfully extracted data to local buffer.${NC}"
+   FILE_COUNT=$(ls -A ./current_migration_data | wc -l)
+   echo -e "Found $FILE_COUNT files/folders."
+
+   echo -e "${BLUE}Uploading to 'obsidian-data' volume...${NC}"
+   # Copy from local to helper container
+   if docker cp ./current_migration_data/. migration-helper:/target/; then
+       echo -e "${GREEN}✓ Upload successful.${NC}"
+       
+       # Final Verify
+       echo -e "${BLUE}Verifying volume contents...${NC}"
+       docker exec migration-helper ls -A /target > /dev/null
+       if [ $? -eq 0 ]; then
+           echo -e "${GREEN}========================================${NC}"
+           echo -e "${GREEN}   Migration Complete!               ${NC}"
+           echo -e "${GREEN}========================================${NC}"
+           echo -e "Your data is now safe in the volume named: ${BLUE}obsidian-data${NC}"
+           echo -e "You can now run ${BLUE}./install.sh${NC}"
+           
+           # CLEANUP
+           docker rm -f migration-helper
+           rm -rf ./current_migration_data
+           exit 0
+       else
+           echo -e "${RED}Verification failed: Volume seems empty?${NC}"
+       fi
+   else
+       echo -e "${RED}Failed to upload data to volume.${NC}"
+   fi
 else
-    echo -e "${RED}Failed to copy data from container. Check if path exists.${NC}"
-    docker rm migration-helper
+    echo -e "${RED}Failed to find or copy path '$LEGACY_PATH' from container.${NC}"
+    echo -e "Please verify the path. You can browse your container with:"
+    echo -e "  docker start $CONTAINER_NAME"
+    echo -e "  docker exec -it $CONTAINER_NAME ls -R /app"
     exit 1
 fi
+
+# Cleanup on failure
+docker rm -f migration-helper &>/dev/null
+rm -rf ./current_migration_data
+exit 1
