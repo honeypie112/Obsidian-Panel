@@ -7,7 +7,7 @@ router.get('/status', auth, (req, res) => {
     res.json(minecraftService.getStatus());
 });
 
-router.post('/action', auth, checkPermission('overview.control'), (req, res) => {
+router.post('/action', auth, checkPermission('overview.control'), async (req, res) => {
     const { action } = req.body;
     try {
         switch (action) {
@@ -18,8 +18,7 @@ router.post('/action', auth, checkPermission('overview.control'), (req, res) => 
                 minecraftService.stop();
                 break;
             case 'restart':
-                minecraftService.stop();
-                setTimeout(() => minecraftService.start(), 5000);
+                await minecraftService.restart();
                 break;
             case 'kill':
                 minecraftService.kill();

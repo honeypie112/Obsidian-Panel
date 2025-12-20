@@ -538,13 +538,16 @@ class MinecraftService extends EventEmitter {
         this.process.on('close', (code) => {
             this.status = 'offline';
             this.process = null;
+            this.status = 'offline';
             this.broadcast('status', this.getStatus());
+            this.emit('stopped'); // Emit stopped event
             this.pushLog(`Server process exited with code ${code}`);
         });
         this.process.on('error', (err) => {
             this.status = 'offline';
             this.process = null;
             this.broadcast('status', this.getStatus());
+            this.emit('stopped'); // Emit stopped event
             this.pushLog(`Failed to start server: ${err.message}`);
         });
     }
@@ -582,6 +585,36 @@ class MinecraftService extends EventEmitter {
             this.process.stdin.write(command + '\n');
             this.pushLog(`> ${command}`);
         }
+    }
+
+    async restart() {
+        if (this.status === 'offline') {
+            return this.start();
+        }
+
+        if (this.status === 'stopping') {
+            // Already stopping, just wait
+        } else {
+            this.stop();
+        }
+
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error('Restart timed out waiting for server to stop'));
+            }, 60000); // 60s timeout
+
+            this.once('stopped', async () => {
+                clearTimeout(timeout);
+                try {
+                    // Slight delay to ensure file locks are released
+                    await new Promise(r => setTimeout(r, 1000));
+                    this.start();
+                    resolve();
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        });
     }
 }
 module.exports = new MinecraftService();
