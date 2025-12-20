@@ -408,51 +408,32 @@ class MinecraftService extends EventEmitter {
             this.status = 'offline';
         }
     }
-    getJavaHome(version) {
-        console.log(`[JavaHome] Resolving JAVA_HOME for version: ${version}`);
+    getJavaExecutable(version) {
+        console.log(`[JavaExecutable] Resolving java binary for version: ${version}`);
 
         const v = parseInt(version);
 
-        // JAVA_HOME paths for Alpine
-        const homes = {
-            8: ['/usr/lib/jvm/java-1.8-openjdk', '/usr/lib/jvm/java-8-openjdk'],
-            17: ['/usr/lib/jvm/java-17-openjdk'],
-            21: ['/usr/lib/jvm/java-21-openjdk']
+        // Explicit paths to java binaries
+        const paths = {
+            8: ['/usr/lib/jvm/java-1.8-openjdk/bin/java', '/usr/lib/jvm/java-8-openjdk/bin/java'],
+            17: ['/usr/lib/jvm/java-17-openjdk/bin/java'],
+            21: ['/usr/lib/jvm/java-21-openjdk/bin/java']
         };
 
-        if (homes[v]) {
-            for (const home of homes[v]) {
-                if (fs.existsSync(home)) {
-                    console.log(`[JavaHome] ✓ Found JAVA_HOME at: ${home}`);
-                    return home;
+        if (paths[v]) {
+            for (const javaPath of paths[v]) {
+                if (fs.existsSync(javaPath)) {
+                    console.log(`[JavaExecutable] ✓ Found java binary at: ${javaPath}`);
+                    return javaPath;
                 }
             }
         }
 
-        // Fallback or if unknown version, try to find dynamically
-        const jvmDir = '/usr/lib/jvm';
-        if (fs.existsSync(jvmDir)) {
-            try {
-                const files = fs.readdirSync(jvmDir);
-                let searchPrefix = `java-${version}-openjdk`;
-                if (version === 8) searchPrefix = 'java-1.8-openjdk';
+        // Fallback: try to find dynamically if standard paths fail (e.g. for unexpected versions)
+        // We look for 'bin/java' inside the JVM folders
 
-                const match = files.find(f => f.startsWith(searchPrefix));
-                if (match) {
-                    const fullPath = path.join(jvmDir, match);
-                    if (fs.existsSync(fullPath)) {
-                        console.log(`[JavaHome] Found JAVA_HOME dynamically at: ${fullPath}`);
-                        return fullPath;
-                    }
-                }
-            } catch (e) {
-                console.error("Error resolving JAVA_HOME:", e);
-            }
-        }
 
-        // If all else fails, return a default (likely existing system default)
-        // Or return null -> start() can handle default
-        console.warn(`[JavaHome] Could not resolve specific home. Using system default.`);
+        console.warn(`[JavaExecutable] Could not resolve specific binary for version ${version}.`);
         return null;
     }
 
@@ -464,22 +445,55 @@ class MinecraftService extends EventEmitter {
         this.status = 'starting';
         this.broadcast('status', this.getStatus());
 
-        // Resolve JAVA_HOME based on version
         const selectedVersion = parseInt(this.config.javaVersion || 21);
-        const javaHome = this.getJavaHome(selectedVersion);
+        const javaCmd = this.getJavaExecutable(selectedVersion);
 
-        // Prepare Environment
-        const env = { ...process.env };
+        this.pushLog(`[System] Checking for Java ${selectedVersion}...`);
 
-        if (javaHome) {
-            env.JAVA_HOME = javaHome;
-            // Prepend to PATH so this java version takes precedence
-            env.PATH = `${path.join(javaHome, 'bin')}:${env.PATH}`;
-            console.log(`[Start] Set JAVA_HOME=${javaHome}`);
-            console.log(`[Start] Updated PATH=${env.PATH}`);
-        } else {
-            console.log(`[Start] Using system default Java (no specific JAVA_HOME resolved)`);
+        if (!javaCmd) {
+            const errorMsg = `[System] CRITICAL: Java ${selectedVersion} binary NOT FOUND on this system!`;
+            console.error(`[Start] Fatal: ${errorMsg}`);
+            this.pushLog(errorMsg);
+            this.pushLog(`[System] Server launch aborted.`);
+            this.status = 'offline';
+            this.broadcast('status', this.getStatus());
+            throw new Error(`Java ${selectedVersion} binary not found.`);
         }
+
+        console.log(`[Start] Using Java executable: ${javaCmd}`);
+        this.pushLog(`[System] Found Java ${selectedVersion} at: ${javaCmd}`);
+        this.pushLog(`[System] Verifying Java version...`);
+
+        // Run java -version to log exact details to user
+        try {
+            const { spawnSync } = require('child_process');
+            const vCheck = spawnSync(javaCmd, ['-version']);
+            // java -version output usually goes to stderr
+            const vOutput = vCheck.stderr.toString() || vCheck.stdout.toString();
+            this.pushLog('--- Java Version Check ---');
+            vOutput.split('\n').forEach(line => {
+                if (line.trim()) this.pushLog(`[Java] ${line}`);
+            });
+            this.pushLog('--------------------------');
+        } catch (vErr) {
+            console.error("Version check failed:", vErr);
+            this.pushLog(`[System] Warning: Could not verify java version: ${vErr.message}`);
+        }
+
+        this.pushLog(`[System] Starting server subprocess...`);
+
+        // Safety check: Ensure file is actually executable by the process
+        try {
+            fs.accessSync(javaCmd, fs.constants.X_OK);
+            console.log(`[Start] Pre-spawn check: File is executable.`);
+        } catch (accErr) {
+            const accMsg = `[System] CRITICAL: File at ${javaCmd} is not executable! Permission denied?`;
+            console.error(accMsg, accErr);
+            this.pushLog(accMsg);
+            throw new Error(`Java binary at ${javaCmd} is not executable.`);
+        }
+
+        console.log(`[Start] FINAL SPAWN CALL: ${javaCmd}`);
 
         // Regex to match ram string like "4GB", "4G", "1024M", "1024 MB"
         const ramMatch = this.config.ram.match(/(\d+)\s*([GgMm])[Bb]?/);
@@ -500,438 +514,8 @@ class MinecraftService extends EventEmitter {
             'nogui'
         ];
 
-        // Use 'java' command - it will pick up the correct one from PATH
-        this.process = spawn('java', args, {
-            cwd: this.serverDir,
-            stdio: ['pipe', 'pipe', 'pipe'],
-            env: {
-                ...env, // Use our modified env
-                TERM: 'xterm-256color',
-                FORCE_COLOR: 'true'
-            }
-        });
-        this.process.stdout.on('data', (data) => {
-            const line = data.toString();
-            this.pushLog(line);
-            if (line.includes('Done') && line.includes('! For help')) {
-                this.status = 'online';
-                this.broadcast('status', this.getStatus());
-            }
-        });
-        this.process.stderr.on('data', (data) => {
-            this.pushLog(data.toString());
-        });
-        this.process.on('close', (code) => {
-            this.status = 'offline';
-            this.process = null;
-            this.broadcast('status', this.getStatus());
-            this.pushLog(`Server process exited with code ${code}`);
-        });
-        this.process.on('error', (err) => {
-            this.status = 'offline';
-            this.process = null;
-            this.broadcast('status', this.getStatus());
-            this.pushLog(`Failed to start server: ${err.message}`);
-        });
-    }
-    async saveConfig(newConfig) {
-        if (this.isOperationLocked) throw new Error('Operation locked: Server maintenance in progress.');
-        try {
-            this.config = { ...this.config, ...newConfig };
-            console.log("Saving config to DB. New state:", this.config);
-            await ServerConfig.updateOne({ name: 'main-server' }, this.config, { upsert: true });
-            console.log("Saved config to MongoDB");
-            this.broadcast('status', this.getStatus());
-        } catch (err) {
-            console.error("Failed to save config to DB:", err);
-            throw err;
-        }
-    }
-    async getNetworkStats() {
-        try {
-            const data = await fs.promises.readFile('/proc/net/dev', 'utf8');
-            const lines = data.split('\n');
-
-            let totalRx = 0;
-            let totalTx = 0;
-            let found = false;
-
-            for (const line of lines) {
-                if (!line.includes(':')) continue;
-
-                const parts = line.split(':');
-                const iface = parts[0].trim();
-                const stats = parts[1].trim();
-
-                // Skip loopback, docker virtual interfaces, and veth pairs usually used for containers
-                // We want physical or main virtual interfaces (eth, wlan, venet, ens)
-                if (iface === 'lo' || iface.startsWith('docker') || iface.startsWith('veth') || iface.startsWith('br-')) continue;
-
-                // Parse numbers robustly
-                const numbers = stats.match(/(\d+)/g);
-                if (numbers && numbers.length >= 9) {
-                    totalRx += parseInt(numbers[0], 10);
-                    totalTx += parseInt(numbers[8], 10);
-                    found = true;
-                }
-            }
-
-            if (!found) return null;
-
-            return {
-                rx: totalRx,
-                tx: totalTx,
-                timestamp: Date.now()
-            };
-        } catch (e) {
-            console.error("Network stats error:", e.message);
-            return null;
-        }
-    }
-
-    startStatsMonitoring() {
-        if (this.statsInterval) clearInterval(this.statsInterval);
-        let previousCpus = os.cpus();
-        this.lastNetStat = null;
-
-        this.statsInterval = setInterval(async () => {
-            const totalMem = os.totalmem();
-            const freeMem = os.freemem();
-            const usedMem = totalMem - freeMem;
-            let storage = { total: 0, used: 0, free: 0 };
-
-            // Network Stats Calculation
-            let netSpeed = { rx: 0, tx: 0 };
-            const currentNet = await this.getNetworkStats();
-            if (currentNet && this.lastNetStat) {
-                const deltaMs = currentNet.timestamp - this.lastNetStat.timestamp;
-                if (deltaMs > 0) {
-                    const deltaRx = currentNet.rx - this.lastNetStat.rx;
-                    const deltaTx = currentNet.tx - this.lastNetStat.tx;
-                    // Bytes per second
-                    netSpeed.rx = Math.max(0, Math.floor((deltaRx / deltaMs) * 1000));
-                    netSpeed.tx = Math.max(0, Math.floor((deltaTx / deltaMs) * 1000));
-                }
-            }
-            this.lastNetStat = currentNet;
-
-            try {
-                if (fs.statfs) {
-                    const stats = await fs.promises.statfs(this.serverDir);
-                    storage.total = stats.bsize * stats.blocks;
-                    storage.free = stats.bsize * stats.bfree;
-                    storage.used = storage.total - storage.free;
-                }
-            } catch (e) { }
-            const currentCpus = os.cpus();
-            let idle = 0;
-            let total = 0;
-            for (let i = 0; i < currentCpus.length; i++) {
-                const prev = previousCpus[i];
-                const curr = currentCpus[i];
-                let prevTotal = 0;
-                let currTotal = 0;
-                for (const type in prev.times) prevTotal += prev.times[type];
-                for (const type in curr.times) currTotal += curr.times[type];
-                idle += curr.times.idle - prev.times.idle;
-                total += currTotal - prevTotal;
-            }
-            const cpuUsage = total > 0 ? (1 - idle / total) * 100 : 0;
-            previousCpus = currentCpus;
-            const stats = {
-                cpu: parseFloat(cpuUsage.toFixed(1)),
-                cores: currentCpus.length,
-                ram: {
-                    total: totalMem,
-                    used: usedMem,
-                    free: freeMem
-                },
-                storage: storage,
-                network: netSpeed
-            };
-            this.broadcast('stats', stats);
-        }, 2000);
-    }
-    setSocketIo(io) {
-        this.io = io;
-        this.startStatsMonitoring();
-    }
-    broadcast(event, data) {
-        if (this.io) {
-            this.io.emit(event, data);
-        }
-    }
-    getStatus() {
-        const exists = fs.existsSync(this.jarFile);
-        if (!exists) {
-            try {
-                if (!fs.existsSync(this.jarFile) && fs.existsSync(this.serverDir)) {
-                }
-            } catch (e) { }
-        }
-        return {
-            status: this.status,
-            totalMem: os.totalmem(),
-            isInstalled: exists,
-            isLocked: this.isOperationLocked,
-            ...this.config
-        };
-    }
-    async install(version = '1.20.4') {
-        if (this.isOperationLocked) throw new Error('Operation locked: Server maintenance in progress.');
-        if (this.status !== 'offline') throw new Error('Server must be offline to install/update');
-        this.status = 'installing';
-    }
-    start() {
-        if (this.isOperationLocked) throw new Error('Operation locked: Server maintenance in progress.');
-        if (this.status !== 'offline') return;
-    }
-    stop() {
-        if (this.isOperationLocked) console.warn('Warning: Stop called while operation locked.');
-        if (this.status === 'offline' || !this.process) return;
-    }
-    getLogHistory() {
-        return this.logBuffer;
-    }
-    async getAvailableVersions() {
-        const cacheFile = path.join(__dirname, '../../versions_cache.json');
-        let cachedVersions = null;
-        try {
-            if (fs.existsSync(cacheFile)) {
-                const data = fs.readFileSync(cacheFile, 'utf8');
-                cachedVersions = JSON.parse(data);
-                if (!Array.isArray(cachedVersions)) cachedVersions = null;
-            }
-        } catch (e) {
-            console.error("Failed to read version cache:", e.message);
-        }
-        const fetchAndCache = () => new Promise((resolve, reject) => {
-            const options = {
-                headers: { 'User-Agent': 'ObsidianPanel/1.0 (Integration)' }
-            };
-            https.get('https://mc-versions-api.net/api/java', options, (res) => {
-                let data = '';
-                res.on('data', (chunk) => data += chunk);
-                res.on('end', () => {
-                    try {
-                        const parsed = JSON.parse(data);
-                        const versions = parsed.result.map(v => ({
-                            id: v,
-                            type: 'release'
-                        }));
-                        fs.writeFileSync(cacheFile, JSON.stringify(versions, null, 2));
-                        versionCache = versions;
-                        lastCacheTime = Date.now();
-                        resolve(versions);
-                    } catch (e) {
-                        reject(e);
-                    }
-                });
-            }).on('error', (err) => reject(err));
-        });
-        if (cachedVersions) {
-            fetchAndCache().catch(err => console.error("Background version update failed:", err.message));
-            return cachedVersions;
-        }
-        try {
-            return await fetchAndCache();
-        } catch (e) {
-            console.error("Critical: Failed to fetch versions and no cache available.", e);
-            throw e;
-        }
-    }
-    async getPaperUrl(version) {
-        return new Promise((resolve, reject) => {
-            const options = {
-                headers: { 'User-Agent': 'ObsidianPanel/1.0' },
-                timeout: 5000 // 5s timeout for metadata check
-            };
-            const req = https.get(`https://api.papermc.io/v2/projects/paper/versions/${version}/builds`, options, (res) => {
-                if (res.statusCode === 404) {
-                    return reject(new Error(`Paper version ${version} not found (404)`));
-                }
-                if (res.statusCode >= 400) {
-                    return reject(new Error(`Paper API Error: ${res.statusCode}`));
-                }
-
-                let data = '';
-                res.on('data', c => data += c);
-                res.on('end', () => {
-                    try {
-                        const parsed = JSON.parse(data);
-                        if (!parsed.builds || parsed.builds.length === 0) {
-                            return reject(new Error(`No Paper builds found for version ${version}`));
-                        }
-
-                        // Sort builds to find latest efficient way, though usually they are ordered
-                        // Prefer 'default' channel if channel information is available (Paper V2 API)
-                        // If logic is needed to filter stable, we can check parsed.builds[i].channel === 'default'
-
-                        const latestBuild = parsed.builds[parsed.builds.length - 1];
-                        const buildNum = latestBuild.build;
-                        const fileName = latestBuild.downloads.application.name;
-                        const url = `https://api.papermc.io/v2/projects/paper/versions/${version}/builds/${buildNum}/downloads/${fileName}`;
-                        resolve(url);
-                    } catch (e) {
-                        reject(new Error(`Failed to parse Paper metadata: ${e.message}`));
-                    }
-                });
-            });
-
-            req.on('error', (err) => reject(new Error(`Network error checking Paper: ${err.message}`)));
-            req.on('timeout', () => {
-                req.destroy();
-                reject(new Error('Paper version check timed out'));
-            });
-        });
-    }
-    async getPurpurUrl(version) {
-        return new Promise((resolve, reject) => {
-            const options = { headers: { 'User-Agent': 'ObsidianPanel/1.0' } };
-            https.get(`https://api.purpurmc.org/v2/purpur/${version}/latest/download`, options, (res) => {
-                if (res.statusCode >= 400) return reject(new Error(`Purpur not available for ${version}`));
-                resolve(`https://api.purpurmc.org/v2/purpur/${version}/latest/download`);
-            }).on('error', reject);
-        });
-    }
-    async getVersionDownloadUrl(version) {
-        const type = this.config.type || 'vanilla';
-        console.log(`Resolving download URL for ${version} [Type: ${type}]`);
-        if (type === 'paper') return this.getPaperUrl(version);
-        if (type === 'purpur') return this.getPurpurUrl(version);
-        return new Promise((resolve, reject) => {
-            const options = {
-                headers: { 'User-Agent': 'ObsidianPanel/1.0 (Integration)' },
-                timeout: 10000 // 10s timeout
-            };
-            const req = https.get('https://piston-meta.mojang.com/mc/game/version_manifest_v2.json', options, (res) => {
-                let data = '';
-                res.on('data', (chunk) => data += chunk);
-                res.on('end', () => {
-                    try {
-                        const parsed = JSON.parse(data);
-                        const vEntry = parsed.versions.find(v => v.id === version);
-                        if (!vEntry) {
-                            return reject(new Error(`Version ${version} parsing info not found in Mojang manifest`));
-                        }
-                        const pkgReq = https.get(vEntry.url, { ...options, timeout: 10000 }, (pkgRes) => {
-                            let pkgData = '';
-                            pkgRes.on('data', (chunk) => pkgData += chunk);
-                            pkgRes.on('end', () => {
-                                try {
-                                    const pkgParsed = JSON.parse(pkgData);
-                                    const serverUrl = pkgParsed.downloads?.server?.url;
-                                    if (!serverUrl) reject(new Error('No server download available via Mojang'));
-                                    resolve(serverUrl);
-                                } catch (e) { reject(e); }
-                            });
-                        });
-                        pkgReq.on('error', (err) => reject(err));
-                        pkgReq.on('timeout', () => { pkgReq.destroy(); reject(new Error('Version package fetch timed out')); });
-                    } catch (e) {
-                        reject(e);
-                    }
-                });
-            });
-            req.on('error', (err) => reject(err));
-            req.on('timeout', () => { req.destroy(); reject(new Error('Manifest fetch timed out')); });
-        });
-    }
-    async install(version = '1.20.4') {
-        if (this.status !== 'offline') throw new Error('Server must be offline to install/update');
-        this.status = 'installing';
-        this.broadcast('status', this.getStatus());
-
-        try {
-            const downloadUrl = await this.getVersionDownloadUrl(version);
-
-            await new Promise((resolve, reject) => {
-                const cleanup = (err) => {
-                    // Ensure the file generic error handler doesn't trigger secondary cleanup
-                    if (file) {
-                        file.destroy();
-                    }
-                    fs.unlink(this.jarFile, () => { }); // Best effort cleanup
-                    this.status = 'offline';
-                    this.broadcast('status', this.getStatus());
-                    reject(err);
-                };
-
-                const file = fs.createWriteStream(this.jarFile);
-
-                file.on('error', (err) => {
-                    cleanup(new Error(`File write error: ${err.message}`));
-                });
-
-                const request = https.get(downloadUrl, (response) => {
-                    if (response.statusCode >= 400) {
-                        cleanup(new Error(`Download failed with status code ${response.statusCode}`));
-                        return;
-                    }
-
-                    const len = parseInt(response.headers['content-length'], 10);
-                    let cur = 0;
-
-                    response.pipe(file);
-
-                    response.on('data', (chunk) => {
-                        cur += chunk.length;
-                        const percent = len ? (cur / len) * 100 : 0;
-                        this.broadcast('install_progress', percent);
-                    });
-
-                    file.on('finish', () => {
-                        file.close(() => {
-                            this.status = 'offline';
-                            this.broadcast('status', this.getStatus());
-                            fs.writeFileSync(path.join(this.serverDir, 'eula.txt'), 'eula=true');
-                            resolve(true);
-                        });
-                    });
-                });
-
-                request.on('error', (err) => {
-                    cleanup(new Error(`Network error: ${err.message}`));
-                });
-
-                request.on('timeout', () => {
-                    request.destroy();
-                    cleanup(new Error('Download timed out'));
-                });
-            });
-        } catch (error) {
-            this.status = 'offline';
-            this.broadcast('status', this.getStatus());
-            throw error;
-        }
-    }
-    start() {
-        if (this.status !== 'offline') return;
-        if (!fs.existsSync(this.jarFile)) {
-            throw new Error('Server JAR not found. Please install first.');
-        }
-        this.status = 'starting';
-        this.broadcast('status', this.getStatus());
-        // Regex to match ram string like "4GB", "4G", "1024M", "1024 MB"
-        const ramMatch = this.config.ram.match(/(\d+)\s*([GgMm])[Bb]?/);
-        let maxRam = '4096M';
-        if (ramMatch) {
-            const val = parseInt(ramMatch[1]);
-            const unit = ramMatch[2].toUpperCase();
-            // unit will be 'G' or 'M' due to match group 2 excluding optional 'b'
-            maxRam = unit === 'G' ? `${val * 1024}M` : `${val}M`;
-        }
-        const args = [
-            '-Xms1024M',
-            `-Xmx${maxRam}`,
-            '-DTerminal.jline=false',
-            '-DTerminal.ansi=true',
-            '-Dlog4j.skipJansi=false', // Force Log4j to recognize ANSI support
-            '-jar',
-            this.jarFile,
-            'nogui'
-        ];
-        this.process = spawn('java', args, {
+        // Spawn directly using the resolved path to the java binary
+        this.process = spawn(javaCmd, args, {
             cwd: this.serverDir,
             stdio: ['pipe', 'pipe', 'pipe'],
             env: {
