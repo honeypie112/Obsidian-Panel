@@ -102,10 +102,7 @@ while true; do
     fi
 done
 
-# JWT Secret
-echo -e "${BLUE}Generating JWT Secret...${NC}"
-JWT_SECRET=$(openssl rand -hex 32)
-echo -e "${GREEN}Generated JWT Secret: $JWT_SECRET${NC}"
+
 
 # Create .env file
 echo -e "\n${BLUE}Generating .env file...${NC}"
@@ -113,7 +110,7 @@ cat <<EOF > .env
 # Backend Config
 MONGO_URI=$MONGO_URI
 MONGO_DB_NAME=obsidian-panel
-JWT_SECRET=$JWT_SECRET
+
 PORT=5000
 MC_SERVER_BASE_PATH=/minecraft_server
 TEMP_BACKUP_PATH=/tmp

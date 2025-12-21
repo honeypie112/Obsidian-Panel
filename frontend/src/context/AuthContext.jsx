@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { mockApi } from '../utils/mockApi';
 import { API_URL } from '../config';
 const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
@@ -7,6 +6,7 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(null);
     const [loading, setLoading] = useState(true);
     const [hasAdmin, setHasAdmin] = useState(false);
+
     useEffect(() => {
         const initAuth = async () => {
             try {
@@ -16,47 +16,49 @@ export const AuthProvider = ({ children }) => {
             } catch (e) {
                 console.error(e);
             }
-            const storedToken = localStorage.getItem('obsidian_token');
-            if (storedToken) {
-                setToken(storedToken);
-                try {
-                    const res = await fetch(`${API_URL}/api/auth/me?_=${Date.now()}`, {
-                        headers: { 'Authorization': `Bearer ${storedToken}` }
-                    });
-                    if (res.ok) {
-                        const userData = await res.json();
-                        setUser(userData);
-                    } else {
-                        localStorage.removeItem('obsidian_token');
-                        setToken(null);
-                    }
-                } catch (e) {
-                    localStorage.removeItem('obsidian_token');
+
+            try {
+                const res = await fetch(`${API_URL}/api/auth/me?_=${Date.now()}`, {
+                    credentials: 'include'
+                });
+                if (res.ok) {
+                    const userData = await res.json();
+                    setUser(userData);
+                    setToken("session"); // maintain compatibility with existing checks
+                } else {
+                    setUser(null);
                     setToken(null);
                 }
+            } catch (e) {
+                console.error("Auth check failed:", e);
+                setUser(null);
+                setToken(null);
             }
             setLoading(false);
         };
         initAuth();
     }, []);
+
     const register = async (username, password) => {
         try {
             const res = await fetch(`${API_URL}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ username, password })
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Registration failed');
+
             setHasAdmin(true);
-            setToken(data.token);
+            setToken("session");
             setUser(data.user);
-            localStorage.setItem('obsidian_token', data.token);
             return { success: true };
         } catch (error) {
             return { success: false, error: error.message };
         }
     };
+
     const checkHasAdmin = async () => {
         try {
             const res = await fetch(`${API_URL}/api/auth/has-admin`);
@@ -64,33 +66,37 @@ export const AuthProvider = ({ children }) => {
             return data.hasAdmin;
         } catch { return false; }
     };
+
     const login = async (username, password) => {
         try {
             const res = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ username, password })
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Login failed');
-            setToken(data.token);
+
+            setToken("session");
             setUser(data.user);
-            localStorage.setItem('obsidian_token', data.token);
             return { success: true };
         } catch (error) {
             return { success: false, error: error.message };
         }
     };
+
     const updateProfile = async (data) => {
         try {
             const res = await fetch(`${API_URL}/api/auth/profile`, {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
+                credentials: 'include',
                 body: JSON.stringify(data)
             });
+
             let result;
             try {
                 result = await res.json();
@@ -98,6 +104,7 @@ export const AuthProvider = ({ children }) => {
                 const text = await res.text().catch(() => 'Unknown error');
                 throw new Error(res.statusText || text || 'Network response was not ok');
             }
+
             if (!res.ok) throw new Error(result.message || 'Update failed');
             setUser(result);
             return { success: true };
@@ -106,11 +113,17 @@ export const AuthProvider = ({ children }) => {
             return { success: false, error: error.message };
         }
     };
-    const logout = () => {
+
+    const logout = async () => {
+        try {
+            await fetch(`${API_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+        } catch (e) {
+            console.error("Logout failed", e);
+        }
         setToken(null);
         setUser(null);
-        localStorage.removeItem('obsidian_token');
     };
+
     return (
         <AuthContext.Provider value={{ user, token, login, logout, register, checkHasAdmin, hasAdmin, loading, updateProfile }}>
             {children}

@@ -59,8 +59,8 @@
 ## 🛠️ Tech Stack
 
 -   **Frontend**: React (Vite), Tailwind CSS, Lucide Icons.
--   **Backend**: Node.js, Express, Socket.io, Mongoose (MongoDB).
--   **System**: Uses native system calls (`child_process`) to run the Minecraft Server JAR.
+-   **Backend**: Rust, Axum, Tower Sessions, MongoDB.
+-   **System**: Uses native system calls to run the Minecraft Server JAR.
 
 ## 🚀 Installation
 
@@ -124,7 +124,6 @@ The installer generates a `.env` file for you.
 
 **Safe to Change:**
 - `MONGO_URI`: Remote database connection string.
-- `JWT_SECRET`: Your security key.
 - `PORT`: The panel's web port (default 5000).
 
 **Critical Variables (Do Not Touch):**

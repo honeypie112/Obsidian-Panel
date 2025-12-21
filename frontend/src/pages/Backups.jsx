@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CloudUpload, HardDrive, Download, CheckCircle, Database, Shield, Trash2, Clock, FileArchive, AlertTriangle, Calendar, X, Lock, Copy, RotateCw, Settings, Plus, Archive, Loader2 } from 'lucide-react';
+import { CloudUpload, HardDrive, Download, CheckCircle, Database, Shield, Trash2, Clock, FileArchive, AlertTriangle, Calendar, X, Lock, Copy, RotateCw, Settings, Plus, Archive, Loader2, Search, Edit2 } from 'lucide-react';
 import { serverApi } from '../api/server';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -8,13 +8,13 @@ import DatePicker from '../components/DatePicker';
 import Select from '../components/Select';
 
 const frequencyOptions = [
-    { value: 'minute', label: 'Every minute (* * * * *)' },
-    { value: 'hourly', label: 'Every hour (0 * * * *)' },
-    { value: 'daily', label: 'Every day at midnight (0 0 * * *)' },
-    { value: 'weekly_sun', label: 'Every Sunday at midnight (0 0 * * 0)' },
-    { value: 'monthly_1st', label: 'Every month on the 1st at midnight (0 0 1 * *)' },
-    { value: 'every_15_min', label: 'Every 15 minutes (*/15 * * * *)' },
-    { value: 'every_weekday', label: 'Every weekday at midnight (0 0 * * 1-5)' },
+    { value: 'minute', label: 'Every minute (0 * * * * *)' },
+    { value: 'hourly', label: 'Every hour (0 0 * * * *)' },
+    { value: 'daily', label: 'Every day at midnight (0 0 0 * * *)' },
+    { value: 'weekly_sun', label: 'Every Sunday at midnight (0 0 0 * * 0)' },
+    { value: 'monthly_1st', label: 'Every month on the 1st at midnight (0 0 0 1 * *)' },
+    { value: 'every_15_min', label: 'Every 15 minutes (0 */15 * * * *)' },
+    { value: 'every_weekday', label: 'Every weekday at midnight (0 0 0 * * 1-5)' },
     { value: 'custom', label: 'Custom' }
 ];
 
@@ -30,15 +30,20 @@ const Backups = () => {
     const [backupConfig, setBackupConfig] = useState({
         enabled: false,
         frequency: 'daily',
-        cronExpression: '0 0 * * *'
+        cronExpression: '0 0 0 * * *'
     });
     const [isSavingConfig, setIsSavingConfig] = useState(false);
     const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
     const [backupToRestore, setBackupToRestore] = useState(null);
     const [isRestoring, setIsRestoring] = useState(false);
     const [filterDate, setFilterDate] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [backupNotes, setBackupNotes] = useState('');
     const [deleteId, setDeleteId] = useState(null);
     const [backupData, setBackupData] = useState(null);
+    const [editingBackup, setEditingBackup] = useState(null);
+    const [editNotes, setEditNotes] = useState('');
+    const [isSavingNotes, setIsSavingNotes] = useState(false);
     const pollIntervalRef = useRef(null);
 
     useEffect(() => {
@@ -86,13 +91,13 @@ const Backups = () => {
         try {
             let cron = backupConfig.cronExpression;
             switch (backupConfig.frequency) {
-                case 'minute': cron = '* * * * *'; break;
-                case 'hourly': cron = '0 * * * *'; break;
-                case 'daily': cron = '0 0 * * *'; break;
-                case 'weekly_sun': cron = '0 0 * * 0'; break;
-                case 'monthly_1st': cron = '0 0 1 * *'; break;
-                case 'every_15_min': cron = '*/15 * * * *'; break;
-                case 'every_weekday': cron = '0 0 * * 1-5'; break;
+                case 'minute': cron = '0 * * * * *'; break;
+                case 'hourly': cron = '0 0 * * * *'; break;
+                case 'daily': cron = '0 0 0 * * *'; break;
+                case 'weekly_sun': cron = '0 0 0 * * 0'; break;
+                case 'monthly_1st': cron = '0 0 0 1 * *'; break;
+                case 'every_15_min': cron = '0 */15 * * * *'; break;
+                case 'every_weekday': cron = '0 0 0 * * 1-5'; break;
                 case 'custom': break;
                 default: break;
             }
@@ -111,11 +116,12 @@ const Backups = () => {
     const handleCreateBackup = async () => {
         setIsCreating(true);
         try {
-            const data = await serverApi.createBackup();
+            const data = await serverApi.createBackup(backupNotes || undefined);
             setBackupData(data);
             showToast('Backup created successfully!', 'success');
             setBackups(prev => [data, ...prev]);
             loadBackups();
+            setBackupNotes('');
         } catch (err) {
             console.error(err);
             showToast(err.message || 'Failed to create backup', 'error');
@@ -208,13 +214,92 @@ const Backups = () => {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
+    // Handle MongoDB date format (bson::DateTime serializes as {$date: {$numberLong: "timestamp"}} or {$date: "ISO string"})
+    const formatDate = (dateVal) => {
+        if (!dateVal) return 'Unknown';
+        try {
+            let date;
+            if (typeof dateVal === 'string') {
+                date = new Date(dateVal);
+            } else if (dateVal.$date) {
+                // MongoDB extended JSON format - can be string or nested object
+                if (typeof dateVal.$date === 'string') {
+                    date = new Date(dateVal.$date);
+                } else if (dateVal.$date.$numberLong) {
+                    // bson::DateTime format: {$date: {$numberLong: "timestamp"}}
+                    date = new Date(parseInt(dateVal.$date.$numberLong, 10));
+                } else {
+                    date = new Date(dateVal.$date);
+                }
+            } else if (dateVal instanceof Date) {
+                date = dateVal;
+            } else if (typeof dateVal === 'number') {
+                date = new Date(dateVal);
+            } else {
+                date = new Date(dateVal);
+            }
+            if (isNaN(date.getTime())) return 'Unknown';
+            return date.toLocaleString();
+        } catch {
+            return 'Unknown';
+        }
+    };
+
+    const openEditNotes = (backup) => {
+        setEditingBackup(backup);
+        setEditNotes(backup.notes || '');
+    };
+
+    const handleUpdateNotes = async () => {
+        if (!editingBackup) return;
+        setIsSavingNotes(true);
+        try {
+            // Extract backup ID - handle MongoDB ObjectId format
+            let backupId = editingBackup._id || editingBackup.id;
+            // Handle MongoDB extended JSON format { $oid: '...' }
+            if (backupId && typeof backupId === 'object' && backupId.$oid) {
+                backupId = backupId.$oid;
+            }
+            if (!backupId) {
+                throw new Error('Backup ID not found');
+            }
+            await serverApi.updateBackupNotes(backupId, editNotes || null);
+            showToast('Notes updated!', 'success');
+            // Update local state using helper to compare IDs
+            const getId = (b) => {
+                let id = b._id || b.id;
+                if (id && typeof id === 'object' && id.$oid) id = id.$oid;
+                return id;
+            };
+            setBackups(prev => prev.map(b =>
+                getId(b) === backupId ? { ...b, notes: editNotes || undefined } : b
+            ));
+            setEditingBackup(null);
+        } catch (err) {
+            showToast('Failed to update notes: ' + err.message, 'error');
+        } finally {
+            setIsSavingNotes(false);
+        }
+    };
+
     const filteredBackups = backups.filter(backup => {
-        if (!filterDate) return true;
-        const backupDate = new Date(backup.createdAt);
-        const [fYear, fMonth, fDay] = filterDate.split('-').map(Number);
-        return backupDate.getFullYear() === fYear &&
-            backupDate.getMonth() === fMonth - 1 &&
-            backupDate.getDate() === fDay;
+        // Search filter
+        const searchLower = searchQuery.toLowerCase();
+        const matchesSearch = !searchQuery ||
+            backup.fileName?.toLowerCase().includes(searchLower) ||
+            backup.notes?.toLowerCase().includes(searchLower);
+
+        // Date filter
+        let matchesDate = true;
+        if (filterDate) {
+            const backupDate = new Date(backup.createdAt);
+            const [fYear, fMonth, fDay] = filterDate.split('-').map(Number);
+            matchesDate = backupDate.getFullYear() === fYear &&
+                backupDate.getMonth() === fMonth - 1 &&
+                backupDate.getDate() === fDay;
+        }
+
+        return matchesSearch && matchesDate;
     });
 
     const isBusy = loading || isBackupInProgress;
@@ -276,6 +361,28 @@ const Backups = () => {
                 </div>
             )}
 
+            {/* Search Bar */}
+            <div className="flex gap-4 items-center mb-4">
+                <div className="relative flex-1 max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-obsidian-muted" size={18} />
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search by filename or notes..."
+                        className="w-full pl-10 pr-4 py-2.5 bg-obsidian-bg border border-obsidian-border rounded-lg text-white placeholder-obsidian-muted focus:outline-none focus:border-obsidian-accent"
+                    />
+                </div>
+                {(searchQuery || filterDate) && (
+                    <button
+                        onClick={() => { setSearchQuery(''); setFilterDate(''); }}
+                        className="text-obsidian-muted hover:text-white text-sm flex items-center gap-1 transition-colors"
+                    >
+                        <X size={14} /> Clear filters
+                    </button>
+                )}
+            </div>
+
             <div className="glass-panel rounded-2xl overflow-hidden shadow-xl">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm text-obsidian-muted">
@@ -306,6 +413,11 @@ const Backups = () => {
                                             </div>
                                             <div>
                                                 {backup.fileName}
+                                                {backup.notes && (
+                                                    <div className="text-xs text-obsidian-muted mt-1 opacity-70 max-w-xs truncate" title={backup.notes}>
+                                                        📝 {backup.notes}
+                                                    </div>
+                                                )}
                                                 {backup.encryptionPassword && (
                                                     <div className="flex items-center gap-2 mt-1">
                                                         <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 rounded border border-yellow-500/20 uppercase">Encrypted</span>
@@ -314,9 +426,12 @@ const Backups = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 font-mono text-xs opacity-70">{formatBytes(backup.size)}</td>
-                                        <td className="px-6 py-4 opacity-70">{new Date(backup.createdAt).toLocaleString()}</td>
+                                        <td className="px-6 py-4 opacity-70">{formatDate(backup.createdAt)}</td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-2">
+                                                <button onClick={() => openEditNotes(backup)} className="p-2 hover:bg-white/10 rounded-lg text-obsidian-muted hover:text-white transition-colors" title="Edit Notes">
+                                                    <Edit2 size={18} />
+                                                </button>
                                                 {backup.encryptionPassword && (
                                                     <button onClick={() => handleCopyPassword(backup.encryptionPassword)} className="p-2 hover:bg-white/10 rounded-lg text-white transition-colors" title="Copy Password">
                                                         <Copy size={18} />
@@ -357,7 +472,20 @@ const Backups = () => {
                 <div className="flex flex-col items-center text-center">
                     <CloudUpload size={48} className="text-obsidian-accent mb-4" />
                     <p className="text-white mb-2">Ready to create a backup?</p>
-                    <p className="text-sm text-obsidian-muted">This will upload your server files to GoFile.</p>
+                    <p className="text-sm text-obsidian-muted mb-4">This will upload your server files to GoFile.</p>
+
+                    <div className="w-full mt-2">
+                        <label className="text-xs font-bold text-obsidian-muted uppercase tracking-wider ml-1 block text-left mb-2">
+                            Notes (Optional)
+                        </label>
+                        <textarea
+                            value={backupNotes}
+                            onChange={(e) => setBackupNotes(e.target.value)}
+                            placeholder="e.g., Before 1.21 update, Pre-plugin install..."
+                            className="w-full px-4 py-3 bg-obsidian-bg border border-obsidian-border rounded-lg text-white placeholder-obsidian-muted focus:outline-none focus:border-obsidian-accent resize-none"
+                            rows={2}
+                        />
+                    </div>
                 </div>
             </Modal>
 
@@ -387,6 +515,34 @@ const Backups = () => {
                         <button onClick={() => setDeleteId(null)} className="px-4 py-2 text-obsidian-muted">Cancel</button>
                         <button onClick={handleDeleteBackup} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">Delete</button>
                     </div>
+                </div>
+            </Modal>
+
+            {/* Edit Notes Modal */}
+            <Modal
+                isOpen={!!editingBackup}
+                onClose={() => setEditingBackup(null)}
+                title="Edit Backup Notes"
+                footer={
+                    <>
+                        <button onClick={() => setEditingBackup(null)} className="px-4 py-2 text-obsidian-muted hover:text-white transition-colors">Cancel</button>
+                        <button onClick={handleUpdateNotes} className="px-4 py-2 bg-obsidian-accent hover:bg-obsidian-accent-hover text-white rounded-lg flex items-center" disabled={isSavingNotes}>
+                            {isSavingNotes ? 'Saving...' : 'Save Notes'}
+                        </button>
+                    </>
+                }
+            >
+                <div className="space-y-4">
+                    <p className="text-sm text-obsidian-muted">
+                        {editingBackup?.fileName}
+                    </p>
+                    <textarea
+                        value={editNotes}
+                        onChange={(e) => setEditNotes(e.target.value)}
+                        placeholder="Add notes for this backup..."
+                        className="w-full px-4 py-3 bg-obsidian-bg border border-obsidian-border rounded-lg text-white placeholder-obsidian-muted focus:outline-none focus:border-obsidian-accent resize-none"
+                        rows={3}
+                    />
                 </div>
             </Modal>
 

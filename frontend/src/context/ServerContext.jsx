@@ -18,12 +18,32 @@ export const ServerProvider = ({ children }) => {
         }
     };
     useEffect(() => {
+        fetchServer(); // Initial fetch to get full status
+
         const newSocket = io(SOCKET_URL, {
-            transports: ['websocket', 'polling']
+            transports: ['websocket', 'polling'],
+            reconnectionAttempts: 5,
+            reconnectionDelay: 2000,
+            reconnectionDelayMax: 10000,
+            autoConnect: true,
+        });
+
+        // Suppress noisy connection errors in console
+        newSocket.on('connect_error', (err) => {
+            // Only log once, not on every retry
+            if (newSocket.io._reconnectionAttempts === 1) {
+                console.warn('[Socket] Backend not reachable. Retrying...');
+            }
         });
         setSocket(newSocket);
         newSocket.on('status', (status) => {
-            setServer(status);
+            // If status is a string (like "online" or "offline"), merge with existing state
+            if (typeof status === 'string') {
+                setServer(prev => prev ? { ...prev, status } : { status });
+            } else {
+                // Full status object from API
+                setServer(status);
+            }
             setLoading(false);
         });
         return () => newSocket.close();
