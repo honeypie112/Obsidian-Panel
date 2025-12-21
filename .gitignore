@@ -14,7 +14,6 @@ dist-ssr
 
 # Editor directories and files
 .vscode/*
-!.vscode/extensions.json
 .idea
 .DS_Store
 *.suo
@@ -32,13 +31,6 @@ Cargo.lock
 
 # Minecraft Server Data for development
 backend-rust/minecraft_server/*
-!backend-rust/minecraft_server/server.properties
-!backend-rust/minecraft_server/eula.txt
-!backend-rust/minecraft_server/whitelist.json
-!backend-rust/minecraft_server/ops.json
-!backend-rust/minecraft_server/banned-ips.json
-!backend-rust/minecraft_server/banned-players.json
-
 # Backups
 backups/
 *.zip
