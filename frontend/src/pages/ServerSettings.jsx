@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useServer } from '../context/ServerContext';
-import { Save, Download, AlertCircle, Settings, Play, RefreshCw, Square } from 'lucide-react';
+import { Save, Download, AlertCircle, Settings, Play, RefreshCw, Square, Eye, EyeOff } from 'lucide-react';
 import SearchableSelect from '../components/SearchableSelect';
 import Select from '../components/Select';
 import { useToast } from '../context/ToastContext';
@@ -46,6 +46,7 @@ const ServerSettings = () => {
     const [gofileToken, setGofileToken] = useState('');
     const [version, setVersion] = useState('');
     const [javaVersion, setJavaVersion] = useState('21');
+    const [showGofileToken, setShowGofileToken] = useState(false);
 
     const [availableVersions, setAvailableVersions] = useState([]);
     const [isLoadingVersions, setIsLoadingVersions] = useState(false);
@@ -169,7 +170,15 @@ const ServerSettings = () => {
         }
         setIsSaving(true);
         try {
-            await updateServer({ name, ram, type, version, gofileToken, javaVersion });
+            await updateServer({
+                name,
+                ram,
+                type,
+                version,
+                gofileToken,
+                javaVersion: parseInt(javaVersion) || 21,
+                port: server.port || 25565
+            });
             showToast('Settings saved successfully', 'success');
         } catch (error) {
             console.error(error);
@@ -243,6 +252,31 @@ const ServerSettings = () => {
                     </div>
 
                     <div className="space-y-2">
+                        <label className="text-xs font-bold text-obsidian-muted uppercase tracking-wider ml-1">Game Version</label>
+                        <div className="flex gap-2">
+                            <div className="flex-1">
+                                <SearchableSelect
+                                    options={availableVersions}
+                                    value={version}
+                                    onChange={(newVal) => setVersion(newVal)}
+                                    placeholder={isLoadingVersions ? "Loading..." : "Select Version"}
+                                    disabled={isLoadingVersions || isUpdating}
+                                    inputFilter={/[^0-9.]/g}
+                                />
+                            </div>
+                            <button
+                                onClick={() => setIsConfirmUpdateOpen(true)}
+                                disabled={isUpdating || server.status !== 'offline'}
+                                className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-4 rounded-xl font-medium transition-all disabled:opacity-50 hover:border-white/20 flex items-center whitespace-nowrap text-sm"
+                                title={server.status !== 'offline' ? 'Stop server first' : 'Download & install JAR'}
+                            >
+                                {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div> : <Download size={16} className="mr-1" />}
+                                {isUpdating ? 'Updating...' : 'Update'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
                         <label className="text-xs font-bold text-obsidian-muted uppercase tracking-wider ml-1">Java Version</label>
                         <Select
                             options={[
@@ -263,13 +297,30 @@ const ServerSettings = () => {
                                 Get Token <Square size={10} className="ml-1" />
                             </a>
                         </div>
-                        <input
-                            type="password"
-                            value={gofileToken}
-                            onChange={(e) => setGofileToken(e.target.value)}
-                            className="w-full glass-input px-4 py-3"
-                            placeholder="Enter your GoFile API Token for backups"
-                        />
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={showGofileToken ? gofileToken : gofileToken.replace(/./g, '•')}
+                                onChange={(e) => {
+                                    if (showGofileToken) {
+                                        setGofileToken(e.target.value);
+                                    }
+                                }}
+                                onFocus={() => setShowGofileToken(true)}
+                                className="w-full glass-input px-4 py-3 pr-12"
+                                placeholder="Enter your GoFile API Token for backups"
+                                autoComplete="off"
+                                spellCheck="false"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowGofileToken(!showGofileToken)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-obsidian-muted hover:text-white transition-colors"
+                                title={showGofileToken ? "Hide token" : "Show token"}
+                            >
+                                {showGofileToken ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </div>
                         <p className="text-xs text-obsidian-muted ml-1 opacity-70">
                             Leave empty to use guest account (tokens heavily rate limited).
                         </p>
@@ -325,64 +376,21 @@ const ServerSettings = () => {
                 </div>
             </div>
 
-            <div className="glass-panel rounded-2xl p-8 animate-slide-up" style={{ animationDelay: '100ms' }}>
-                <div className="flex items-center space-x-3 mb-6">
-                    <div className="p-2 bg-white/5 rounded-lg text-white">
-                        <Play size={20} />
+            {/* Update Progress Bar */}
+            {updateProgress > 0 && (
+                <div className="glass-panel rounded-2xl p-6 animate-slide-up">
+                    <div className="flex justify-between text-sm text-white mb-2 font-medium">
+                        <span>Downloading & Installing...</span>
+                        <span>{Math.round(updateProgress)}%</span>
                     </div>
-                    <h2 className="text-xl font-bold text-white">Version Management</h2>
-                </div>
-
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-obsidian-muted uppercase tracking-wider ml-1">Resulting Jar File</label>
-                            <div className="glass-input px-4 py-3 text-obsidian-muted opacity-80 cursor-not-allowed bg-black/20 flex items-center justify-between">
-                                <span>server.jar</span>
-                                <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-white/70">Fixed Name</span>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-obsidian-muted uppercase tracking-wider ml-1">Game Version</label>
-                            <div className="flex gap-2">
-                                <div className="flex-1">
-                                    <SearchableSelect
-                                        options={availableVersions}
-                                        value={version} // Pass string value
-                                        onChange={(newVal) => setVersion(newVal)} // Receives string value
-                                        placeholder={isLoadingVersions ? "Loading versions..." : "Select Version"}
-                                        disabled={isLoadingVersions || isUpdating}
-                                    />
-                                </div>
-                                <button
-                                    onClick={() => setIsConfirmUpdateOpen(true)}
-                                    disabled={isUpdating || server.status !== 'offline'}
-                                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-6 rounded-xl font-medium transition-all disabled:opacity-50 hover:border-white/20 flex items-center whitespace-nowrap"
-                                >
-                                    {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div> : <Download size={18} className="mr-2" />}
-                                    {isUpdating ? 'Updating...' : 'Update JAR'}
-                                </button>
-                            </div>
-                        </div>
+                    <div className="h-2 bg-obsidian-bg rounded-full overflow-hidden">
+                        <div
+                            className={`h-full transition-all duration-200 ${updateStatus === 'success' ? 'bg-green-500' : 'bg-obsidian-accent'}`}
+                            style={{ width: `${updateProgress}%` }}
+                        ></div>
                     </div>
-
-                    {updateProgress > 0 && (
-                        <div className="mt-6 p-4 bg-obsidian-accent/5 rounded-xl border border-obsidian-accent/10">
-                            <div className="flex justify-between text-sm text-white mb-2 font-medium">
-                                <span>Downloading & Installing...</span>
-                                <span>{Math.round(updateProgress)}%</span>
-                            </div>
-                            <div className="h-2 bg-obsidian-bg rounded-full overflow-hidden">
-                                <div
-                                    className={`h-full transition-all duration-200 ${updateStatus === 'success' ? 'bg-green-500' : 'bg-obsidian-accent'}`}
-                                    style={{ width: `${updateProgress}%` }}
-                                ></div>
-                            </div>
-                        </div>
-                    )}
                 </div>
-            </div>
+            )}
 
             <Modal
                 isOpen={isConfirmUpdateOpen}

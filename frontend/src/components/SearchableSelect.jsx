@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check, Search } from 'lucide-react';
 import clsx from 'clsx';
-const SearchableSelect = ({ options, value, onChange, placeholder = "Select...", disabled = false }) => {
+const SearchableSelect = ({ options, value, onChange, placeholder = "Select...", disabled = false, inputFilter = null }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const containerRef = useRef(null);
@@ -29,14 +29,18 @@ const SearchableSelect = ({ options, value, onChange, placeholder = "Select...",
         (opt.value && opt.value.toString().toLowerCase().includes(inputValue.toLowerCase()))
     );
     const handleInputChange = (e) => {
-        const newVal = e.target.value;
+        let newVal = e.target.value;
+        // Apply input filter if provided (e.g., only allow numbers and dots)
+        if (inputFilter) {
+            newVal = newVal.replace(inputFilter, '');
+        }
         setInputValue(newVal);
-        onChange(newVal);  
+        onChange(newVal);
         setIsOpen(true);
     };
     const handleOptionSelect = (opt) => {
-        onChange(opt.value);  
-        setInputValue(opt.label);  
+        onChange(opt.value);
+        setInputValue(opt.label);
         setIsOpen(false);
     };
     return (
@@ -51,6 +55,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder = "Select...",
                     onFocus={() => !disabled && setIsOpen(true)}
                     placeholder={placeholder}
                     disabled={disabled}
+                    autoComplete="off"
                     className={clsx(
                         "w-full bg-obsidian-bg border border-obsidian-border rounded-lg px-4 py-2.5 text-white pr-10 focus:outline-none transition-colors",
                         disabled ? "opacity-50 cursor-not-allowed" : "hover:border-obsidian-accent focus:border-obsidian-accent focus:ring-1 focus:ring-obsidian-accent"

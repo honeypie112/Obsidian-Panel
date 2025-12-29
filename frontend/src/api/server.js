@@ -1,16 +1,15 @@
 import { API_URL } from '../config';
 const BASE_URL = `${API_URL}/api`;
 const getHeaders = () => {
-    const token = localStorage.getItem('obsidian_token');
     return {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Content-Type': 'application/json'
     };
 };
 export const serverApi = {
     getStatus: async () => {
         const res = await fetch(`${BASE_URL}/control/status`, {
-            headers: getHeaders()
+            headers: getHeaders(),
+            credentials: 'include'
         });
         if (!res.ok) throw new Error('Failed to fetch status');
         return res.json();
@@ -19,6 +18,7 @@ export const serverApi = {
         const res = await fetch(`${BASE_URL}/control/action`, {
             method: 'POST',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify({ action })
         });
         if (!res.ok) throw new Error(`Failed to ${action} server`);
@@ -28,6 +28,7 @@ export const serverApi = {
         const res = await fetch(`${BASE_URL}/control/command`, {
             method: 'POST',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify({ command })
         });
         if (!res.ok) throw new Error('Failed to send command');
@@ -37,6 +38,7 @@ export const serverApi = {
         const res = await fetch(`${BASE_URL}/control/install`, {
             method: 'POST',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify({ version })
         });
         if (!res.ok) throw new Error('Failed to start installation');
@@ -46,6 +48,7 @@ export const serverApi = {
         const res = await fetch(`${BASE_URL}/control/config`, {
             method: 'POST',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify(config)
         });
         if (!res.ok) throw new Error('Failed to update config');
@@ -55,6 +58,7 @@ export const serverApi = {
         const res = await fetch(`${BASE_URL}/control/files/list`, {
             method: 'POST',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify({ path: path.join('/') })
         });
         if (!res.ok) throw new Error('Failed to list files');
@@ -64,6 +68,7 @@ export const serverApi = {
         const res = await fetch(`${BASE_URL}/control/files/read`, {
             method: 'POST',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify({ path: path.join('/') })
         });
         if (!res.ok) throw new Error('Failed to read file');
@@ -73,6 +78,7 @@ export const serverApi = {
         const res = await fetch(`${BASE_URL}/control/files/save`, {
             method: 'POST',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify({ path: path.join('/'), content })
         });
         if (!res.ok) throw new Error('Failed to save file');
@@ -82,6 +88,7 @@ export const serverApi = {
         const res = await fetch(`${BASE_URL}/control/files/create`, {
             method: 'POST',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify({ path: path.join('/'), name, type })
         });
         if (!res.ok) throw new Error('Failed to create item');
@@ -92,6 +99,7 @@ export const serverApi = {
         const res = await fetch(`${BASE_URL}/control/files/delete`, {
             method: 'POST',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify({ path: fullPath })
         });
         if (!res.ok) throw new Error('Failed to delete item');
@@ -101,6 +109,7 @@ export const serverApi = {
         const res = await fetch(`${BASE_URL}/control/files/rename`, {
             method: 'POST',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify({ path: path.join('/'), oldName, newName })
         });
         if (!res.ok) {
@@ -114,6 +123,7 @@ export const serverApi = {
         const res = await fetch(`${BASE_URL}/control/files/extract`, {
             method: 'POST',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify({ path: fullPath })
         });
         if (!res.ok) throw new Error('Failed to extract file');
@@ -123,6 +133,7 @@ export const serverApi = {
         const res = await fetch(`${BASE_URL}/control/files/compress`, {
             method: 'POST',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify({ currentPath: path.join('/'), files })
         });
         if (!res.ok) throw new Error('Failed to compress files');
@@ -156,7 +167,7 @@ export const serverApi = {
             await new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
                 xhr.open('POST', `${BASE_URL}/control/files/upload-chunk`);
-                xhr.setRequestHeader('Authorization', `Bearer ${localStorage.getItem('obsidian_token')}`);
+                xhr.withCredentials = true;
 
                 xhr.upload.onprogress = (event) => {
                     if (event.lengthComputable && onProgress) {
@@ -207,15 +218,18 @@ export const serverApi = {
         const res = await fetch(`${BASE_URL}/control/files/download`, {
             method: 'POST',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify({ path: fullPath })
         });
         if (!res.ok) throw new Error('Failed to download file');
         return res.blob();
     },
-    createBackup: async () => {
+    createBackup: async (notes) => {
         const res = await fetch(`${BASE_URL}/backups/create`, {
             method: 'POST',
-            headers: getHeaders()
+            headers: getHeaders(),
+            credentials: 'include',
+            body: notes ? JSON.stringify({ notes }) : undefined
         });
         if (!res.ok) {
             const error = await res.json();
@@ -225,14 +239,16 @@ export const serverApi = {
     },
     getBackupStatus: async () => {
         const res = await fetch(`${BASE_URL}/backups/status`, {
-            headers: getHeaders()
+            headers: getHeaders(),
+            credentials: 'include'
         });
         if (!res.ok) throw new Error('Failed to fetch backup status');
         return res.json();
     },
     getBackups: async () => {
         const res = await fetch(`${BASE_URL}/backups`, {
-            headers: getHeaders()
+            headers: getHeaders(),
+            credentials: 'include'
         });
         if (!res.ok) throw new Error('Failed to fetch backups');
         return res.json();
@@ -240,15 +256,27 @@ export const serverApi = {
     deleteBackup: async (id) => {
         const res = await fetch(`${BASE_URL}/backups/${id}`, {
             method: 'DELETE',
-            headers: getHeaders()
+            headers: getHeaders(),
+            credentials: 'include'
         });
         if (!res.ok) throw new Error('Failed to delete backup');
+        return res.json();
+    },
+    updateBackupNotes: async (id, notes) => {
+        const res = await fetch(`${BASE_URL}/backups/${id}/notes`, {
+            method: 'PUT',
+            headers: getHeaders(),
+            credentials: 'include',
+            body: JSON.stringify({ notes })
+        });
+        if (!res.ok) throw new Error('Failed to update notes');
         return res.json();
     },
     restoreBackup: async (id) => {
         const res = await fetch(`${BASE_URL}/backups/${id}/restore`, {
             method: 'POST',
-            headers: getHeaders()
+            headers: getHeaders(),
+            credentials: 'include'
         });
         if (!res.ok) {
             const error = await res.json();
@@ -258,15 +286,17 @@ export const serverApi = {
     },
     getBackupConfig: async () => {
         const res = await fetch(`${BASE_URL}/backups/config`, {
-            headers: getHeaders()
+            headers: getHeaders(),
+            credentials: 'include'
         });
         if (!res.ok) throw new Error('Failed to fetch backup config');
         return res.json();
     },
     updateBackupConfig: async (config) => {
-        const res = await fetch(`${BASE_URL}/backups/config`, {
+        const res = await fetch(`${BASE_URL}/backups/config/save`, {
             method: 'POST',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify(config)
         });
         if (!res.ok) throw new Error('Failed to update config');
@@ -274,7 +304,8 @@ export const serverApi = {
     },
     searchPlugins: async (query) => {
         const res = await fetch(`${BASE_URL}/plugins/search?query=${encodeURIComponent(query)}`, {
-            headers: getHeaders()
+            headers: getHeaders(),
+            credentials: 'include'
         });
         if (!res.ok) throw new Error('Failed to search plugins');
         return res.json();
@@ -283,6 +314,7 @@ export const serverApi = {
         const res = await fetch(`${BASE_URL}/plugins/install`, {
             method: 'POST',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify({ projectId, source })
         });
         if (!res.ok) {
@@ -294,7 +326,8 @@ export const serverApi = {
     // User Management
     getUsers: async () => {
         const res = await fetch(`${BASE_URL}/users`, {
-            headers: getHeaders()
+            headers: getHeaders(),
+            credentials: 'include'
         });
         if (!res.ok) throw new Error('Failed to fetch users');
         return res.json();
@@ -303,6 +336,7 @@ export const serverApi = {
         const res = await fetch(`${BASE_URL}/users`, {
             method: 'POST',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify(userData)
         });
         if (!res.ok) {
@@ -315,6 +349,7 @@ export const serverApi = {
         const res = await fetch(`${BASE_URL}/users/${id}`, {
             method: 'PUT',
             headers: getHeaders(),
+            credentials: 'include',
             body: JSON.stringify(userData)
         });
         if (!res.ok) {
@@ -326,7 +361,8 @@ export const serverApi = {
     deleteUser: async (id) => {
         const res = await fetch(`${BASE_URL}/users/${id}`, {
             method: 'DELETE',
-            headers: getHeaders()
+            headers: getHeaders(),
+            credentials: 'include'
         });
         if (!res.ok) throw new Error('Failed to delete user');
         return res.json();

@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 
 const PERMISSIONS = [
     { id: 'overview.control', label: 'Control Power (Start/Stop)' },
+    { id: 'console.view', label: 'View Console Logs' },
     { id: 'console.command', label: 'Execute Commands' },
     { id: 'files.view', label: 'View/Download Files' },
     { id: 'files.edit', label: 'Edit Files' },
@@ -94,7 +95,7 @@ const Users = () => {
             if (password) payload.password = password;
 
             if (editingUser) {
-                await serverApi.updateUser(editingUser._id, payload);
+                await serverApi.updateUser(editingUser.id, payload);
                 toast.success('User updated successfully');
             } else {
                 if (!password) return toast.error('Password is required for new users');
@@ -113,7 +114,7 @@ const Users = () => {
     const confirmDelete = async () => {
         if (!userToDelete) return;
         try {
-            await serverApi.deleteUser(userToDelete._id);
+            await serverApi.deleteUser(userToDelete.id);
             toast.success('User deleted');
             setUserToDelete(null);
             fetchUsers();
@@ -146,8 +147,8 @@ const Users = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {users.map((user) => (
-                    <div key={user._id} className="glass-panel p-6 rounded-xl relative group">
+                {users.map((user, index) => (
+                    <div key={user.id || `user-${index}`} className="glass-panel p-6 rounded-xl relative group">
                         <div className="flex justify-between items-start mb-4">
                             <div className="flex items-center gap-3">
                                 <div className={clsx(
@@ -178,7 +179,7 @@ const Users = () => {
                                 >
                                     <Edit size={16} />
                                 </button>
-                                {currentUser?._id !== user._id && (
+                                {currentUser?.id !== user.id && (
                                     <button
                                         onClick={() => handleDeleteClick(user)}
                                         className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 text-obsidian-muted hover:text-red-400 transition-colors"

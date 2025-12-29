@@ -9,7 +9,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
     const allNavItems = [
         { icon: LayoutDashboard, label: 'Overview', path: '/', permission: 'overview.view' }, // Default for all usually, but can be explicit
-        { icon: Terminal, label: 'Console', path: '/console', permission: 'console.command' }, // Using console.command as gate
+        { icon: Terminal, label: 'Console', path: '/console', permission: 'console.view' }, // View logs only
         { icon: Folder, label: 'Files', path: '/files', permission: 'files.view' },
         { icon: Package, label: 'Plugin Store', path: '/plugins', permission: 'plugins.manage' },
         { icon: HardDrive, label: 'Backups', path: '/backups', permission: 'backups.view' },
@@ -19,18 +19,21 @@ const Sidebar = ({ isOpen, onClose }) => {
     ];
 
     const navItems = allNavItems.filter(item => {
+        // Admin sees everything
         if (user?.role === 'admin') return true;
 
-        // Sub-admin or User checks
+        // User role: only sees Overview
+        if (user?.role === 'user') {
+            return item.label === 'Overview';
+        }
+
+        // Sub-admin checks permissions
         if (item.adminOnly) return false;
 
-        // If no specific permission required (and not adminOnly), show it (e.g. Overview default behavior)
-        // However, user said "bas server dashboard access kr sake by default", so maybe EVERYTHING else needs perms?
-        // Let's assume Overview is always shown for authed users, as it's the landing page.
-        // I marked Overview with 'overview.view', but I didn't add 'overview.view' to Users.jsx.
-        // Let's treat Overview as public-for-authed.
+        // Overview is always shown for sub-admins
         if (item.label === 'Overview') return true;
 
+        // Check if sub-admin has permission for this item
         if (item.permission) {
             return user?.permissions?.includes(item.permission);
         }

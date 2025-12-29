@@ -1,5 +1,7 @@
-# Build stage
-FROM node:22-alpine as build-step
+# ====================
+# Stage 1: Build Frontend
+# ====================
+FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
@@ -7,28 +9,73 @@ RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
-# Production stage
-FROM node:22-alpine
+# ====================
+# Stage 2: Build Rust Backend
+# ====================
+FROM rust:alpine AS backend-builder
 
-# Install Java 8, 17, and 21
-# Note: On Alpine:
-# openjdk8 -> /usr/lib/jvm/java-1.8-openjdk/bin/java
+# Install build dependencies
+RUN apk add --no-cache musl-dev pkgconfig openssl-dev openssl-libs-static
+
+WORKDIR /app/backend-rust
+
+# Copy cargo files first for better caching
+COPY backend-rust/Cargo.toml backend-rust/Cargo.lock ./
+
+# Create dummy src to build dependencies  
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release && rm -rf src
+
+# Copy actual source and build
+COPY backend-rust/src ./src
+RUN touch src/main.rs && cargo build --release
+
+# ====================
+# Stage 3: Production Runtime
+# ====================
+FROM alpine:3.20
+
+# Install Java 8, 17, 21 and required tools
+# Alpine paths:
+# openjdk8  -> /usr/lib/jvm/java-1.8-openjdk/bin/java
 # openjdk17 -> /usr/lib/jvm/java-17-openjdk/bin/java
 # openjdk21 -> /usr/lib/jvm/java-21-openjdk/bin/java
-RUN apk add --no-cache openjdk8 openjdk17 openjdk21 zip unzip tar curl
+RUN apk add --no-cache \
+    openjdk8 \
+    openjdk17 \
+    openjdk21 \
+    zip \
+    unzip \
+    tar \
+    curl \
+    ca-certificates \
+    libgcc
 
-WORKDIR /app/backend
-RUN npm install -g npm@11.7.0
-COPY backend/package*.json ./
-RUN npm install --omit=dev
-COPY backend/ ./
+WORKDIR /app
 
-# Copy built frontend from build-step
-COPY --from=build-step /app/frontend/dist ./public
+# Copy Rust backend binary
+COPY --from=backend-builder /app/backend-rust/target/release/obsidian-panel-backend ./
 
-# Create server directory
-RUN mkdir -p minecraft_server
+# Copy frontend build
+COPY --from=frontend-builder /app/frontend/dist ./public
 
+# Create required directories
+RUN mkdir -p /minecraft_server /tmp/obsidian_backups
+
+# Environment variables
+ENV PORT=5000 \
+    HOST=0.0.0.0 \
+    MC_SERVER_BASE_PATH=/minecraft_server \
+    TEMP_BACKUP_PATH=/tmp/obsidian_backups \
+    FRONTEND_URL=http://localhost:5173 \
+    RUST_LOG=info
+
+# Expose ports
+# 5000 - Backend API/Frontend
+# 25565 - Minecraft Java Edition
+# 19132 - Minecraft Bedrock Edition
+# 24454 - Minecraft RCON
 EXPOSE 5000 25565 25565/udp 19132 19132/udp 24454 24454/udp
 
-CMD ["node", "server.js"]
+# Run the Rust backend
+CMD ["./obsidian-panel-backend"]

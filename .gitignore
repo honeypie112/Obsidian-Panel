@@ -14,7 +14,6 @@ dist-ssr
 
 # Editor directories and files
 .vscode/*
-!.vscode/extensions.json
 .idea
 .DS_Store
 *.suo
@@ -23,3 +22,20 @@ dist-ssr
 *.sln
 *.env
 *.sw?
+
+# Rust / Backend
+target/
+backend-rust/target/
+**/*.rs.bk
+
+
+# Minecraft Server Data for development
+backend-rust/minecraft_server/*
+# Backups
+backups/
+*.zip
+*.tar.gz
+
+# Agent / Temporary
+.gemini/
+.agent/

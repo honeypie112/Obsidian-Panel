@@ -3,8 +3,12 @@ import { useServer } from '../context/ServerContext';
 import { serverApi } from '../api/server';
 import { Terminal as TerminalIcon, Send } from 'lucide-react';
 import Convert from 'ansi-to-html';
+import { useAuth } from '../context/AuthContext';
 
 const Console = () => {
+    const { user } = useAuth();
+    const canExecute = user?.role === 'admin' || user?.permissions?.includes('console.command');
+
     const [logs, setLogs] = useState([]);
     const [command, setCommand] = useState('');
     const logsEndRef = useRef(null);
@@ -24,11 +28,26 @@ const Console = () => {
         if (!socket) return;
         setIsConnected(true);
         socket.emit('request_log_history');
-        socket.on('log_history', (history) => {
+        socket.on('log_history', (data) => {
+            console.log("RAW log_history data:", data);
+
+            let history = [];
+            if (Array.isArray(data)) {
+                // Check if it's a tuple wrapped in array (common in rust socketioxide sometimes)
+                if (data.length === 1 && Array.isArray(data[0])) {
+                    history = data[0];
+                } else {
+                    history = data;
+                }
+            } else if (data && typeof data === 'object' && data[0]) {
+                history = Array.from(data);
+            }
+
+            console.log("Processed history length:", history.length);
+
             const limitedHistory = (history || []).slice(-300);
-            const filteredHistory = limitedHistory.filter(log => !log.includes('[System] Connection established'));
+            const filteredHistory = limitedHistory.filter(log => typeof log === 'string' && !log.includes('[System] Connection established'));
             setLogs(filteredHistory);
-            // setLogs(prev => [...prev, '[System] Connection established.']); // Removed explicit connection message
         });
         socket.on('console_log', (log) => {
             if (!log.includes('[System] Connection established')) {
@@ -81,28 +100,37 @@ const Console = () => {
                     </div>
                 )}
                 {logs.map((log, index) => (
-                    <div key={index} className="break-words leading-relaxed animate-fade-in" dangerouslySetInnerHTML={{ __html: converter.toHtml(log) }} />
+                    <div key={index} className="break-words leading-relaxed animate-fade-in" dangerouslySetInnerHTML={{ __html: converter.toHtml(typeof log === 'string' ? log : JSON.stringify(log)) }} />
                 ))}
                 <div ref={logsEndRef} />
             </div>
 
-            <form onSubmit={handleSendCommand} className="bg-black/40 p-4 border-t border-white/5 flex items-center relative z-20 backdrop-blur-md">
-                <span className="text-obsidian-accent px-3 font-mono text-lg font-bold animate-pulse">{'>'}</span>
-                <input
-                    type="text"
-                    value={command}
-                    onChange={(e) => setCommand(e.target.value)}
-                    className="flex-1 bg-transparent border-none focus:ring-0 text-white font-mono text-sm placeholder-white/20 py-2"
-                    placeholder="Type server command..."
-                />
-                <button
-                    type="submit"
-                    disabled={!command.trim()}
-                    className="p-3 text-white/50 hover:text-white hover:bg-white/10 rounded-xl transition-all disabled:opacity-30 hover:scale-105 active:scale-95"
-                >
-                    <Send size={18} />
-                </button>
-            </form>
+            {/* Command Input - only visible/enabled if has console.command permission */}
+            {canExecute ? (
+                <form onSubmit={handleSendCommand} className="bg-black/40 p-4 border-t border-white/5 flex items-center relative z-20 backdrop-blur-md">
+                    <span className="text-obsidian-accent px-3 font-mono text-lg font-bold animate-pulse">{'>'}</span>
+                    <input
+                        type="text"
+                        value={command}
+                        onChange={(e) => setCommand(e.target.value)}
+                        className="flex-1 bg-transparent border-none focus:ring-0 text-white font-mono text-sm placeholder-white/20 py-2"
+                        placeholder="Type server command..."
+                    />
+                    <button
+                        type="submit"
+                        disabled={!command.trim()}
+                        className="p-3 text-white/50 hover:text-white hover:bg-white/10 rounded-xl transition-all disabled:opacity-30 hover:scale-105 active:scale-95"
+                    >
+                        <Send size={18} />
+                    </button>
+                </form>
+            ) : (
+                <div className="bg-black/40 p-4 border-t border-white/5 flex items-center justify-center relative z-20 backdrop-blur-md">
+                    <span className="text-obsidian-muted text-sm font-mono flex items-center gap-2">
+                        <TerminalIcon size={14} /> Read-only mode (No execute permission)
+                    </span>
+                </div>
+            )}
         </div>
     );
 };
