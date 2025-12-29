@@ -19,10 +19,12 @@ RUN apk add --no-cache musl-dev pkgconfig openssl-dev
 
 WORKDIR /app/backend-rust
 
-# Copy cargo files first for better caching
-COPY backend-rust/Cargo.toml backend-rust/Cargo.lock ./
+# Copy cargo files first for better caching (Cargo.lock is optional)
+COPY backend-rust/Cargo.toml ./
+# Copy Cargo.lock if it exists (glob pattern makes it optional)
+COPY backend-rust/Cargo.loc[k] ./ || true
 
-# Create dummy src to build dependencies
+# Create dummy src to build dependencies  
 RUN mkdir src && echo "fn main() {}" > src/main.rs
 RUN cargo build --release && rm -rf src
 
