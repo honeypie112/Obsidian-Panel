@@ -24,12 +24,17 @@ const Overview = () => {
         network: { rx: 0, tx: 0 }
     });
 
-    const handleStart = () => {
+    const handleStart = async () => {
         if (server.isInstalled === false) {
             showToast('Please install the server JAR first!', 'error');
             return;
         }
-        performAction('start');
+        try {
+            await performAction('start');
+        } catch (error) {
+            const errorMsg = error?.response?.data?.message || error?.message || 'Failed to start server';
+            showToast(errorMsg, 'error');
+        }
     };
     useEffect(() => {
         if (!socket) return;
@@ -176,7 +181,13 @@ const Overview = () => {
                     </button>
 
                     <button
-                        onClick={() => performAction('restart')}
+                        onClick={async () => {
+                            try {
+                                await performAction('restart');
+                            } catch (error) {
+                                showToast(error?.response?.data?.message || error?.message || 'Failed to restart server', 'error');
+                            }
+                        }}
                         disabled={!isOnline || isInstalling}
                         className="group relative overflow-hidden bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 border border-yellow-500/20 py-4 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(234,179,8,0.2)] active:scale-95"
                     >
@@ -187,7 +198,13 @@ const Overview = () => {
                     </button>
 
                     <button
-                        onClick={() => performAction('stop')}
+                        onClick={async () => {
+                            try {
+                                await performAction('stop');
+                            } catch (error) {
+                                showToast(error?.response?.data?.message || error?.message || 'Failed to stop server', 'error');
+                            }
+                        }}
                         disabled={!isOnline || isInstalling}
                         className="group relative overflow-hidden bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 py-4 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] active:scale-95"
                     >
@@ -213,7 +230,13 @@ const Overview = () => {
                         <p className="text-sm text-obsidian-muted">Immediately terminate the server process. Data may be lost.</p>
                     </div>
                     <button
-                        onClick={() => performAction('kill')}
+                        onClick={async () => {
+                            try {
+                                await performAction('kill');
+                            } catch (error) {
+                                showToast(error?.response?.data?.message || error?.message || 'Failed to kill server', 'error');
+                            }
+                        }}
                         disabled={server.status === 'offline' || isInstalling}
                         className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                     >

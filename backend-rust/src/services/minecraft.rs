@@ -192,10 +192,54 @@ impl MinecraftService {
         let _ = self.io.emit("status", &status);
     }
 
+    /// Find Java executable for specified version using multiple strategies
     fn get_java_executable(&self, version: u8) -> Option<PathBuf> {
         tracing::info!("[JavaExecutable] Resolving java binary for version: {}", version);
 
-        let paths: &[&str] = match version {
+        // Strategy 1: Check environment variable (JAVA_8_HOME, JAVA_17_HOME, etc.)
+        let env_var = format!("JAVA_{}_HOME", version);
+        if let Ok(java_home) = std::env::var(&env_var) {
+            let java_path = PathBuf::from(java_home).join("bin").join("java");
+            if java_path.exists() {
+                if let Some(verified) = self.verify_java_version(&java_path, version) {
+                    tracing::info!("[JavaExecutable] ✓ Found via ${}: {}", env_var, verified.display());
+                    return Some(verified);
+                }
+            }
+        }
+
+        // Strategy 2: Scan /usr/lib/jvm/ for matching directories
+        if let Ok(entries) = std::fs::read_dir("/usr/lib/jvm") {
+            let mut candidates = Vec::new();
+            
+            for entry in entries.flatten() {
+                let dir_name = entry.file_name();
+                let name = dir_name.to_string_lossy();
+                
+                // Match patterns like: java-8-openjdk, java-1.8-openjdk, java-17-openjdk-amd64
+                let version_str = version.to_string();
+                let legacy_version = if version == 8 { "1.8" } else { &version_str };
+                
+                if name.contains(&format!("java-{}", version_str)) || 
+                   name.contains(&format!("java-{}", legacy_version)) {
+                    let java_path = entry.path().join("bin").join("java");
+                    if java_path.exists() {
+                        candidates.push(java_path);
+                    }
+                }
+            }
+
+            // Verify each candidate and return the first one that matches
+            for candidate in candidates {
+                if let Some(verified) = self.verify_java_version(&candidate, version) {
+                    tracing::info!("[JavaExecutable] ✓ Found via JVM scan: {}", verified.display());
+                    return Some(verified);
+                }
+            }
+        }
+
+        // Strategy 3: Try common hardcoded paths as fallback
+        let fallback_paths: &[&str] = match version {
             8 => &[
                 "/usr/lib/jvm/java-1.8-openjdk/bin/java",
                 "/usr/lib/jvm/java-8-openjdk/bin/java",
@@ -212,15 +256,82 @@ impl MinecraftService {
             _ => &[],
         };
 
-        for path in paths {
+        for path in fallback_paths {
             let java_path = PathBuf::from(path);
             if java_path.exists() {
-                tracing::info!("[JavaExecutable] ✓ Found java binary at: {}", path);
-                return Some(java_path);
+                if let Some(verified) = self.verify_java_version(&java_path, version) {
+                    tracing::info!("[JavaExecutable] ✓ Found via fallback: {}", verified.display());
+                    return Some(verified);
+                }
             }
         }
 
-        tracing::warn!("[JavaExecutable] Could not resolve specific binary for version {}", version);
+        tracing::error!("[JavaExecutable] ✗ Could not find Java {} anywhere!", version);
+        None
+    }
+
+    /// Verify that a Java executable is actually the correct version
+    fn verify_java_version(&self, java_path: &PathBuf, expected_version: u8) -> Option<PathBuf> {
+        use std::process::Command;
+
+        // Run java -version and parse output
+        match Command::new(java_path).arg("-version").output() {
+            Ok(output) => {
+                // java -version outputs to stderr, not stdout
+                let version_output = String::from_utf8_lossy(&output.stderr);
+                
+                // Parse version from output like: "openjdk version "17.0.9" 2023-10-17"
+                // or "java version "1.8.0_392""
+                let actual_version = self.parse_java_version_output(&version_output);
+                
+                if actual_version == Some(expected_version) {
+                    tracing::debug!("[JavaExecutable] Verified {} is Java {}", java_path.display(), expected_version);
+                    return Some(java_path.clone());
+                } else {
+                    tracing::warn!(
+                        "[JavaExecutable] Version mismatch: {} reports Java {:?}, expected {}",
+                        java_path.display(),
+                        actual_version,
+                        expected_version
+                    );
+                }
+            }
+            Err(e) => {
+                tracing::warn!("[JavaExecutable] Failed to run {}: {}", java_path.display(), e);
+            }
+        }
+        
+        None
+    }
+
+    /// Parse Java version from `java -version` output
+    fn parse_java_version_output(&self, output: &str) -> Option<u8> {
+        // Look for patterns like:
+        // "1.8.0_392" -> 8
+        // "17.0.9" -> 17
+        // "21.0.1" -> 21
+        
+        for line in output.lines() {
+            if let Some(start) = line.find("version \"") {
+                let version_str = &line[start + 9..];
+                if let Some(end) = version_str.find('"') {
+                    let version = &version_str[..end];
+                    
+                    // Handle legacy format "1.8.x" -> 8
+                    if version.starts_with("1.8") {
+                        return Some(8);
+                    }
+                    
+                    // Handle modern format "17.x.x" -> 17
+                    if let Some(major) = version.split('.').next() {
+                        if let Ok(ver) = major.parse::<u8>() {
+                            return Some(ver);
+                        }
+                    }
+                }
+            }
+        }
+        
         None
     }
 
@@ -251,14 +362,22 @@ impl MinecraftService {
             return Err(AppError::BadRequest("Server JAR not found. Please install first.".to_string()));
         }
 
-        *self.status.write() = ProcessStatus::Starting;
-        self.broadcast_status();
-
         let config = self.config.read().clone();
         let java_version = config.java_version;
 
-        let java_cmd = self.get_java_executable(java_version)
-        .ok_or_else(|| AppError::Process(format!("Java {} binary NOT FOUND on this system!", java_version)))?;
+        // Find and verify Java BEFORE changing status
+        let java_cmd = match self.get_java_executable(java_version) {
+            Some(path) => path,
+            None => {
+                let error_msg = format!("Java {} binary NOT FOUND on this system!", java_version);
+                self.push_log(&format!("[System] ERROR: {}", error_msg));
+                return Err(AppError::Process(error_msg));
+            }
+        };
+
+        // Only change status to Starting after we know Java exists
+        *self.status.write() = ProcessStatus::Starting;
+        self.broadcast_status();
 
         self.push_log(&format!("[System] Checking for Java {}...", java_version));
         self.push_log(&format!("[System] Found Java {} at: {}", java_version, java_cmd.display()));
