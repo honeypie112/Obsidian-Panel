@@ -569,6 +569,12 @@ impl MinecraftService {
         Ok(())
     }
 
+    pub async fn reset_status(&self) -> Result<()> {
+        *self.status.write() = ProcessStatus::Offline;
+        self.broadcast_status();
+        Ok(())
+    }
+
     pub async fn send_command(&self, command: &str) -> Result<()> {
         let status = self.status.read().clone();
         if status != ProcessStatus::Online {

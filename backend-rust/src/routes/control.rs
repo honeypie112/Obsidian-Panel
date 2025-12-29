@@ -131,7 +131,24 @@ async fn install(
     PermissionGuard::check(&state, &auth_user, "settings.edit").await?;
 
     tracing::info!("Install request received. Version: {}", payload.version);
-    state.minecraft.install(&payload.version).await?;
+    
+    // Spawn installation in background to avoid blocking HTTP request
+    // and prevent cancellation if client disconnects/times out
+    let state_clone = state.clone();
+    let version = payload.version.clone();
+    
+    tokio::spawn(async move {
+        match state_clone.minecraft.install(&version).await {
+            Ok(_) => tracing::info!("Installation completed successfully"),
+            Err(e) => {
+                tracing::error!("Installation failed: {}", e);
+                // Try to reset status if failed
+                if let Err(err) = state_clone.minecraft.reset_status().await {
+                     tracing::error!("Failed to reset status: {}", err);
+                }
+            }
+        }
+    });
     
     Ok(Json(serde_json::json!({ "message": "Installation started" })))
 }
