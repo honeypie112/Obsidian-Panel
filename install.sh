@@ -58,32 +58,30 @@ OLD_CONTAINER="obsidian-panel"
 FINAL_MC_PATH="/minecraft_server"
 echo -e "${GREEN}Server Data Path set to: ${FINAL_MC_PATH}${NC}"
 
-# 1. Repository Setup
-if [ -d "Obsidian-Panel" ]; then
-    echo -e "${GREEN}✓ Detected Obsidian-Panel directory.${NC}"
-    echo -e "${BLUE}Do you want to perform a fresh reinstall? (This will delete the existing code)${NC}"
-    get_input "Reinstall fresh? (y/n): " reinstall_choice
+# 1. Check for Existing Installation
+if docker ps -a --format '{{.Names}}' | grep -q "^${OLD_CONTAINER}$"; then
+    echo -e "${GREEN}✓ Detected existing installation (container: ${OLD_CONTAINER}).${NC}"
+    echo -e "${BLUE}Do you want to reinstall/update? (This will recreate the container but KEEP data)${NC}"
+    get_input "Reinstall? (y/n): " reinstall_choice
     
     if [[ "$reinstall_choice" =~ ^[Yy]$ ]]; then
-        echo -e "${RED}Removing existing installation...${NC}"
-        rm -rf Obsidian-Panel
+        echo -e "${YELLOW}Stopping and removing old container...${NC}"
+        docker rm -f "$OLD_CONTAINER"
     else
-        echo -e "${BLUE}Updating repository...${NC}"
-        cd Obsidian-Panel || exit 1
-        git pull
+        echo -e "${GREEN}Installation cancelled.${NC}"
+        exit 0
     fi
+else
+    echo -e "${BLUE}Fresh installation detected.${NC}"
 fi
 
-if [ ! -d "Obsidian-Panel" ]; then
-    echo -e "${BLUE}Cloning Obsidian-Panel repository (master branch)...${NC}"
-    if git clone -b master https://github.com/honeypie112/Obsidian-Panel.git; then
-        cd Obsidian-Panel || exit 1
-        echo -e "${GREEN}✓ Cloned and entered directory.${NC}"
-    else
-        echo -e "${RED}Failed to clone repository. Please check your internet connection.${NC}"
-        exit 1
-    fi
+# Create directory for config if it doesn't exist
+INSTALL_DIR="obsidian-panel-config"
+if [ ! -d "$INSTALL_DIR" ]; then
+    echo -e "${BLUE}Creating configuration directory: ${INSTALL_DIR}${NC}"
+    mkdir -p "$INSTALL_DIR"
 fi
+cd "$INSTALL_DIR" || exit 1
 
 # 2. Universal Container Setup
 echo -e "\n${BLUE}Using Universal Java Container (Java 8, 17, 21)...${NC}"
@@ -134,12 +132,12 @@ if [[ "$expose_more" =~ ^[Yy]$ ]]; then
     done
 fi
 
-# 5. Docker Build & Run
-echo -e "\n${BLUE}Building Docker Image (obsidian-panel)...${NC}"
-if docker build -f "$DOCKERFILE" -t obsidian-panel .; then
-    echo -e "${GREEN}✓ Build successful.${NC}"
+# 5. Docker Pull & Run
+echo -e "\n${BLUE}Pulling Docker Image (alexbhai/obsidian-panel)...${NC}"
+if docker pull alexbhai/obsidian-panel:latest; then
+    echo -e "${GREEN}✓ Image pull successful.${NC}"
 else
-    echo -e "${RED}Docker build failed!${NC}"
+    echo -e "${RED}Docker pull failed! Check your internet connection.${NC}"
     exit 1
 fi
 
@@ -153,7 +151,7 @@ docker rm -f "$OLD_CONTAINER" &>/dev/null
 VOLUME_ARGS="-v obsidian-data:/minecraft_server"
 echo -e "${GREEN}Using Volume: obsidian-data -> /minecraft_server${NC}"
 
-COMMAND="docker run -itd --restart unless-stopped --env-file .env $PORTS $VOLUME_ARGS --name obsidian-panel obsidian-panel"
+COMMAND="docker run -itd --restart unless-stopped --env-file .env $PORTS $VOLUME_ARGS --name obsidian-panel alexbhai/obsidian-panel:latest"
 echo "Running: $COMMAND"
 
 if $COMMAND; then
@@ -169,18 +167,7 @@ if $COMMAND; then
     fi
     echo -e "Admin Account: The first user to register will be Admin."
 
-    # Cleanup Option
-    echo -e "\n${BLUE}Cleanup:${NC}"
-    get_input "Do you want to remove the source code directory to save space? (y/n): " cleanup_choice
-    
-    if [[ "$cleanup_choice" =~ ^[Yy]$ ]]; then
-        echo -e "${RED}Removing source files...${NC}"
-        cd ..
-        rm -rf Obsidian-Panel
-        echo -e "${GREEN}✓ Cleanup complete. Your panel is running in the background.${NC}"
-    else
-        echo -e "${GREEN}Source files kept in 'Obsidian-Panel' directory.${NC}"
-    fi
+    echo -e "${GREEN}✓ Panel is running in the background.${NC}"
 else
     echo -e "${RED}Failed to start container.${NC}"
     exit 1

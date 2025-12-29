@@ -104,44 +104,76 @@
 ## 🚀 Installation
 
 ### Prerequisites
-- **Docker** & **Docker Compose** (must be installed and running)
-- **MongoDB** (running locally or remote connection)
+- **Docker** (must be installed and running)
+- **MongoDB** (running locally or remote connection URL)
 - **RAM**: Minimum 2GB (4GB+ recommended)
 - **OS**: Linux (Ubuntu/Debian/Alpine recommended)
 - **Disk**: 5GB+ for server files and backups
 
-### ⚡ Quick Start (Docker)
+### Method 1: Automated Install Script (Recommended) ⚡
+
+The easiest way to install Obsidian Panel with a single command:
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/honeypie112/Obsidian-Panel/master/install.sh)
+```
+
+**What it does:**
+- ✅ Checks Docker installation and starts the service
+- ✅ Clones/updates the repository automatically
+- ✅ Prompts for MongoDB URI (required)
+- ✅ Builds Docker image with Java 8, 17, and 21 pre-installed
+- ✅ Creates and starts the container with proper port mappings
+- ✅ Uses persistent Docker volume `obsidian-data` for server data
+- ✅ Optional cleanup of source files after installation
+
+**Access the panel:**
+- Open http://localhost:5000 or http://YOUR_SERVER_IP:5000
+- First registered user becomes **Admin**
+
+---
+
+### Method 2: Docker Compose
+
+For manual control or custom configurations:
 
 **1. Clone the repository**
 ```bash
-git clone https://github.com/honeypie112/Obsidian-Panel-rust.git
-cd Obsidian-Panel-rust
+git clone https://github.com/honeypie112/Obsidian-Panel.git
+cd Obsidian-Panel
 ```
 
-**2. Configure environment variables**
+**2. Create `.env` file**
+
+Create a `.env` file in the project root with your configuration:
+
 ```bash
-cp .env.example .env
 nano .env
 ```
 
 **Required variables:**
 ```env
-# Database
-MONGO_URI=mongodb://localhost:27017
+# Database (Required)
+MONGO_URI=mongodb://mongo:27017
 MONGO_DB_NAME=obsidian_panel
 
-# Server
+# Server Configuration
 PORT=5000
 MC_SERVER_BASE_PATH=/minecraft_server
 TEMP_BACKUP_PATH=/tmp/obsidian_backups
 
-# Optional: Custom Java paths
-JAVA_8_HOME=/usr/lib/jvm/java-1.8-openjdk
-JAVA_17_HOME=/usr/lib/jvm/java-17-openjdk
-JAVA_21_HOME=/usr/lib/jvm/java-21-openjdk
+# Optional: Custom Java paths (if needed)
+# JAVA_8_HOME=/usr/lib/jvm/java-1.8-openjdk
+# JAVA_17_HOME=/usr/lib/jvm/java-17-openjdk
+# JAVA_21_HOME=/usr/lib/jvm/java-21-openjdk
+
+# Logging Level
+RUST_LOG=info
 ```
 
-**3. Build and run**
+> **Note**: If you're using an external MongoDB, replace `MONGO_URI` with your connection string (e.g., `mongodb://username:password@host:27017`)
+
+**3. Start with Docker Compose**
 ```bash
 docker-compose up -d
 ```
@@ -150,7 +182,36 @@ docker-compose up -d
 - Open http://localhost:5000
 - First registered user becomes **Admin**
 
-### 🔧 Development Setup
+**To stop:**
+```bash
+docker-compose down
+```
+
+**To view logs:**
+```bash
+docker-compose logs -f obsidian-panel
+```
+
+### � Updating the Panel
+
+To update to the latest version, simply run the installation script again:
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/honeypie112/Obsidian-Panel/master/install.sh)
+```
+
+The script will:
+1. Detect your existing installation
+2. Download the latest `alexbhai/obsidian-panel` image
+3. Recreate the container while **keeping your server data safe** (volumes are preserved)
+
+**For Docker Compose users:**
+```bash
+docker-compose pull
+docker-compose up -d
+```
+
+### �🔧 Development Setup
 
 **Backend (Rust)**
 ```bash
@@ -238,23 +299,26 @@ All candidates are verified with `java -version` to ensure correct version.
 - **MongoDB**: Verify database connection
 - **CORS**: Check frontend URL in environment
 
-## 🏗️ Docker Build
+## 🐳 Docker Deployment
 
-**Production build:**
+**Run manually:**
 ```bash
-docker build -t obsidian-panel .
-docker run -p 5000:5000 \
+docker run -d \
+  -p 5000:5000 \
+  -p 25565:25565 \
   -e MONGO_URI=mongodb://host:27017 \
   -v minecraft_data:/minecraft_server \
-  obsidian-panel
+  --name obsidian-panel \
+  alexbhai/obsidian-panel:latest
 ```
 
-**Docker Compose (recommended):**
+**Docker Compose (not recommended but optional if you know what you're doing):**
 ```yaml
 version: '3.8'
 services:
   obsidian-panel:
-    build: .
+    image: alexbhai/obsidian-panel:latest
+    container_name: obsidian-panel
     ports:
       - "5000:5000"
       - "25565:25565"
