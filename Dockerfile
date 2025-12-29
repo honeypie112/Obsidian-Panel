@@ -15,7 +15,7 @@ RUN npm run build
 FROM rust:alpine AS backend-builder
 
 # Install build dependencies
-RUN apk add --no-cache musl-dev pkgconfig openssl-dev
+RUN apk add --no-cache musl-dev pkgconfig openssl-dev openssl-libs-static
 
 WORKDIR /app/backend-rust
 

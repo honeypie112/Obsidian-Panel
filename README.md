@@ -1,150 +1,316 @@
-# Obsidian Panel
+# 🌑 Obsidian Panel
 
-**Obsidian Panel** is a modern, dark-themed, and feature-rich Minecraft Server Management Panel designed to **manage a single server in the best way possible**. It provides a powerful web interface to manage your Minecraft server, handle files, schedule backups, and monitor performance.
+**Obsidian Panel** is a modern, high-performance Minecraft Server Management Panel built with **Rust** and **React**. Designed to manage a single server with maximum efficiency and elegance, it provides a powerful web interface to control your Minecraft server, manage files, schedule backups, and monitor performance in real-time.
 
 ![Obsidian Panel Interface](images/dashboard.png)
 
 ## ✨ Features
 
--   **Server Control**: Live console view via Socket.io.
+### 🎮 Server Management
+- **Live Console**: Real-time log streaming via Socket.IO with 5000-line history buffer
     <br>
     ![Server Console](images/console.png)
--   **Multi-Version Support**: Native support for **Paper**, **Purpur**, and **Vanilla** Minecraft servers.
+- **Multi-Version Support**: Native support for **Paper**, **Purpur**, and **Vanilla** Minecraft servers
     <br>
     ![Multi-Version Support](images/multi-version.png)
+- **Smart Java Detection**: Automatic discovery of Java 8, 17, and 21 installations with version verification
+- **Power Controls**: Start, Stop, Restart, and Force Kill with proper error handling
 
--   **Server Settings**: Manage server and versions through a simple UI.
+### ⚙️ Configuration
+- **Server Settings**: Manage server properties, RAM allocation, and Java version through intuitive UI
     <br>
     ![Server Settings](images/server-settings.png)
+- **Environment Configuration**: Support for custom Java paths via `JAVA_X_HOME` environment variables
+- **Hot Reload**: Configuration changes apply immediately without container restarts
 
--   **File Manager**: Full-featured web-based file manager with **Drag-and-Drop** support to upload, download, delete, and **extract (zip/tar)** server files. Use the **Built-in Text Editor** to edit configuration files directly.
+### 📁 File Manager
+- **Full-featured File Browser**: Upload, download, edit, delete with drag-and-drop support
+- **Built-in Code Editor**: Monaco editor for direct file editing
+- **Archive Handling**: Extract ZIP/TAR archives and create compressed backups
     <br>
     ![File Manager](images/file-manager.png)
     <br>
     ![Drag and Drop](images/drag-and-drop.png)
+- **Chunked Uploads**: Large file support with resumable uploads
 
--   **Infinite Server Backups**: Seamless integration with **GoFile** for unlimited cloud storage. Never worry about disk space again.
--   **One-Click Restore**: Restore your server from any backup with a single click (includes safety safeguards).
+### 💾 Backup System
+- **Unlimited Cloud Storage**: Seamless integration with **GoFile** for infinite backups
+- **Automated Scheduling**: Cron-based backup scheduler (minutely, hourly, daily, custom expressions)
+- **One-Click Restore**: Restore from any backup with safety safeguards
+- **Encrypted Archives**: Password-protected backup files
     <br>
     ![Backup System](images/backup-system.png)
 
--   **Plugin Store**: Unified search and install for thousands of plugins from **Modrinth**, **Hangar** (Paper), and **Spiget** (Spigot).
+### 🔌 Plugin Management  
+- **Unified Plugin Store**: Search and install from **Modrinth**, **Hangar** (Paper), and **Spiget** (Spigot)
+- **One-Click Installation**: Automatic plugin download and installation
     <br>
     ![Plugin Store](images/plugin-store.png)
     <br>
     ![Plugin Store Installation](images/plugin-store-2.png)
 
--   **User Management & Granular Permissions**: Create **Sub-Admin** accounts with specific access rights. Grant granular control over:
-    -   **Files**: View, Edit, Upload/Create, Delete.
-    -   **Backups**: Create, Restore, Delete, Settings.
-    -   **Power**: Start/Stop/Restart.
-    -   **Console**: Execute Command Access.
+### 👥 User Management
+- **Role-Based Access Control (RBAC)**: Create sub-admin accounts with granular permissions
+- **Permissions**:
+  - **Files**: View, Edit, Upload/Create, Delete
+  - **Backups**: Create, Restore, Delete, Settings
+  - **Power**: Start/Stop/Restart
+  - **Console**: Command Execution
     <br>
     ![User Management](images/user-management.png)
 
--   **Auto-Backup Scheduler**: Configure backups to run minutely, hourly, daily, or using custom Cron expressions.
-
--   **Responsive Design**: fully optimized for desktop and **mobile** use with a collapsible sidebar.
--   **Enterprise-Grade Security**:
-    -   **DDoS Protection**: Global rate limiting to prevent flood attacks.
-    -   **Brute-Force Protection**: Smart locking for login attempts.
-    -   **Secure Headers**: Helmet integration and XSS sanitization.
-    -   **RBAC**: Role-Based Access Control key security.
+### 🎨 User Experience
+- **Responsive Design**: Fully optimized for desktop and mobile with collapsible sidebar
+- **Toast Notifications**: Real-time error and success messages
+- **Obsidian Dark Theme**: Glassmorphism effects with smooth animations
+- **Real-time Updates**: WebSocket-powered live status and statistics
     <br>
     ![Profile Settings](images/profile.png)
 
--   **Aesthetic UI**: "Obsidian" dark mode design with glassmorphism effects and smooth animations.
--   **Easy Deployment**: Fully compatible with **Coolify** and **Dockploy** for hassle-free hosting.
+### 🔒 Security
+- **Enterprise-Grade Security**:
+  - **Rate Limiting**: Global DDoS protection with per-IP limits
+  - **Authentication**: Bcrypt password hashing with secure sessions
+  - **CORS Protection**: Configurable cross-origin policies
+  - **Path Validation**: Directory traversal prevention
+  - **Session Management**: MongoDB-backed sessions with 5-day expiry
 
 ## 🛠️ Tech Stack
 
--   **Frontend**: React (Vite), Tailwind CSS, Lucide Icons.
--   **Backend**: Rust, Axum, Tower Sessions, MongoDB.
--   **System**: Uses native system calls to run the Minecraft Server JAR.
+### Backend (Rust)
+- **Framework**: Axum 0.7 (async web framework)
+- **Database**: MongoDB 2.8 with BSON support
+- **Real-time**: Socket.IO via socketioxide 0.14
+- **Sessions**: Tower Sessions with MongoDB store
+- **Security**: Bcrypt, rate limiting (governor), CORS
+- **System**: Tokio async runtime, sysinfo for monitoring
+
+### Frontend (React)
+- **Build Tool**: Vite (Rolldown)
+- **Framework**: React 19
+- **Styling**: Tailwind CSS 4
+- **Icons**: Lucide React
+- **Editor**: Monaco Editor (VS Code editor)
+- **Routing**: React Router 7
+- **Toast**: React Hot Toast
+- **Real-time**: Socket.IO Client
+
+### Infrastructure
+- **Containerization**: Docker multi-stage builds (Alpine Linux)
+- **Java**: OpenJDK 8, 17, and 21 support
+- **Database**: MongoDB
+- **Reverse Proxy Compatible**: Nginx, Caddy, Traefik
 
 ## 🚀 Installation
 
 ### Prerequisites
--   **Node.js** (v18+ recommended)
--   **MongoDB** (running locally or a connection URI)
--   **OS**: Linux (Ubuntu/Debian recommended)
--   **Runtime**: Docker & Docker Compose (Must be installed and running)
--   **RAM**: Minimum 2GB (4GB recommended)
--   **Java** (installed on the host machine to run Minecraft)
+- **Docker** & **Docker Compose** (must be installed and running)
+- **MongoDB** (running locally or remote connection)
+- **RAM**: Minimum 2GB (4GB+ recommended)
+- **OS**: Linux (Ubuntu/Debian/Alpine recommended)
+- **Disk**: 5GB+ for server files and backups
 
-### ⚡ One-Click Installation (Docker)
+### ⚡ Quick Start (Docker)
 
-Run the following command to install and configure Obsidian Panel automatically:
-
+**1. Clone the repository**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/honeypie112/Obsidian-Panel/master/install.sh | bash
+git clone https://github.com/honeypie112/Obsidian-Panel-rust.git
+cd Obsidian-Panel-rust
 ```
 
-This script will:
-- Clone the repository.
-- Help you select the Java version.
-- Configure your `.env` file (MongoDB, etc.).
-- Set up Docker containers.
-- **Auto-Detect Old Data**: If you are upgrading, it automatically detects your old data volume or legacy configuration and offers to keep it.
-
-### 🔄 Migration (For Legacy Users)
-If you are transitioning from an older setup, run this script to rescue your data.
-> **Note**: This script extracts your server files from the old container and moves them into the `obsidian-data` volume safely.
-
+**2. Configure environment variables**
 ```bash
-# Standard Migration
-./migrate.sh
-
-# Custom Path (if your data isn't in /app/backend/minecraft_server)
-./migrate.sh /custom/internal/path
-```
-Once complete, the installer will automatically pick up your data from the volume.
-
-### 💾 Backup Tools (`backup_volume.sh`)
-Use this helper script to create backups of your server files.
-
-**1. Full Server Backup (Default)**
-Backs up the entire server directory (`/minecraft_server`) defined in your config.
-```bash
-sudo ./backup_volume.sh
+cp .env.example .env
+nano .env
 ```
 
-**2. Specific Folder Backup**
-Backs up a specific internal path. Useful for config files or worlds only.
-```bash
-sudo ./backup_volume.sh /minecraft_server/plugins
+**Required variables:**
+```env
+# Database
+MONGO_URI=mongodb://localhost:27017
+MONGO_DB_NAME=obsidian_panel
+
+# Server
+PORT=5000
+MC_SERVER_BASE_PATH=/minecraft_server
+TEMP_BACKUP_PATH=/tmp/obsidian_backups
+
+# Optional: Custom Java paths
+JAVA_8_HOME=/usr/lib/jvm/java-1.8-openjdk
+JAVA_17_HOME=/usr/lib/jvm/java-17-openjdk
+JAVA_21_HOME=/usr/lib/jvm/java-21-openjdk
 ```
-*Backups are saved in the `./backups` folder with a timestamp.*
 
-### ⚙️ Configuration (`.env`)
-The installer generates a `.env` file for you.
-> [!WARNING]
-> **Advanced Configuration**: Do NOT change paths like `MC_SERVER_BASE_PATH` unless you fully understand Docker Volumes and internal mapping.
-> Changing these paths can break the connection between the backend and your server files.
+**3. Build and run**
+```bash
+docker-compose up -d
+```
 
-**Safe to Change:**
-- `MONGO_URI`: Remote database connection string.
-- `PORT`: The panel's web port (default 5000).
+**4. Access the panel**
+- Open http://localhost:5000
+- First registered user becomes **Admin**
 
-**Critical Variables (Do Not Touch):**
-- `MC_SERVER_BASE_PATH`: Must match the Docker volume mount point.
-- `NODE_ENV`: Should remain `production`.
+### 🔧 Development Setup
 
-1.  Open your browser and navigate to the frontend URL.
-2.  **First Login**: The first account registered automatically becomes the **Admin**.
-3.  **Server Setup**:
-    -   Go to **Server Settings**.
-    -   Select a Minecraft version to install/download.
-    -   Click **Start**.
-4.  **Backups**:
-    -   Go to the **Backups** tab.
-    -   Click **Auto Backup** to configure your schedule.
-    -   Use the manual "Create Backup" button to trigger one instantly.
+**Backend (Rust)**
+```bash
+cd backend-rust
+cargo build
+cargo run
+```
+
+**Frontend (React)**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend dev server runs on http://localhost:5173
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `5000` | Backend server port |
+| `MONGO_URI` | `mongodb://localhost:27017` | MongoDB connection string |
+| `MONGO_DB_NAME` | `obsidian_panel` | Database name |
+| `MC_SERVER_BASE_PATH` | `/minecraft_server` | Minecraft server files location |
+| `TEMP_BACKUP_PATH` | `/tmp/obsidian_backups` | Temporary backup storage |
+| `JAVA_8_HOME` | Auto-detected | Override Java 8 location |
+| `JAVA_17_HOME` | Auto-detected | Override Java 17 location |
+| `JAVA_21_HOME` | Auto-detected | Override Java 21 location |
+| `RUST_LOG` | `info` | Logging level (debug/info/warn/error) |
+
+### Java Detection
+
+The backend automatically detects Java installations in `/usr/lib/jvm/`. You can override with environment variables:
+
+```bash
+JAVA_17_HOME=/opt/java/jdk-17 cargo run
+```
+
+Detection order:
+1. `JAVA_X_HOME` environment variable
+2. Directory scan in `/usr/lib/jvm/`
+3. Fallback to hardcoded paths
+
+All candidates are verified with `java -version` to ensure correct version.
+
+## � Usage Guide
+
+### Initial Setup
+1. **Register Admin Account**: First user becomes administrator
+2. **Install Server**: Go to Server Settings → Select Version → Install
+3. **Configure RAM**: Set memory allocation in Server Settings
+4. **Select Java Version**: Choose Java 8/17/21 based on Minecraft version
+5. **Start Server**: Click Start button on Overview page
+
+### Backup Configuration
+1. **Get GoFile Token**: Register at gofile.io and get API token
+2. **Configure**: Backups → Settings → Enter token
+3. **Schedule**: Set cron expression (e.g., `0 */6 * * *` for every 6 hours)
+4. **Manual Backup**: Click "Create Backup" button
+
+### User Management
+1. **Create User**: Users → Add User
+2. **Set Role**: Choose Admin or custom role
+3. **Grant Permissions**: Select specific permissions
+4. **Save**: User can login with credentials
+
+## 🔍 Troubleshooting
+
+### Server Won't Start
+- **Check Java**: Ensure correct Java version installed
+- **Verify Logs**: Check console for error messages
+- **Toast Notifications**: Error details shown in UI
+- **Backend Logs**: `docker logs obsidian-panel-backend`
+
+### Memory Issues
+- **Insufficient RAM**: Increase Docker memory limit
+- **Large Logs**: Log buffer limited to 5000 lines
+- **Backup Space**: Monitor `/tmp/obsidian_backups` usage
+
+### Connection Issues
+- **Port Conflicts**: Ensure port 5000 is available
+- **MongoDB**: Verify database connection
+- **CORS**: Check frontend URL in environment
+
+## 🏗️ Docker Build
+
+**Production build:**
+```bash
+docker build -t obsidian-panel .
+docker run -p 5000:5000 \
+  -e MONGO_URI=mongodb://host:27017 \
+  -v minecraft_data:/minecraft_server \
+  obsidian-panel
+```
+
+**Docker Compose (recommended):**
+```yaml
+version: '3.8'
+services:
+  obsidian-panel:
+    build: .
+    ports:
+      - "5000:5000"
+      - "25565:25565"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - MONGO_DB_NAME=obsidian_panel
+    volumes:
+      - minecraft_data:/minecraft_server
+    depends_on:
+      - mongo
+  
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  minecraft_data:
+  mongo_data:
+```
 
 ## 📝 API Documentation
 
-For detailed backend API usage, refer to the [Backend API README](backend/API_README.md).
+The backend provides RESTful API endpoints:
+
+- **Authentication**: `/api/auth` (login, register, logout)
+- **Server Control**: `/api/control` (start, stop, restart, kill)
+- **File Management**: `/api/control/files` (list, read, write, upload)
+- **Backups**: `/api/backups` (create, restore, delete, configure)
+- **Plugins**: `/api/plugins` (search, install)
+- **Users**: `/api/users` (CRUD operations)
+
+WebSocket events:
+- `status` - Server status updates
+- `console_log` - Live log streaming
+- `log_history` - Historical logs on connect
+- `stats` - System statistics (CPU, RAM, disk, network)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ## 📄 License
 
-MIT License.
+MIT License - feel free to use for personal or commercial projects.
+
+## � Acknowledgments
+
+- Built with ❤️ using Rust and React
+- Inspired by modern server management panels
+- Community feedback and contributions
+
+---
+
+**Need help?** Open an issue or join our Discord community.
