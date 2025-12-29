@@ -24,7 +24,8 @@ use crate::{
     models::{NetworkStats, RamStats, ServerConfig, ServerStatus, ServerType, StorageStats, SystemStats},
 };
 
-const LOG_BUFFER_SIZE: usize = 300;
+// RAM Buffer size (Backup ke liye)
+const LOG_BUFFER_SIZE: usize = 5000;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProcessStatus {
@@ -67,8 +68,6 @@ impl MinecraftService {
         let jar_file = server_dir.join("server.jar");
         let (log_tx, _) = broadcast::channel(100);
 
-        // Create server directory if it doesn't exist
-        // Create server directory if it doesn't exist
         if !server_dir.exists() {
             std::fs::create_dir_all(&server_dir).ok();
         }
@@ -100,11 +99,11 @@ impl MinecraftService {
 
     pub async fn init_database(&self, db: &Database) -> Result<()> {
         let collection = db.collection::<ServerConfig>("server_config");
-        
+
         let existing = collection
-            .find_one(bson::doc! { "name": "main-server" }, None)
-            .await
-            .map_err(AppError::Database)?;
+        .find_one(bson::doc! { "name": "main-server" }, None)
+        .await
+        .map_err(AppError::Database)?;
 
         if let Some(config) = existing {
             *self.config.write() = config;
@@ -112,9 +111,9 @@ impl MinecraftService {
         } else {
             let default_config = ServerConfig::default();
             collection
-                .insert_one(&default_config, None)
-                .await
-                .map_err(AppError::Database)?;
+            .insert_one(&default_config, None)
+            .await
+            .map_err(AppError::Database)?;
             *self.config.write() = default_config;
             tracing::info!("Created default ServerConfig in MongoDB");
         }
@@ -128,18 +127,18 @@ impl MinecraftService {
         }
 
         let collection = db.collection::<ServerConfig>("server_config");
-        
+
         let options = mongodb::options::ReplaceOptions::builder()
-            .upsert(true)
-            .build();
+        .upsert(true)
+        .build();
         collection
-            .replace_one(bson::doc! { "name": "main-server" }, &new_config, options)
-            .await
-            .map_err(AppError::Database)?;
+        .replace_one(bson::doc! { "name": "main-server" }, &new_config, options)
+        .await
+        .map_err(AppError::Database)?;
 
         *self.config.write() = new_config;
         tracing::info!("Saved config to MongoDB");
-        
+
         self.broadcast_status();
         Ok(())
     }
@@ -165,20 +164,18 @@ impl MinecraftService {
         }
     }
 
+    /// Get log history from RAM buffer only (same as Node.js backend)
     pub fn get_log_history(&self) -> Vec<String> {
         let history: Vec<String> = self.log_buffer.read().iter().cloned().collect();
-        tracing::info!("[LogHistory] Serving {} logs from buffer", history.len());
+        tracing::info!("[LogHistory] Serving {} logs from RAM buffer", history.len());
         history
     }
 
     fn push_log(&self, message: &str) {
-        // Broadcast to Socket.IO
         let _ = self.io.emit("console_log", message);
         let _ = self.log_tx.send(message.to_string());
-        
-        tracing::debug!("Pushing log: {} (Buffer size: {})", message, self.log_buffer.read().len());
 
-        // Add to buffer
+        // RAM buffer mein bhi daalo (Backup ke liye)
         let mut buffer = self.log_buffer.write();
         for line in message.lines() {
             if !line.trim().is_empty() {
@@ -259,53 +256,50 @@ impl MinecraftService {
 
         let config = self.config.read().clone();
         let java_version = config.java_version;
-        
+
         let java_cmd = self.get_java_executable(java_version)
-            .ok_or_else(|| AppError::Process(format!("Java {} binary NOT FOUND on this system!", java_version)))?;
+        .ok_or_else(|| AppError::Process(format!("Java {} binary NOT FOUND on this system!", java_version)))?;
 
         self.push_log(&format!("[System] Checking for Java {}...", java_version));
         self.push_log(&format!("[System] Found Java {} at: {}", java_version, java_cmd.display()));
 
-        // Verify java is executable
         if std::fs::metadata(&java_cmd)
             .map(|m| m.permissions().mode() & 0o111 == 0)
             .unwrap_or(true)
-        {
-            return Err(AppError::Process(format!("Java binary at {} is not executable.", java_cmd.display())));
-        }
+            {
+                return Err(AppError::Process(format!("Java binary at {} is not executable.", java_cmd.display())));
+            }
 
-        let max_ram = self.parse_ram(&config.ram);
+            let max_ram = self.parse_ram(&config.ram);
         let args = vec![
             "-Xms1024M".to_string(),
             format!("-Xmx{}", max_ram),
-            "-DTerminal.jline=false".to_string(),
-            "-DTerminal.ansi=true".to_string(),
-            "-Dlog4j.skipJansi=false".to_string(),
-            "-jar".to_string(),
-            "server.jar".to_string(),
-            "nogui".to_string(),
+                "-DTerminal.jline=false".to_string(),
+                "-DTerminal.ansi=true".to_string(),
+                "-Dlog4j.skipJansi=false".to_string(),
+                "-jar".to_string(),
+                "server.jar".to_string(),
+                "nogui".to_string(),
         ];
 
         self.push_log("[System] Starting server subprocess...");
         tracing::info!("[Start] FINAL SPAWN CALL: {}", java_cmd.display());
 
         let mut child = Command::new(&java_cmd)
-            .args(&args)
-            .current_dir(&self.server_dir)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .env("TERM", "xterm-256color")
-            .env("FORCE_COLOR", "true")
-            .spawn()
-            .map_err(|e| AppError::Process(format!("Failed to start server: {}", e)))?;
+        .args(&args)
+        .current_dir(&self.server_dir)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .env("TERM", "xterm-256color")
+        .env("FORCE_COLOR", "true")
+        .spawn()
+        .map_err(|e| AppError::Process(format!("Failed to start server: {}", e)))?;
 
-        // Take stdin for sending commands
         let stdin = child.stdin.take();
         let (stdin_tx, mut stdin_rx) = tokio::sync::mpsc::channel::<String>(32);
         *self.stdin_tx.lock().await = Some(stdin_tx);
 
-        // Spawn stdin writer task
         if let Some(mut stdin) = stdin {
             tokio::spawn(async move {
                 while let Some(cmd) = stdin_rx.recv().await {
@@ -317,38 +311,34 @@ impl MinecraftService {
             });
         }
 
-        // Process stdout
         if let Some(stdout) = child.stdout.take() {
             let io = self.io.clone();
             let log_tx = self.log_tx.clone();
             let log_buffer = self.log_buffer.clone();
             let _status = Arc::new(self.status.read().clone());
-            
+
             tokio::spawn({
-                let status_ptr = unsafe { 
-                    // Safety: We're creating a reference that will be used within the same service lifetime
-                    &*(&self.status as *const RwLock<ProcessStatus>) 
+                let status_ptr = unsafe {
+                    &*(&self.status as *const RwLock<ProcessStatus>)
                 };
                 let io = io.clone();
-                
+
                 async move {
                     let reader = BufReader::new(stdout);
                     let mut lines = reader.lines();
-                    
+
                     while let Ok(Some(line)) = lines.next_line().await {
                         let _ = io.emit("console_log", &line);
                         let _ = log_tx.send(line.clone());
-                        
-                        // Persist to log history
+
                         {
                             let mut buffer = log_buffer.write();
                             buffer.push_back(line.clone());
-                            if buffer.len() > 1000 {
+                            if buffer.len() > LOG_BUFFER_SIZE {
                                 buffer.pop_front();
                             }
                         }
 
-                        // Check for "Done" message to mark as online
                         if line.contains("Done") && line.contains("! For help") {
                             *status_ptr.write() = ProcessStatus::Online;
                             let _ = io.emit("status", "online");
@@ -358,25 +348,23 @@ impl MinecraftService {
             });
         }
 
-        // Process stderr
         if let Some(stderr) = child.stderr.take() {
             let io = self.io.clone();
             let log_tx = self.log_tx.clone();
             let log_buffer = self.log_buffer.clone();
-            
+
             tokio::spawn(async move {
                 let reader = BufReader::new(stderr);
                 let mut lines = reader.lines();
-                
+
                 while let Ok(Some(line)) = lines.next_line().await {
                     let _ = io.emit("console_log", &line);
                     let _ = log_tx.send(line.clone());
 
-                    // Persist to log history
                     {
                         let mut buffer = log_buffer.write();
                         buffer.push_back(line);
-                        if buffer.len() > 1000 {
+                        if buffer.len() > LOG_BUFFER_SIZE {
                             buffer.pop_front();
                         }
                     }
@@ -384,24 +372,22 @@ impl MinecraftService {
             });
         }
 
-        // Store process handle
         *self.process.lock().await = Some(child);
 
-        // Spawn process monitor
         let _stop_notify = &self.stop_notify;
         let _status_ref = &self.status;
         let _io_ref = &self.io;
-        
+
         tokio::spawn({
             let process = unsafe { &*(&self.process as *const Mutex<Option<Child>>) };
             let status = unsafe { &*(&self.status as *const RwLock<ProcessStatus>) };
             let io = self.io.clone();
             let stop_notify = unsafe { &*(&self.stop_notify as *const Notify) };
-            
+
             async move {
                 loop {
                     tokio::time::sleep(Duration::from_millis(500)).await;
-                    
+
                     let mut guard = process.lock().await;
                     if let Some(ref mut child) = *guard {
                         match child.try_wait() {
@@ -414,7 +400,7 @@ impl MinecraftService {
                                 *guard = None;
                                 break;
                             }
-                            Ok(None) => {} // Still running
+                            Ok(None) => {}
                             Err(e) => {
                                 tracing::error!("Error checking process status: {}", e);
                                 break;
@@ -439,7 +425,6 @@ impl MinecraftService {
         *self.status.write() = ProcessStatus::Stopping;
         self.broadcast_status();
 
-        // Send stop command
         if let Some(tx) = self.stdin_tx.lock().await.as_ref() {
             let _ = tx.send("stop\n".to_string()).await;
         }
@@ -473,8 +458,8 @@ impl MinecraftService {
 
         if let Some(tx) = self.stdin_tx.lock().await.as_ref() {
             tx.send(format!("{}\n", command))
-                .await
-                .map_err(|e| AppError::Process(format!("Failed to send command: {}", e)))?;
+            .await
+            .map_err(|e| AppError::Process(format!("Failed to send command: {}", e)))?;
             self.push_log(&format!("> {}", command));
         }
 
@@ -483,28 +468,24 @@ impl MinecraftService {
 
     pub async fn restart(&self) -> Result<()> {
         let status = self.status.read().clone();
-        
+
         if status == ProcessStatus::Offline {
             return self.start().await;
         }
 
-        // Stop the server
         self.stop().await?;
 
-        // Wait for stop with timeout
         let timeout = tokio::time::timeout(
             Duration::from_secs(60),
-            self.stop_notify.notified()
+                                           self.stop_notify.notified()
         ).await;
 
         if timeout.is_err() {
             return Err(AppError::Process("Restart timed out waiting for server to stop".to_string()));
         }
 
-        // Small delay to ensure file locks are released
         tokio::time::sleep(Duration::from_secs(1)).await;
 
-        // Start again
         self.start().await
     }
 
@@ -517,20 +498,18 @@ impl MinecraftService {
         *self.status.write() = ProcessStatus::Installing;
         self.broadcast_status();
 
-        // Get download URL based on server type
         let config = self.config.read().clone();
         let download_url = self.get_version_download_url(version, &config.server_type).await?;
 
         self.push_log(&format!("[System] Downloading {} version {}...", config.server_type.to_string(), version));
 
-        // Download the JAR
         let client = reqwest::Client::new();
         let response = client
-            .get(&download_url)
-            .header("User-Agent", "ObsidianPanel/1.0")
-            .send()
-            .await
-            .map_err(|e| AppError::Request(e))?;
+        .get(&download_url)
+        .header("User-Agent", "ObsidianPanel/1.0")
+        .send()
+        .await
+        .map_err(|e| AppError::Request(e))?;
 
         if !response.status().is_success() {
             *self.status.write() = ProcessStatus::Offline;
@@ -540,20 +519,20 @@ impl MinecraftService {
 
         let total_size = response.content_length().unwrap_or(0);
         let mut downloaded: u64 = 0;
-        
+
         let mut file = tokio::fs::File::create(&self.jar_file)
-            .await
-            .map_err(|e| AppError::Io(e))?;
+        .await
+        .map_err(|e| AppError::Io(e))?;
 
         let mut stream = response.bytes_stream();
         use futures::StreamExt;
-        
+
         while let Some(chunk) = stream.next().await {
             let chunk = chunk.map_err(|e| AppError::Request(e))?;
             tokio::io::AsyncWriteExt::write_all(&mut file, &chunk)
-                .await
-                .map_err(|e| AppError::Io(e))?;
-            
+            .await
+            .map_err(|e| AppError::Io(e))?;
+
             downloaded += chunk.len() as u64;
             if total_size > 0 {
                 let percent = (downloaded as f64 / total_size as f64) * 100.0;
@@ -561,11 +540,10 @@ impl MinecraftService {
             }
         }
 
-        // Write eula.txt
         let eula_path = self.server_dir.join("eula.txt");
         tokio::fs::write(&eula_path, "eula=true")
-            .await
-            .map_err(|e| AppError::Io(e))?;
+        .await
+        .map_err(|e| AppError::Io(e))?;
 
         *self.status.write() = ProcessStatus::Offline;
         self.broadcast_status();
@@ -576,7 +554,7 @@ impl MinecraftService {
 
     async fn get_version_download_url(&self, version: &str, server_type: &ServerType) -> Result<String> {
         let client = reqwest::Client::new();
-        
+
         match server_type {
             ServerType::Paper => self.get_paper_url(&client, version).await,
             ServerType::Purpur => self.get_purpur_url(version),
@@ -586,29 +564,29 @@ impl MinecraftService {
 
     async fn get_paper_url(&self, client: &reqwest::Client, version: &str) -> Result<String> {
         let url = format!("https://api.papermc.io/v2/projects/paper/versions/{}/builds", version);
-        
+
         let response: serde_json::Value = client
-            .get(&url)
-            .header("User-Agent", "ObsidianPanel/1.0")
-            .send()
-            .await
-            .map_err(|e| AppError::Request(e))?
-            .json()
-            .await
-            .map_err(|e| AppError::Request(e))?;
+        .get(&url)
+        .header("User-Agent", "ObsidianPanel/1.0")
+        .send()
+        .await
+        .map_err(|e| AppError::Request(e))?
+        .json()
+        .await
+        .map_err(|e| AppError::Request(e))?;
 
         let builds = response["builds"]
-            .as_array()
-            .ok_or_else(|| AppError::BadRequest(format!("No Paper builds found for version {}", version)))?;
+        .as_array()
+        .ok_or_else(|| AppError::BadRequest(format!("No Paper builds found for version {}", version)))?;
 
         let latest = builds
-            .last()
-            .ok_or_else(|| AppError::BadRequest(format!("No Paper builds found for version {}", version)))?;
+        .last()
+        .ok_or_else(|| AppError::BadRequest(format!("No Paper builds found for version {}", version)))?;
 
         let build_num = latest["build"].as_i64().unwrap_or(0);
         let file_name = latest["downloads"]["application"]["name"]
-            .as_str()
-            .unwrap_or("paper.jar");
+        .as_str()
+        .unwrap_or("paper.jar");
 
         Ok(format!(
             "https://api.papermc.io/v2/projects/paper/versions/{}/builds/{}/downloads/{}",
@@ -621,72 +599,69 @@ impl MinecraftService {
     }
 
     async fn get_vanilla_url(&self, client: &reqwest::Client, version: &str) -> Result<String> {
-        // Get version manifest
         let manifest: serde_json::Value = client
-            .get("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json")
-            .header("User-Agent", "ObsidianPanel/1.0")
-            .send()
-            .await
-            .map_err(|e| AppError::Request(e))?
-            .json()
-            .await
-            .map_err(|e| AppError::Request(e))?;
+        .get("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json")
+        .header("User-Agent", "ObsidianPanel/1.0")
+        .send()
+        .await
+        .map_err(|e| AppError::Request(e))?
+        .json()
+        .await
+        .map_err(|e| AppError::Request(e))?;
 
         let versions = manifest["versions"]
-            .as_array()
-            .ok_or_else(|| AppError::Internal("Invalid manifest format".to_string()))?;
+        .as_array()
+        .ok_or_else(|| AppError::Internal("Invalid manifest format".to_string()))?;
 
         let version_entry = versions
-            .iter()
-            .find(|v| v["id"].as_str() == Some(version))
-            .ok_or_else(|| AppError::BadRequest(format!("Version {} not found in Mojang manifest", version)))?;
+        .iter()
+        .find(|v| v["id"].as_str() == Some(version))
+        .ok_or_else(|| AppError::BadRequest(format!("Version {} not found in Mojang manifest", version)))?;
 
         let package_url = version_entry["url"]
-            .as_str()
-            .ok_or_else(|| AppError::Internal("Version URL not found".to_string()))?;
+        .as_str()
+        .ok_or_else(|| AppError::Internal("Version URL not found".to_string()))?;
 
-        // Get package info
         let package: serde_json::Value = client
-            .get(package_url)
-            .header("User-Agent", "ObsidianPanel/1.0")
-            .send()
-            .await
-            .map_err(|e| AppError::Request(e))?
-            .json()
-            .await
-            .map_err(|e| AppError::Request(e))?;
+        .get(package_url)
+        .header("User-Agent", "ObsidianPanel/1.0")
+        .send()
+        .await
+        .map_err(|e| AppError::Request(e))?
+        .json()
+        .await
+        .map_err(|e| AppError::Request(e))?;
 
         package["downloads"]["server"]["url"]
-            .as_str()
-            .map(|s| s.to_string())
-            .ok_or_else(|| AppError::BadRequest("No server download available via Mojang".to_string()))
+        .as_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| AppError::BadRequest("No server download available via Mojang".to_string()))
     }
 
     pub async fn get_available_versions(&self) -> Result<Vec<serde_json::Value>> {
         let client = reqwest::Client::new();
-        
+
         let response: serde_json::Value = client
-            .get("https://mc-versions-api.net/api/java")
-            .header("User-Agent", "ObsidianPanel/1.0")
-            .send()
-            .await
-            .map_err(|e| AppError::Request(e))?
-            .json()
-            .await
-            .map_err(|e| AppError::Request(e))?;
+        .get("https://mc-versions-api.net/api/java")
+        .header("User-Agent", "ObsidianPanel/1.0")
+        .send()
+        .await
+        .map_err(|e| AppError::Request(e))?
+        .json()
+        .await
+        .map_err(|e| AppError::Request(e))?;
 
         let versions = response["result"]
-            .as_array()
-            .ok_or_else(|| AppError::Internal("Invalid version response".to_string()))?
-            .iter()
-            .filter_map(|v| v.as_str())
-            .map(|id| serde_json::json!({ "id": id, "type": "release" }))
-            .collect();
+        .as_array()
+        .ok_or_else(|| AppError::Internal("Invalid version response".to_string()))?
+        .iter()
+        .filter_map(|v| v.as_str())
+        .map(|id| serde_json::json!({ "id": id, "type": "release" }))
+        .collect();
 
         Ok(versions)
     }
 
-    // System monitoring
     pub async fn get_network_stats(&self) -> Option<NetworkStats> {
         match tokio::fs::read_to_string("/proc/net/dev").await {
             Ok(data) => {
@@ -704,17 +679,16 @@ impl MinecraftService {
                     }
 
                     let iface = parts[0].trim();
-                    
-                    // Skip loopback and virtual interfaces
-                    if iface == "lo" 
-                        || iface.starts_with("docker") 
-                        || iface.starts_with("veth") 
-                        || iface.starts_with("br-") 
-                    {
-                        continue;
-                    }
 
-                    let stats: Vec<&str> = parts[1].split_whitespace().collect();
+                    if iface == "lo"
+                        || iface.starts_with("docker")
+                        || iface.starts_with("veth")
+                        || iface.starts_with("br-")
+                        {
+                            continue;
+                        }
+
+                        let stats: Vec<&str> = parts[1].split_whitespace().collect();
                     if stats.len() >= 9 {
                         total_rx += stats[0].parse::<u64>().unwrap_or(0);
                         total_tx += stats[8].parse::<u64>().unwrap_or(0);
@@ -739,14 +713,12 @@ impl MinecraftService {
                 sys.refresh_cpu_all();
                 sys.refresh_memory();
 
-                // CPU calculation - get average usage directly
                 let cpu_usage: f32 = if !sys.cpus().is_empty() {
                     sys.cpus().iter().map(|c| c.cpu_usage()).sum::<f32>() / sys.cpus().len() as f32
                 } else {
                     0.0
                 };
 
-                // Network stats
                 let net_speed = if let Some(current_net) = self.get_network_stats().await {
                     if let Some((prev, prev_time)) = &last_net {
                         let elapsed = prev_time.elapsed().as_millis() as u64;
@@ -763,12 +735,11 @@ impl MinecraftService {
                 } else {
                     NetworkStats::default()
                 };
-                
+
                 if let Some(current_net) = self.get_network_stats().await {
                     last_net = Some((current_net, std::time::Instant::now()));
                 }
 
-                // Storage stats
                 let storage = match nix::sys::statvfs::statvfs(&self.server_dir) {
                     Ok(stat) => {
                         let total = stat.block_size() as u64 * stat.blocks();
@@ -776,7 +747,7 @@ impl MinecraftService {
                         StorageStats {
                             total,
                             used: total.saturating_sub(free),
-                            free,
+                     free,
                         }
                     }
                     Err(_) => StorageStats { total: 0, used: 0, free: 0 },
@@ -784,14 +755,14 @@ impl MinecraftService {
 
                 let stats = SystemStats {
                     cpu: (cpu_usage * 10.0).round() / 10.0,
-                    cores: sys.cpus().len(),
-                    ram: RamStats {
-                        total: sys.total_memory(),
-                        used: sys.used_memory(),
-                        free: sys.free_memory(),
-                    },
-                    storage,
-                    network: net_speed,
+                     cores: sys.cpus().len(),
+                     ram: RamStats {
+                         total: sys.total_memory(),
+                     used: sys.used_memory(),
+                     free: sys.free_memory(),
+                     },
+                     storage,
+                     network: net_speed,
                 };
 
                 let _ = self.io.emit("stats", &stats);
@@ -824,7 +795,6 @@ impl ServerType {
     }
 }
 
-// Add regex dependency handling
 mod regex {
     pub struct Regex {
         inner: regex_lite::Regex,

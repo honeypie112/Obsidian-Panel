@@ -183,10 +183,10 @@ fn setup_socket_handlers(io: SocketIo, state: Arc<AppState>) {
         let status = state.minecraft.get_status();
         let _ = socket.emit("status", &status);
 
-        // Send log history
+        // Send log history (wrapped in tuple for proper serialization)
         let logs = state.minecraft.get_log_history();
         tracing::info!("Sending initial log_history to client {}: {} items", socket.id, logs.len());
-        if let Err(e) = socket.emit("log_history", &logs) {
+        if let Err(e) = socket.emit("log_history", (logs,)) {
             tracing::error!("Failed to emit log_history to {}: {}", socket.id, e);
         }
 
@@ -213,7 +213,7 @@ fn setup_socket_handlers(io: SocketIo, state: Arc<AppState>) {
             async move {
                 let logs = state.minecraft.get_log_history();
                 tracing::info!("[Socket] Emitting log_history with {} items", logs.len());
-                let _ = socket.emit("log_history", &logs);
+                let _ = socket.emit("log_history", (logs,));
             }
         });
 
