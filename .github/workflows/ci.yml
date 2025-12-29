@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java-choice: [1, 2, 3] # 1=Java8, 2=Java17, 3=Java21
+        java-choice: [1] # Runs once, universal container supports all Java versions
     
     services:
       mongo:
@@ -36,11 +36,10 @@ jobs:
         chmod +x install.sh
         
         # Prepare inputs:
-        # 1. Java Version: ${{ matrix.java-choice }}
-        # 2. Mongo URI: Using gateway IP to access service on host
-        # 3. Expose Ports: n
+        # 1. Mongo URI: Using gateway IP to access service on host
+        # 2. Expose Ports: n
         
-        printf "${{ matrix.java-choice }}\nmongodb://${{ env.GATEWAY_IP }}:27017/obsidian_test\nn\n" | ./install.sh
+        printf "mongodb://${{ env.GATEWAY_IP }}:27017/obsidian_test\nn\n" | ./install.sh
 
     - name: Wait for Server to Start
       run: |
