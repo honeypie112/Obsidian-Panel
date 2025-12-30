@@ -115,6 +115,7 @@ TEMP_BACKUP_PATH=/tmp
 NODE_ENV=production
 
 # Optional
+RUST_LOG=debug
 EOF
 echo -e "${GREEN}✓ .env file created.${NC}"
 
