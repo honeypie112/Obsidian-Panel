@@ -434,37 +434,43 @@ impl MinecraftService {
             let io = self.io.clone();
             let log_tx = self.log_tx.clone();
             let log_buffer = self.log_buffer.clone();
-            let _status = Arc::new(self.status.read().clone());
+            // Use channel to communicate "online" status back
+            let (status_tx, mut status_rx) = tokio::sync::mpsc::channel::<ProcessStatus>(1);
 
-            tokio::spawn({
-                let status_ptr = unsafe {
-                    &*(&self.status as *const RwLock<ProcessStatus>)
-                };
-                let io = io.clone();
+            tokio::spawn(async move {
+                let reader = BufReader::new(stdout);
+                let mut lines = reader.lines();
 
-                async move {
-                    let reader = BufReader::new(stdout);
-                    let mut lines = reader.lines();
+                while let Ok(Some(line)) = lines.next_line().await {
+                    let _ = io.emit("console_log", &line);
+                    let _ = log_tx.send(line.clone());
 
-                    while let Ok(Some(line)) = lines.next_line().await {
-                        let _ = io.emit("console_log", &line);
-                        let _ = log_tx.send(line.clone());
-
-                        {
-                            let mut buffer = log_buffer.write();
-                            buffer.push_back(line.clone());
-                            if buffer.len() > LOG_BUFFER_SIZE {
-                                buffer.pop_front();
-                            }
+                    {
+                        let mut buffer = log_buffer.write();
+                        buffer.push_back(line.clone());
+                        if buffer.len() > LOG_BUFFER_SIZE {
+                            buffer.pop_front();
                         }
+                    }
 
-                        if line.contains("Done") && line.contains("! For help") {
-                            *status_ptr.write() = ProcessStatus::Online;
-                            let _ = io.emit("status", "online");
-                        }
+                    if line.contains("Done") && line.contains("! For help") {
+                        let _ = status_tx.send(ProcessStatus::Online).await;
                     }
                 }
             });
+
+            // Spawn a task to handle status updates from the channel
+            let status_ref = self.status.read().clone();
+            if status_ref == ProcessStatus::Starting {
+                let io_status = self.io.clone();
+                let status_lock = unsafe { &*(&self.status as *const RwLock<ProcessStatus>) };
+                tokio::spawn(async move {
+                    if let Some(new_status) = status_rx.recv().await {
+                        *status_lock.write() = new_status;
+                        let _ = io_status.emit("status", "online");
+                    }
+                });
+            }
         }
 
         if let Some(stderr) = child.stderr.take() {
