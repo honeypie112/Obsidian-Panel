@@ -134,19 +134,15 @@ fn build_router(
 
     // Static file serving for frontend
     let public_path = Path::new("public");
-    let static_service = if public_path.exists() {
-        Some(ServeDir::new("public").append_index_html_on_directories(true))
-    } else {
-        None
-    };
-
-    let mut app = Router::new()
+    
+    // Build the main app with Socket.IO layer BEFORE static file fallback
+    let app = Router::new()
         .nest("/api", api_routes)
-        .layer(sio_layer)
+        .with_state(state)
+        .layer(sio_layer)  // Socket.IO handles /socket.io/ routes
         .layer(session_layer)
         .layer(
             CorsLayer::new()
-                // Mirror the request origin to allow any origin with credentials
                 .allow_origin(tower_http::cors::AllowOrigin::mirror_request())
                 .allow_methods([
                     axum::http::Method::GET,
@@ -162,15 +158,19 @@ fn build_router(
                     axum::http::header::ACCEPT,
                 ]),
         )
-        .layer(TraceLayer::new_for_http())
-        .with_state(state);
+        .layer(TraceLayer::new_for_http());
 
-    // Add static file serving if public directory exists
-    if let Some(service) = static_service {
-        app = app.fallback_service(service);
+    // Add static file serving with SPA fallback if public directory exists
+    if public_path.exists() {
+        // Use nest_service to serve static files at root, separate from the main router
+        let static_files = ServeDir::new("public")
+            .append_index_html_on_directories(true)
+            .not_found_service(tower_http::services::ServeFile::new("public/index.html"));
+        
+        app.fallback_service(static_files)
+    } else {
+        app
     }
-
-    app
 }
 
 fn setup_socket_handlers(io: SocketIo, state: Arc<AppState>) {

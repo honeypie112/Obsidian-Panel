@@ -28,13 +28,16 @@ export const ServerProvider = ({ children }) => {
             autoConnect: true,
         });
 
+        // Connection event handlers
+        newSocket.on('connect', () => {
+            console.log('[Socket] Connected successfully:', newSocket.id);
+        });
+
         // Suppress noisy connection errors in console
         newSocket.on('connect_error', (err) => {
-            // Only log once, not on every retry
-            if (newSocket.io._reconnectionAttempts === 1) {
-                console.warn('[Socket] Backend not reachable. Retrying...');
-            }
+            console.warn('[Socket] Connection error:', err.message);
         });
+
         setSocket(newSocket);
         newSocket.on('status', (status) => {
             // If status is a string (like "online" or "offline"), merge with existing state
