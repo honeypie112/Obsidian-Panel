@@ -139,11 +139,9 @@ export const serverApi = {
         if (!res.ok) throw new Error('Failed to compress files');
         return res.json();
     },
-    uploadFile: (path, file, onProgress) => {
-        // ... (existing implementation)
-        return new Promise((resolve, reject) => {
-            // ...
-        });
+    uploadFile: async (path, file, onProgress) => {
+        // Use chunked upload for all files
+        return serverApi.uploadFileChunked(path, file, onProgress);
     },
     uploadFileChunked: async (path, file, onProgress) => {
         const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
@@ -200,7 +198,7 @@ export const serverApi = {
                         try {
                             const error = JSON.parse(xhr.responseText);
                             reject(new Error(error.message || 'Chunk upload failed'));
-                        } catch (e) {
+                        } catch {
                             reject(new Error(xhr.statusText || 'Chunk upload failed'));
                         }
                     }

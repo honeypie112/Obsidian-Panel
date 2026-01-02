@@ -135,12 +135,17 @@ fn build_router(
     // Static file serving for frontend
     let public_path = Path::new("public");
     
-    // Build the main app with Socket.IO layer BEFORE static file fallback
+    // Build the main app
+    // Layer order: In Axum, layers wrap from bottom to top, so:
+    // - TraceLayer is innermost (first)
+    // - CorsLayer wraps that
+    // - session_layer wraps that
+    // - sio_layer is outermost (last) - handles /socket.io/ before hitting API routes
+    // The CorsLayer is BEFORE sio_layer so CORS applies to all routes including Socket.IO
     let app = Router::new()
         .nest("/api", api_routes)
         .with_state(state)
         .layer(sio_layer)  // Socket.IO handles /socket.io/ routes
-        .layer(session_layer)
         .layer(
             CorsLayer::new()
                 .allow_origin(tower_http::cors::AllowOrigin::mirror_request())
@@ -156,8 +161,11 @@ fn build_router(
                     axum::http::header::AUTHORIZATION,
                     axum::http::header::CONTENT_TYPE,
                     axum::http::header::ACCEPT,
+                    axum::http::header::UPGRADE,
+                    axum::http::header::CONNECTION,
                 ]),
         )
+        .layer(session_layer)
         .layer(TraceLayer::new_for_http());
 
     // Add static file serving with SPA fallback if public directory exists

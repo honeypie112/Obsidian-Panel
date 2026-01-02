@@ -66,7 +66,7 @@ const FileManager = () => {
         }
     };
 
-    const navigateTo = (path) => {
+    const _navigateTo = (path) => {
         if (path === '/') {
             setCurrentPath([]);
         } else {

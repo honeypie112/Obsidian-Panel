@@ -15,7 +15,6 @@ const formatBytes = (bytes) => {
 const Overview = () => {
     const { server, performAction, installServer, socket } = useServer();
     const { showToast } = useToast();
-    const [installing, setInstalling] = useState(false);
     const [stats, setStats] = useState({
         cpu: 0,
         cores: 0,
@@ -54,7 +53,6 @@ const Overview = () => {
     const isOnline = server.status === 'online';
     const isInstalling = server.status === 'installing';
     const ramPercent = stats.ram.total > 0 ? (stats.ram.used / stats.ram.total) * 100 : 0;
-    const storagePercent = stats.storage.total > 0 ? (stats.storage.used / stats.storage.total) * 100 : 0;
     return (
 
         <div className="space-y-8 animate-fade-in pb-10">

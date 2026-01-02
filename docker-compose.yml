@@ -1,26 +1,26 @@
 version: '3.8'
 
 services:
-  # Obsidian Panel (Rust Backend + React Frontend)
+  # Obsidian Panel (Rust Backend serves everything on port 5000)
   obsidian-panel:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: obsidian-panel
     ports:
-      - "5000:5000" # Web panel
+      - "5000:5000" # Web panel (API + Frontend + Socket.IO)
       - "25565:25565" # Minecraft Java Edition
-      - "25565:25565/udp" # Minecraft Java Edition (UDP)
+      - "25565:25565/udp"
       - "19132:19132" # Minecraft Bedrock Edition
-      - "19132:19132/udp" # Minecraft Bedrock Edition (UDP)
-      - "24454:24454" # RCON (optional)
+      - "19132:19132/udp"
+      - "24454:24454" # RCON
     environment:
       # Database
       - MONGO_URI=${MONGO_URI:-mongodb://mongo:27017}
       - MONGO_DB_NAME=${MONGO_DB_NAME:-obsidian_panel}
 
       # Server Configuration
-      - PORT=${PORT:-5000}
+      - PORT=5000
       - MC_SERVER_BASE_PATH=${MC_SERVER_BASE_PATH:-/minecraft_server}
       - TEMP_BACKUP_PATH=${TEMP_BACKUP_PATH:-/tmp/obsidian_backups}
 
@@ -32,11 +32,8 @@ services:
       # Logging
       - RUST_LOG=${RUST_LOG:-info}
     volumes:
-      # Persistent Minecraft server data
       - minecraft_data:/minecraft_server
-      # Temporary backup storage (optional, can use tmpfs)
       - backup_temp:/tmp/obsidian_backups
-
     restart: unless-stopped
     networks:
       - obsidian-network

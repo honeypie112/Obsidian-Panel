@@ -36,10 +36,6 @@ RUN touch src/main.rs && cargo build --release
 FROM alpine:3.20
 
 # Install Java 8, 17, 21 and required tools
-# Alpine paths:
-# openjdk8  -> /usr/lib/jvm/java-1.8-openjdk/bin/java
-# openjdk17 -> /usr/lib/jvm/java-17-openjdk/bin/java
-# openjdk21 -> /usr/lib/jvm/java-21-openjdk/bin/java
 RUN apk add --no-cache \
     openjdk8 \
     openjdk17 \
@@ -67,7 +63,6 @@ ENV PORT=5000 \
     HOST=0.0.0.0 \
     MC_SERVER_BASE_PATH=/minecraft_server \
     TEMP_BACKUP_PATH=/tmp/obsidian_backups \
-    FRONTEND_URL=http://localhost:5173 \
     RUST_LOG=info
 
 # Expose ports

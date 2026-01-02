@@ -1,5 +1,6 @@
 import React from 'react';
-import clsx from 'clsx';
+
+// eslint-disable-next-line no-unused-vars
 const StatCard = ({ title, value, subtext, icon: Icon, color }) => {
     return (
         <div className="glass-card rounded-xl p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
