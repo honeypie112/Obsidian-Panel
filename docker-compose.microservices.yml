@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  obsidian-panel:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservices
+    container_name: obsidian-panel
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - MONGO_DB_NAME=${MONGO_DB_NAME:-obsidian_panel}
+      - RUST_LOG=${RUST_LOG:-info,gateway=debug,worker=debug}
+      - PORT=3000
+    restart: unless-stopped
+    volumes:
+      # Optional: view logs from host
+      - ./logs:/var/log/supervisor

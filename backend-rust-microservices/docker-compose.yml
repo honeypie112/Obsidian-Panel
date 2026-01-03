@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: obsidian-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - obsidian_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    container_name: obsidian-worker
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB_NAME=obsidian_panel
+      - REQ_BIND_ADDR=tcp://0.0.0.0:5555
+      - PULL_BIND_ADDR=tcp://0.0.0.0:5556
+      - PUB_BIND_ADDR=tcp://0.0.0.0:5557
+      - RUST_LOG=info,worker=debug
+    ports:
+      - "5555:5555" # REQ/REP
+      - "5556:5556" # PUSH/PULL
+      - "5557:5557" # PUB/SUB
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - obsidian_network
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    container_name: obsidian-gateway
+    environment:
+      - PORT=3000
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB_NAME=obsidian_panel
+      - WORKER_REQ_ENDPOINT=tcp://worker:5555
+      - WORKER_PUSH_ENDPOINT=tcp://worker:5556
+      - WORKER_SUB_ENDPOINT=tcp://worker:5557
+      - RUST_LOG=info,gateway=debug
+    ports:
+      - "3000:3000"
+    depends_on:
+      - worker
+      - mongodb
+    networks:
+      - obsidian_network
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+
+
+networks:
+  obsidian_network:
+    driver: bridge

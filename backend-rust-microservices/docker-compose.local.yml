@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  obsidian-panel:
+    build:
+      context: ..
+      dockerfile: backend-rust-microservices/Dockerfile.all-in-one
+    container_name: obsidian-panel-local
+    ports:
+      - "3000:3000"
+    environment:
+      # Update these with your MongoDB connection details
+      - MONGO_URI=${MONGO_URI:-mongodb://localhost:27017}
+      - MONGO_DB_NAME=${MONGO_DB_NAME:-obsidian_panel}
+      - RUST_LOG=${RUST_LOG:-info,gateway=debug,worker=debug}
+    restart: unless-stopped
+    # Optional: Mount logs for easier debugging
+    volumes:
+      - ./logs:/var/log/supervisor

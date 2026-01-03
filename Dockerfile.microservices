@@ -1,0 +1,72 @@
+# ============================================
+# Stage 1: Build Frontend
+# ============================================
+FROM node:24-alpine AS frontend-builder
+
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
+
+# ============================================
+# Stage 2: Build Rust Microservices (Gateway + Worker)
+# ============================================
+FROM rust:alpine AS backend-builder
+
+# Install build dependencies
+RUN apk add --no-cache musl-dev pkgconfig openssl-dev openssl-libs-static
+
+WORKDIR /app
+
+# Copy workspace files for microservices
+COPY backend-rust-microservices/Cargo.toml backend-rust-microservices/Cargo.lock ./
+COPY backend-rust-microservices/shared ./shared
+COPY backend-rust-microservices/gateway ./gateway
+COPY backend-rust-microservices/worker ./worker
+
+# Build both Gateway and Worker in release mode
+RUN cargo build --release --workspace
+
+# ============================================
+# Stage 3: Production Runtime (Everything in one container)
+# ============================================
+FROM alpine:3.20
+
+# Install runtime dependencies + supervisord
+RUN apk add --no-cache \
+    libgcc \
+    ca-certificates \
+    supervisor \
+    curl
+
+WORKDIR /app
+
+# Copy Rust binaries from backend builder
+COPY --from=backend-builder /app/target/release/gateway /usr/local/bin/gateway
+COPY --from=backend-builder /app/target/release/worker /usr/local/bin/worker
+
+# Copy frontend build from frontend builder
+COPY --from=frontend-builder /app/frontend/dist ./public
+
+# Copy supervisord configuration
+COPY supervisord-all.conf /etc/supervisor/supervisord.conf
+
+# Create log directory
+RUN mkdir -p /var/log/supervisor
+
+# Environment variables (override these at runtime)
+ENV PORT=3000 \
+    MONGO_URI=mongodb://localhost:27017 \
+    MONGO_DB_NAME=obsidian_panel \
+    RUST_LOG=info
+
+# Expose Gateway port (serves both API and frontend)
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:3000/ || exit 1
+
+# Run supervisord (manages both Gateway and Worker)
+CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
