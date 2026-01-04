@@ -291,7 +291,7 @@ export const serverApi = {
         return res.json();
     },
     updateBackupConfig: async (config) => {
-        const res = await fetch(`${BASE_URL}/backups/config/save`, {
+        const res = await fetch(`${BASE_URL}/backups/config`, {
             method: 'POST',
             headers: getHeaders(),
             credentials: 'include',
