@@ -9,9 +9,11 @@ const Sidebar = ({ isOpen, onClose }) => {
     const [updateInfo, setUpdateInfo] = useState(null);
 
     const [checking, setChecking] = useState(false);
+    const checkingRef = useRef(false);
 
     const checkUpdate = useCallback(async () => {
-        if (checking) return;
+        if (checkingRef.current) return;
+        checkingRef.current = true;
         setChecking(true);
         try {
             const res = await fetch('/api/system/update-check', { credentials: 'include' });
@@ -23,8 +25,9 @@ const Sidebar = ({ isOpen, onClose }) => {
             console.error("Silent update check failed", err);
         } finally {
             setChecking(false);
+            checkingRef.current = false;
         }
-    }, [checking]);
+    }, []);
 
     useEffect(() => {
         checkUpdate();
