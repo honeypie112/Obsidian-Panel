@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useServer } from '../context/ServerContext';
-import { Save, Download, AlertCircle, Settings, Eye, EyeOff } from 'lucide-react';
+import { Save, Download, AlertCircle, Settings, Eye, EyeOff, Square } from 'lucide-react';
 import SearchableSelect from '../components/SearchableSelect';
 import Select from '../components/Select';
 import { useToast } from '../context/ToastContext';

@@ -89,25 +89,6 @@ async fn main() -> anyhow::Result<()> {
     setup_socket_handlers(io.clone(), state.clone());
 
     // Build router
-    let app = build_router(state.clone(), sio_layer, session_layer);
-
-    // Start server
-    let addr = SocketAddr::from(([0, 0, 0, 0], CONFIG.port));
-    tracing::info!("Server running on http://{}", addr);
-
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app.into_make_service())
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
-
-    Ok(())
-}
-
-fn build_router(
-    state: Arc<AppState>, 
-    sio_layer: socketioxide::layer::SocketIoLayer,
-    session_layer: SessionManagerLayer<MongoDBStore>
-) -> Router {
     // API routes with authentication
     let api_routes = Router::new()
         .nest("/auth", routes::auth_router(state.clone()))
@@ -135,17 +116,28 @@ fn build_router(
     // Static file serving for frontend
     let public_path = Path::new("public");
     
-    // Build the main app
-    // Layer order: In Axum, layers wrap from bottom to top, so:
-    // - TraceLayer is innermost (first)
-    // - CorsLayer wraps that
-    // - session_layer wraps that
-    // - sio_layer is outermost (last) - handles /socket.io/ before hitting API routes
-    // The CorsLayer is BEFORE sio_layer so CORS applies to all routes including Socket.IO
-    let app = Router::new()
+    // Build API routes with state
+    let api_router = Router::new()
         .nest("/api", api_routes)
-        .with_state(state)
-        .layer(sio_layer)  // Socket.IO handles /socket.io/ routes
+        .with_state(state.clone()); // Use state.clone() here
+    
+    // Build the main app
+    // Layer application order (Outer -> Inner for Request):
+    // 1. TraceLayer (logs request)
+    // 2. CorsLayer (handles CORS headers)
+    // 3. session_layer
+    // 4. sio_layer (intercepts /socket.io/)
+    // 5. Router (API + Fallback)
+    //
+    // Since .layer(L) wraps the INNER service:
+    // We must add them in REVERSE order of execution (Inner first).
+    let app = Router::new()
+        .merge(api_router)
+        .layer(sio_layer) // <--- Innermost (checked first by Router logic? No, checked LAST in stack, but intercepts path)
+                          // Actually for Tower layers: Req -> L2 -> L1 -> Service.
+                          // So we want: Req -> Trace -> Cors -> Sio -> Router.
+                          // Call order: Router.layer(Sio).layer(Cors).layer(Trace)
+        .layer(session_layer)
         .layer(
             CorsLayer::new()
                 .allow_origin(tower_http::cors::AllowOrigin::mirror_request())
@@ -165,11 +157,10 @@ fn build_router(
                     axum::http::header::CONNECTION,
                 ]),
         )
-        .layer(session_layer)
-        .layer(TraceLayer::new_for_http());
+        .layer(TraceLayer::new_for_http()); // Outermost
 
     // Add static file serving with SPA fallback if public directory exists
-    if public_path.exists() {
+    let app = if public_path.exists() {
         // Use nest_service to serve static files at root, separate from the main router
         let static_files = ServeDir::new("public")
             .append_index_html_on_directories(true)
@@ -178,7 +169,18 @@ fn build_router(
         app.fallback_service(static_files)
     } else {
         app
-    }
+    };
+
+    // Start server
+    let addr = SocketAddr::from(([0, 0, 0, 0], CONFIG.port));
+    tracing::info!("Server running on http://{}", addr);
+
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
+
+    Ok(())
 }
 
 fn setup_socket_handlers(io: SocketIo, state: Arc<AppState>) {

@@ -25,12 +25,12 @@ dist-ssr
 
 # Rust / Backend
 target/
-backend-rust/target/
+backend/target/
 **/*.rs.bk
-
+backend/minecraft-server
 
 # Minecraft Server Data for development
-backend-rust/minecraft_server/*
+backend/minecraft_server/*
 # Backups
 backups/
 *.zip
