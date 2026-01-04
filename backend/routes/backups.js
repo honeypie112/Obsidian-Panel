@@ -46,9 +46,14 @@ router.post('/:id/restore', auth, checkPermission('backups.restore'), async (req
         }
 
         const serverDir = minecraftService.serverDir;
-        console.log('Wiping server directory...');
+        console.log('Wiping server directory contents...');
         if (fs.existsSync(serverDir)) {
-            fs.rmSync(serverDir, { recursive: true, force: true });
+            // Delete content inside instead of the folder itself to avoid EBUSY/EACCES on volume root
+            fs.readdirSync(serverDir).forEach(file => {
+                const curPath = path.join(serverDir, file);
+                fs.rmSync(curPath, { recursive: true, force: true });
+            });
+        } else {
             fs.mkdirSync(serverDir, { recursive: true });
         }
 
