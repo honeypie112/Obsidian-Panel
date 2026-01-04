@@ -37,9 +37,9 @@ RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repos
     curl \
     zip \
     unzip \
-    openjdk8 \
-    openjdk17 \
-    openjdk21
+    openjdk8-jre-base \
+    openjdk17-jre-headless \
+    openjdk21-jre-headless
 
 # Create app directory
 WORKDIR /app

@@ -145,11 +145,10 @@ fi
 echo -e "\n${BLUE}Starting Container...${NC}"
 
 # Stop existing container if running
-# Stop existing container if running
 docker rm -f "$OLD_CONTAINER" &>/dev/null
 
 # Prepare Volume Args (Always use obsidian-data volume mapped to standard path)
-VOLUME_ARGS="-v obsidian-data:/minecraft_server"
+VOLUME_ARGS="-v obsidian-data:/minecraft_server:rw"
 echo -e "${GREEN}Using Volume: obsidian-data -> /minecraft_server${NC}"
 
 COMMAND="docker run -itd --restart unless-stopped --env-file .env $PORTS $VOLUME_ARGS --name obsidian-panel alexbhai/obsidian-panel:latest"
