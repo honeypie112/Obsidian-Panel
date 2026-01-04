@@ -67,9 +67,11 @@ USER node
 ENV PORT=5000 \
     NODE_ENV=production
 
-# Inject Build Date
+# Inject Build Date and Git SHA
 ARG BUILD_DATE
+ARG GIT_SHA
 ENV BUILD_DATE=$BUILD_DATE \
+    GIT_SHA=$GIT_SHA \
     MC_SERVER_BASE_PATH=/minecraft_server \
     TEMP_BACKUP_PATH=/tmp/obsidian_backups
 

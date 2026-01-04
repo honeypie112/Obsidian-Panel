@@ -6,36 +6,35 @@ const { auth } = require('../middleware');
 // GET /api/system/update-check
 router.get('/update-check', auth, async (req, res) => {
     try {
-        // fetch latest tag info from Docker Hub
-        const response = await axios.get('https://hub.docker.com/v2/repositories/alexbhai/obsidian-panel/tags/latest');
+        // fetch latest commit from GitHub
+        const response = await axios.get('https://api.github.com/repos/honeypie112/Obsidian-Panel/commits/master', {
+            headers: { 'User-Agent': 'Obsidian-Panel' }
+        });
 
-        const latestData = response.data;
-        const lastUpdated = latestData.last_updated; // ISO String: "2024-05-20T10:00:00.000Z"
-
-        // Get local build date from env var (injected by Docker)
-        const currentBuildDate = process.env.BUILD_DATE;
+        const latestCommit = response.data;
+        const latestSha = latestCommit.sha;
+        const currentSha = process.env.GIT_SHA;
 
         let updateAvailable = false;
 
-        if (currentBuildDate && lastUpdated) {
-            const current = new Date(currentBuildDate).getTime();
-            const latest = new Date(lastUpdated).getTime();
-
-            console.log(`[UpdateCheck] Local: ${currentBuildDate} (${current}) | Remote: ${lastUpdated} (${latest})`);
-
-            // If latest is significantly newer (e.g. > 1 hour difference to avoid potential timezone/build time mismatches on same build)
-            if (latest > current + 1000 * 60 * 60) {
+        if (currentSha && latestSha) {
+            console.log(`[UpdateCheck] Local: ${currentSha} | Remote: ${latestSha}`);
+            if (currentSha !== latestSha) {
                 updateAvailable = true;
             }
-        } else if (!currentBuildDate) {
-            console.log('[UpdateCheck] BUILD_DATE env var is missing. Cannot verify version.');
+        } else if (!currentSha) {
+            console.log('[UpdateCheck] GIT_SHA env var is missing. Cannot verify version.');
         }
 
         res.json({
             updateAvailable,
-            currentBuildDate: currentBuildDate || 'Unknown',
-            latestBuildDate: lastUpdated,
-            latestTag: latestData.name
+            currentVersion: currentSha ? currentSha.substring(0, 7) : 'Unknown',
+            latestVersion: latestSha ? latestSha.substring(0, 7) : 'Unknown',
+            commitData: {
+                message: latestCommit.commit.message,
+                author: latestCommit.commit.author.name,
+                date: latestCommit.commit.author.date
+            }
         });
 
     } catch (err) {

@@ -331,7 +331,7 @@ const Backups = () => {
                     </button>
                     <button
                         onClick={() => setIsCreateModalOpen(true)}
-                        disabled={isCreating || isBackupInProgress}
+                        disabled={isCreating || isBackupInProgress || isRestoring}
                         className="glass-button px-6 py-2 rounded-xl flex items-center gap-2 hover:scale-105 transition-transform disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed"
                     >
                         {isCreating || isBackupInProgress ? (

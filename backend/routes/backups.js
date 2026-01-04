@@ -169,6 +169,9 @@ router.get('/', auth, checkPermission('backups.view'), async (req, res) => {
 });
 
 router.post('/create', auth, checkPermission('backups.create'), async (req, res) => {
+    if (isRestoreInProgress) {
+        return res.status(409).json({ message: 'Cannot create backup while restore is in progress.' });
+    }
     try {
         const { notes } = req.body;
         const backup = await backupService.performBackup(true, notes);
