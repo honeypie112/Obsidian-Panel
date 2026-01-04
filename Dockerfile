@@ -28,7 +28,7 @@ RUN npm ci --only=production
 # ====================
 FROM node:20-alpine
 
-# Install System Dependencies including Multiple Java Versions
+# Install System Dependencies including Multiple Java Versions (JRE only)
 # Alpine requires testing/community repos for some openjdk versions
 RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
     apk update && \
@@ -37,9 +37,9 @@ RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repos
     curl \
     zip \
     unzip \
-    openjdk8 \
-    openjdk17 \
-    openjdk21
+    openjdk8-jre-base \
+    openjdk17-jre-headless \
+    openjdk21-jre-headless
 
 # Create app directory
 WORKDIR /app
