@@ -26,6 +26,7 @@ router.get('/update-check', auth, async (req, res) => {
             console.log('[UpdateCheck] GIT_SHA env var is missing. Cannot verify version.');
         }
 
+
         res.json({
             updateAvailable,
             currentVersion: currentSha ? currentSha.substring(0, 7) : 'Unknown',
@@ -36,10 +37,21 @@ router.get('/update-check', auth, async (req, res) => {
                 date: latestCommit.commit.author.date
             }
         });
-
     } catch (err) {
         console.error('Update check failed:', err.message);
-        res.status(500).json({ message: 'Failed to check for updates' });
+        if (err.response) {
+            console.error('GitHub API Response:', err.response.status, err.response.data);
+            if (err.response.status === 403) {
+                console.error('Rate limit likely exceeded.');
+            }
+        }
+        // Return a valid JSON even on error so frontend doesn't crash
+        res.json({
+            updateAvailable: false,
+            currentVersion: process.env.GIT_SHA ? process.env.GIT_SHA.substring(0, 7) : 'Unknown',
+            latestVersion: 'Check Failed',
+            error: err.message
+        });
     }
 });
 
