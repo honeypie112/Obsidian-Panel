@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import { serverApi } from '../api/server';
 import { Folder, FileText, ChevronRight, Home, Download, Trash2, FileCode, FileJson, FileImage, Upload, Save, X, Archive, CheckSquare, Check, FolderPlus, RefreshCw, ArrowLeft, Loader2, FolderOpen, Edit2 } from 'lucide-react';
@@ -47,12 +47,7 @@ const FileManager = () => {
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [uploading]);
 
-    useEffect(() => {
-        loadFiles();
-        setSelectedFiles(new Set());
-    }, [currentPath]);
-
-    const loadFiles = async () => {
+    const loadFiles = useCallback(async () => {
         setLoading(true);
         try {
             const data = await serverApi.getFiles(currentPath);
@@ -64,7 +59,12 @@ const FileManager = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentPath, showToast]);
+
+    useEffect(() => {
+        loadFiles();
+        setSelectedFiles(new Set());
+    }, [loadFiles]);
 
     const _navigateTo = (path) => {
         if (path === '/') {

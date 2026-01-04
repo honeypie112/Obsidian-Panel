@@ -159,7 +159,7 @@ if $COMMAND; then
     echo -e "${GREEN}   Installation Complete!               ${NC}"
     echo -e "${GREEN}========================================${NC}"
     # Get Public IP
-    PUBLIC_IP=$(curl -s ifconfig.me)
+    PUBLIC_IP=$(curl -s ipinfo.io/ip)
     
     echo -e "Panel is running at: http://localhost:5000"
     if [ -n "$PUBLIC_IP" ]; then

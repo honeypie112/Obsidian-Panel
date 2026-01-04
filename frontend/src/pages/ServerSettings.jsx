@@ -48,24 +48,7 @@ const ServerSettings = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [isConfirmUpdateOpen, setIsConfirmUpdateOpen] = useState(false);
 
-    // Update Checker State
-    const [updateInfo, setUpdateInfo] = useState(null);
-    const [checkingUpdate, setCheckingUpdate] = useState(false);
-
-    const checkSystemUpdate = async () => {
-        setCheckingUpdate(true);
-        try {
-            const res = await fetch('/api/system/update-check', { credentials: 'include' });
-            if (!res.ok) throw new Error('Failed to check');
-            const data = await res.json();
-            setUpdateInfo(data);
-        } catch (err) {
-            console.error(err);
-            showToast('Failed to check for updates', 'error');
-        } finally {
-            setCheckingUpdate(false);
-        }
-    };
+    // Update Checker State - REMOVED (Moved to Sidebar)
 
     const [totalRamMB, setTotalRamMB] = useState(16384);
 
@@ -167,7 +150,7 @@ const ServerSettings = () => {
         };
         socket.on('install_progress', onProgress);
         return () => socket.off('install_progress', onProgress);
-    }, [socket]);
+    }, [socket, showToast]);
 
     const handleSave = async (e) => {
         e.preventDefault();

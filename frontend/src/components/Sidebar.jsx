@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Terminal, Folder, Settings, Shield, HardDrive, Server, LogOut, Package, User, Github, Coffee, Download, CheckCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +10,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
     const [checking, setChecking] = useState(false);
 
-    const checkUpdate = async () => {
+    const checkUpdate = useCallback(async () => {
         if (checking) return;
         setChecking(true);
         try {
@@ -24,11 +24,11 @@ const Sidebar = ({ isOpen, onClose }) => {
         } finally {
             setChecking(false);
         }
-    };
+    }, [checking]);
 
     useEffect(() => {
         checkUpdate();
-    }, []);
+    }, [checkUpdate]);
 
     const allNavItems = [
         { icon: LayoutDashboard, label: 'Overview', path: '/', permission: 'overview.view' }, // Default for all usually, but can be explicit

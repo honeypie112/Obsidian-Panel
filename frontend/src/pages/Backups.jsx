@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { CloudUpload, HardDrive, Download, CheckCircle, Database, Shield, Trash2, Clock, FileArchive, AlertTriangle, Calendar, X, Lock, Copy, RotateCw, Settings, Plus, Archive, Loader2, Search, Edit2 } from 'lucide-react';
 import { serverApi } from '../api/server';
 import { useToast } from '../context/ToastContext';
@@ -47,26 +47,20 @@ const Backups = () => {
     // pollIntervalRef kept for potential future use
     const _pollIntervalRef = useRef(null);
 
-    useEffect(() => {
-        loadBackups();
-        checkStatus();
-        const interval = setInterval(checkStatus, 5000);
-        return () => clearInterval(interval);
-    }, []);
-
-    const checkStatus = async () => {
+    const checkStatus = useCallback(async () => {
         try {
             const status = await serverApi.getBackupStatus();
             setIsBackupInProgress(status.isBackupInProgress);
+            setIsRestoring(status.isRestoreInProgress);
         } catch (e) {
             console.error(e);
             if (e.message.includes('401') || e.message.includes('Unauthorized')) {
                 logout();
             }
         }
-    };
+    }, [logout]);
 
-    const loadBackups = async () => {
+    const loadBackups = useCallback(async () => {
         try {
             const data = await serverApi.getBackups();
             setBackups(data);
@@ -75,7 +69,14 @@ const Backups = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        loadBackups();
+        checkStatus();
+        const interval = setInterval(checkStatus, 5000);
+        return () => clearInterval(interval);
+    }, [checkStatus, loadBackups]);
 
     const loadConfig = async () => {
         try {
