@@ -201,7 +201,7 @@ class MinecraftService extends EventEmitter {
     }
 
     async getAvailableVersions() {
-        const cacheFile = path.join(__dirname, '../../versions_cache.json');
+        const cacheFile = path.join(os.tmpdir(), 'obsidian_versions_cache.json');
         let cachedVersions = null;
         try {
             if (fs.existsSync(cacheFile)) {

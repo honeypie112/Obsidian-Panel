@@ -1,11 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Terminal, Folder, Settings, Shield, HardDrive, Server, LogOut, Package, User, Github, Coffee } from 'lucide-react';
+import { LayoutDashboard, Terminal, Folder, Settings, Shield, HardDrive, Server, LogOut, Package, User, Github, Coffee, Download, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
 
 const Sidebar = ({ isOpen, onClose }) => {
     const { logout, user } = useAuth();
+    const [updateInfo, setUpdateInfo] = useState(null);
+
+    useEffect(() => {
+        const checkUpdate = async () => {
+            try {
+                const res = await fetch('/api/system/update-check', { credentials: 'include' });
+                if (res.ok) {
+                    const data = await res.json();
+                    setUpdateInfo(data);
+                }
+            } catch (err) {
+                console.error("Silent update check failed", err);
+            }
+        };
+        checkUpdate();
+    }, []);
 
     const allNavItems = [
         { icon: LayoutDashboard, label: 'Overview', path: '/', permission: 'overview.view' }, // Default for all usually, but can be explicit
@@ -99,8 +115,24 @@ const Sidebar = ({ isOpen, onClose }) => {
                         </NavLink>
                     ))}
                 </nav>
-                <div className="p-4 border-t border-white/5">
-                    <div className="mb-4 grid grid-cols-2 gap-2">
+                <div className="p-4 border-t border-white/5 bg-black/20">
+                    {updateInfo && updateInfo.updateAvailable ? (
+                        <div className="mb-3 px-3 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-center justify-between group cursor-pointer hover:bg-yellow-500/20 transition-all">
+                            <div className="flex items-center text-xs text-yellow-500 font-medium">
+                                <Download size={14} className="mr-2 animate-bounce" />
+                                <span>Update Available</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="mb-3 flex items-center justify-center space-x-2 opacity-50 hover:opacity-100 transition-opacity">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                            <span className="text-[10px] text-obsidian-muted font-mono">
+                                {updateInfo ? 'System Up to Date' : 'System Online'}
+                            </span>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2 mb-3">
                         <a
                             href="https://github.com/honeypie112/Obsidian-Panel"
                             target="_blank"
@@ -122,17 +154,13 @@ const Sidebar = ({ isOpen, onClose }) => {
                     </div>
                     <button
                         onClick={logout}
-                        className="flex items-center w-full px-4 py-3 text-obsidian-muted hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300 group border border-transparent hover:border-red-500/20"
+                        className="flex items-center w-full px-4 py-2.5 text-obsidian-muted hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all duration-300 group hover:border-red-500/20 text-xs font-medium"
                     >
-                        <LogOut size={20} className="mr-3 transition-transform group-hover:-translate-x-1" />
-                        <span className="font-medium text-sm">Logout</span>
+                        <LogOut size={16} className="mr-2 transition-transform group-hover:-translate-x-1" />
+                        <span>Logout</span>
                     </button>
-                    <div className="mt-4 flex items-center justify-center space-x-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                        <span className="text-[10px] uppercase tracking-wider text-obsidian-muted font-mono">System Online</span>
-                    </div>
                 </div>
-            </div>
+            </div >
         </>
     );
 };

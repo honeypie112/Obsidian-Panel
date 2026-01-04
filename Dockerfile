@@ -65,7 +65,11 @@ USER node
 
 # Environment Variables
 ENV PORT=5000 \
-    NODE_ENV=production \
+    NODE_ENV=production
+
+# Inject Build Date
+ARG BUILD_DATE
+ENV BUILD_DATE=$BUILD_DATE \
     MC_SERVER_BASE_PATH=/minecraft_server \
     TEMP_BACKUP_PATH=/tmp/obsidian_backups
 

@@ -12,6 +12,7 @@ require('dotenv').config({ path: '../.env' });
 require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const controlRoutes = require('./routes/control');
+const systemRoutes = require('./routes/system');
 const minecraftService = require('./services/minecraftService');
 const app = express();
 const server = http.createServer(app);
@@ -95,6 +96,7 @@ mongoose.connect(process.env.MONGO_URI, {
     .catch(err => console.log(err));
 app.use('/api/auth', authRoutes);
 app.use('/api/control', controlRoutes);
+app.use('/api/system', systemRoutes);
 app.use('/api/backups', require('./routes/backups'));
 app.use('/api/plugins', require('./routes/plugins'));
 app.use('/api/users', require('./routes/users'));

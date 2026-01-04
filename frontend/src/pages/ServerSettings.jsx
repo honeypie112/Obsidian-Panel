@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useServer } from '../context/ServerContext';
-import { Save, Download, AlertCircle, Settings, Eye, EyeOff, Square } from 'lucide-react';
+import { Save, Download, AlertCircle, Settings, Eye, EyeOff, Square, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import SearchableSelect from '../components/SearchableSelect';
 import Select from '../components/Select';
 import { useToast } from '../context/ToastContext';
@@ -47,6 +47,25 @@ const ServerSettings = () => {
     const [updateStatus, setUpdateStatus] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isConfirmUpdateOpen, setIsConfirmUpdateOpen] = useState(false);
+
+    // Update Checker State
+    const [updateInfo, setUpdateInfo] = useState(null);
+    const [checkingUpdate, setCheckingUpdate] = useState(false);
+
+    const checkSystemUpdate = async () => {
+        setCheckingUpdate(true);
+        try {
+            const res = await fetch('/api/system/update-check', { credentials: 'include' });
+            if (!res.ok) throw new Error('Failed to check');
+            const data = await res.json();
+            setUpdateInfo(data);
+        } catch (err) {
+            console.error(err);
+            showToast('Failed to check for updates', 'error');
+        } finally {
+            setCheckingUpdate(false);
+        }
+    };
 
     const [totalRamMB, setTotalRamMB] = useState(16384);
 
@@ -344,6 +363,47 @@ const ServerSettings = () => {
                         <p className="text-xs text-obsidian-muted ml-1 opacity-70">
                             Slide to adjust memory allocation for the Java process.
                         </p>
+                    </div>
+                </div>
+
+                {/* System Update Section */}
+                <div className="mt-8 border-t border-white/5 pt-8">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                            <RefreshCw size={24} className="text-obsidian-accent" />
+                            <div>
+                                <h3 className="text-lg font-bold text-white">System Updates</h3>
+                                <p className="text-xs text-obsidian-muted">Check if a new Docker image is available.</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            {updateInfo && (
+                                <div className={`px-4 py-2 rounded-lg border flex items-center gap-2 text-sm ${updateInfo.updateAvailable
+                                    ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500'
+                                    : 'bg-green-500/10 border-green-500/20 text-green-500'
+                                    }`}>
+                                    {updateInfo.updateAvailable ? (
+                                        <>
+                                            <AlertCircle size={16} />
+                                            <span>Update Available ({updateInfo.latestTag})</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle size={16} />
+                                            <span>System is Up to Date</span>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                            <button
+                                onClick={checkSystemUpdate}
+                                disabled={checkingUpdate}
+                                className="glass-button px-4 py-2 rounded-lg flex items-center gap-2 text-sm disabled:opacity-50"
+                            >
+                                <RefreshCw size={16} className={checkingUpdate ? "animate-spin" : ""} />
+                                {checkingUpdate ? 'Checking...' : 'Check for Updates'}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
