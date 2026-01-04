@@ -21,15 +21,14 @@ router.get('/update-check', auth, async (req, res) => {
             const current = new Date(currentBuildDate).getTime();
             const latest = new Date(lastUpdated).getTime();
 
+            console.log(`[UpdateCheck] Local: ${currentBuildDate} (${current}) | Remote: ${lastUpdated} (${latest})`);
+
             // If latest is significantly newer (e.g. > 1 hour difference to avoid potential timezone/build time mismatches on same build)
             if (latest > current + 1000 * 60 * 60) {
                 updateAvailable = true;
             }
         } else if (!currentBuildDate) {
-            // If we don't know our own version, assume update might be available or just unknown.
-            // But usually for UX, we might say "Unknown version" or show latest available.
-            // Let's explicitly say updateAvailable is true only if we are sure.
-            // Or maybe just return null for current date.
+            console.log('[UpdateCheck] BUILD_DATE env var is missing. Cannot verify version.');
         }
 
         res.json({

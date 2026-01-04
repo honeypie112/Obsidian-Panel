@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Terminal, Folder, Settings, Shield, HardDrive, Server, LogOut, Package, User, Github, Coffee, Download, CheckCircle } from 'lucide-react';
+import { LayoutDashboard, Terminal, Folder, Settings, Shield, HardDrive, Server, LogOut, Package, User, Github, Coffee, Download, CheckCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
 
@@ -8,18 +8,25 @@ const Sidebar = ({ isOpen, onClose }) => {
     const { logout, user } = useAuth();
     const [updateInfo, setUpdateInfo] = useState(null);
 
-    useEffect(() => {
-        const checkUpdate = async () => {
-            try {
-                const res = await fetch('/api/system/update-check', { credentials: 'include' });
-                if (res.ok) {
-                    const data = await res.json();
-                    setUpdateInfo(data);
-                }
-            } catch (err) {
-                console.error("Silent update check failed", err);
+    const [checking, setChecking] = useState(false);
+
+    const checkUpdate = async () => {
+        if (checking) return;
+        setChecking(true);
+        try {
+            const res = await fetch('/api/system/update-check', { credentials: 'include' });
+            if (res.ok) {
+                const data = await res.json();
+                setUpdateInfo(data);
             }
-        };
+        } catch (err) {
+            console.error("Silent update check failed", err);
+        } finally {
+            setChecking(false);
+        }
+    };
+
+    useEffect(() => {
         checkUpdate();
     }, []);
 
@@ -116,17 +123,29 @@ const Sidebar = ({ isOpen, onClose }) => {
                     ))}
                 </nav>
                 <div className="p-4 border-t border-white/5 bg-black/20">
-                    {updateInfo && updateInfo.updateAvailable ? (
-                        <div className="mb-3 px-3 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-center justify-between group cursor-pointer hover:bg-yellow-500/20 transition-all">
+                    {checking ? (
+                        <div className="mb-3 flex items-center justify-center space-x-2 opacity-70">
+                            <RefreshCw size={12} className="text-obsidian-muted animate-spin" />
+                            <span className="text-[10px] text-obsidian-muted font-mono">Checking...</span>
+                        </div>
+                    ) : updateInfo && updateInfo.updateAvailable ? (
+                        <div
+                            onClick={checkUpdate}
+                            className="mb-3 px-3 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-center justify-between group cursor-pointer hover:bg-yellow-500/20 transition-all"
+                        >
                             <div className="flex items-center text-xs text-yellow-500 font-medium">
                                 <Download size={14} className="mr-2 animate-bounce" />
                                 <span>Update Available</span>
                             </div>
                         </div>
                     ) : (
-                        <div className="mb-3 flex items-center justify-center space-x-2 opacity-50 hover:opacity-100 transition-opacity">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                            <span className="text-[10px] text-obsidian-muted font-mono">
+                        <div
+                            onClick={checkUpdate}
+                            className="mb-3 flex items-center justify-center space-x-2 opacity-50 hover:opacity-100 transition-opacity cursor-pointer group"
+                            title="Click to check for updates"
+                        >
+                            <div className={`w-1.5 h-1.5 rounded-full ${updateInfo ? 'bg-green-500' : 'bg-obsidian-muted'} group-hover:scale-125 transition-transform`}></div>
+                            <span className="text-[10px] text-obsidian-muted font-mono group-hover:text-white transition-colors">
                                 {updateInfo ? 'System Up to Date' : 'System Online'}
                             </span>
                         </div>

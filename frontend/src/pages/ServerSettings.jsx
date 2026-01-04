@@ -366,46 +366,7 @@ const ServerSettings = () => {
                     </div>
                 </div>
 
-                {/* System Update Section */}
-                <div className="mt-8 border-t border-white/5 pt-8">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                            <RefreshCw size={24} className="text-obsidian-accent" />
-                            <div>
-                                <h3 className="text-lg font-bold text-white">System Updates</h3>
-                                <p className="text-xs text-obsidian-muted">Check if a new Docker image is available.</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            {updateInfo && (
-                                <div className={`px-4 py-2 rounded-lg border flex items-center gap-2 text-sm ${updateInfo.updateAvailable
-                                    ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500'
-                                    : 'bg-green-500/10 border-green-500/20 text-green-500'
-                                    }`}>
-                                    {updateInfo.updateAvailable ? (
-                                        <>
-                                            <AlertCircle size={16} />
-                                            <span>Update Available ({updateInfo.latestTag})</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CheckCircle size={16} />
-                                            <span>System is Up to Date</span>
-                                        </>
-                                    )}
-                                </div>
-                            )}
-                            <button
-                                onClick={checkSystemUpdate}
-                                disabled={checkingUpdate}
-                                className="glass-button px-4 py-2 rounded-lg flex items-center gap-2 text-sm disabled:opacity-50"
-                            >
-                                <RefreshCw size={16} className={checkingUpdate ? "animate-spin" : ""} />
-                                {checkingUpdate ? 'Checking...' : 'Check for Updates'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+
 
                 <div className="mt-8 flex justify-end">
                     <button
