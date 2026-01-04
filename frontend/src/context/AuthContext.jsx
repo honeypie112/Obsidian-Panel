@@ -100,7 +100,7 @@ export const AuthProvider = ({ children }) => {
             let result;
             try {
                 result = await res.json();
-            } catch (e) {
+            } catch {
                 const text = await res.text().catch(() => 'Unknown error');
                 throw new Error(res.statusText || text || 'Network response was not ok');
             }
@@ -130,4 +130,5 @@ export const AuthProvider = ({ children }) => {
         </AuthContext.Provider>
     );
 };
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

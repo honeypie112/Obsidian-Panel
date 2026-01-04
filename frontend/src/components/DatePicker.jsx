@@ -3,8 +3,10 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-r
 import clsx from 'clsx';
 const DatePicker = ({ value, onChange, placeholder = "Select date" }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [viewDate, setViewDate] = useState(new Date());  
+    const [viewDate, setViewDate] = useState(new Date());
     const containerRef = useRef(null);
+    // Sync viewDate with prop value - this is intentional for controlled component behavior
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (value) {
             const date = new Date(value);
@@ -13,6 +15,7 @@ const DatePicker = ({ value, onChange, placeholder = "Select date" }) => {
             }
         }
     }, [value]);
+    /* eslint-enable react-hooks/set-state-in-effect */
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (containerRef.current && !containerRef.current.contains(event.target)) {

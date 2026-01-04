@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
-import { clsx } from 'clsx';  
+
 const Select = ({ value, onChange, options, label, disabled = false }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef(null);
@@ -41,8 +41,8 @@ const Select = ({ value, onChange, options, label, disabled = false }) => {
                                 key={option.value}
                                 onClick={() => handleSelect(option.value)}
                                 className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors ${option.value === value
-                                        ? 'bg-obsidian-accent/10 text-obsidian-accent'
-                                        : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                                    ? 'bg-obsidian-accent/10 text-obsidian-accent'
+                                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
                                     }`}
                             >
                                 <span className="truncate text-left">{option.label}</span>

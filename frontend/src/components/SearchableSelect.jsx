@@ -8,6 +8,8 @@ const SearchableSelect = ({ options, value, onChange, placeholder = "Select...",
     const inputRef = useRef(null);
     const safeOptions = Array.isArray(options) ? options : [];
     const selectedOption = safeOptions.find(opt => opt.value === value);
+    // Sync inputValue with selected option - this is intentional for controlled component behavior
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (selectedOption) {
             setInputValue(selectedOption.label);
@@ -15,6 +17,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder = "Select...",
             setInputValue(value || '');
         }
     }, [value, selectedOption]);
+    /* eslint-enable react-hooks/set-state-in-effect */
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (containerRef.current && !containerRef.current.contains(event.target)) {

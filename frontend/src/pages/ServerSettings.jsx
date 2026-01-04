@@ -1,19 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useServer } from '../context/ServerContext';
-import { Save, Download, AlertCircle, Settings, Play, RefreshCw, Square, Eye, EyeOff } from 'lucide-react';
+import { Save, Download, AlertCircle, Settings, Eye, EyeOff, Square } from 'lucide-react';
 import SearchableSelect from '../components/SearchableSelect';
 import Select from '../components/Select';
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
 
-const generateRamOptions = (totalBytes) => {
-    const totalGB = Math.floor(totalBytes / (1024 * 1024 * 1024));
-    const options = [1, 2, 4, 8, 16, 32, 64].filter(gb => gb < totalGB);
-    if (!options.includes(totalGB) && totalGB > 0) {
-        options.push(totalGB);
-    }
-    return options.sort((a, b) => a - b);
-};
 
 const serverTypes = [
     { value: 'vanilla', label: 'Vanilla Minecraft' },

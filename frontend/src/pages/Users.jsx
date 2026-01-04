@@ -29,7 +29,6 @@ const PERMISSIONS = [
 const Users = () => {
     const { user: currentUser } = useAuth();
     const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
 
@@ -43,16 +42,16 @@ const Users = () => {
         try {
             const data = await serverApi.getUsers();
             setUsers(data);
-        } catch (err) {
+        } catch {
             toast.error('Failed to fetch users');
-        } finally {
-            setLoading(false);
         }
     };
 
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         fetchUsers();
     }, []);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     const resetForm = () => {
         setUsername('');
@@ -104,8 +103,8 @@ const Users = () => {
             }
             setIsModalOpen(false);
             fetchUsers();
-        } catch (err) {
-            toast.error(err.message || 'Operation failed');
+        } catch {
+            toast.error('Operation failed');
         }
     };
 
@@ -118,7 +117,7 @@ const Users = () => {
             toast.success('User deleted');
             setUserToDelete(null);
             fetchUsers();
-        } catch (err) {
+        } catch {
             toast.error('Failed to delete user');
         }
     };

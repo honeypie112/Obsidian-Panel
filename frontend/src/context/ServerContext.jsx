@@ -20,12 +20,16 @@ export const ServerProvider = ({ children }) => {
     useEffect(() => {
         fetchServer(); // Initial fetch to get full status
 
-        const newSocket = io(SOCKET_URL, {
+        // Debug: Log the socket URL being used
+        console.log('[Socket] Connecting to:', SOCKET_URL || window.location.origin);
+
+        const newSocket = io(SOCKET_URL || undefined, {
             transports: ['websocket', 'polling'],
             reconnectionAttempts: 5,
             reconnectionDelay: 2000,
             reconnectionDelayMax: 10000,
             autoConnect: true,
+            withCredentials: true,
         });
 
         // Connection event handlers
@@ -75,4 +79,5 @@ export const ServerProvider = ({ children }) => {
         </ServerContext.Provider>
     );
 };
+// eslint-disable-next-line react-refresh/only-export-components
 export const useServer = () => useContext(ServerContext);

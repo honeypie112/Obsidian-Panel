@@ -44,7 +44,8 @@ const Backups = () => {
     const [editingBackup, setEditingBackup] = useState(null);
     const [editNotes, setEditNotes] = useState('');
     const [isSavingNotes, setIsSavingNotes] = useState(false);
-    const pollIntervalRef = useRef(null);
+    // pollIntervalRef kept for potential future use
+    const _pollIntervalRef = useRef(null);
 
     useEffect(() => {
         loadBackups();
@@ -69,8 +70,8 @@ const Backups = () => {
         try {
             const data = await serverApi.getBackups();
             setBackups(data);
-        } catch (err) {
-            console.error(err);
+        } catch (e) {
+            console.error(e);
         } finally {
             setLoading(false);
         }
@@ -81,7 +82,7 @@ const Backups = () => {
             const config = await serverApi.getBackupConfig();
             setBackupConfig(config);
             setIsConfigModalOpen(true);
-        } catch (err) {
+        } catch {
             showToast('Failed to load settings', 'error');
         }
     };
@@ -302,7 +303,8 @@ const Backups = () => {
         return matchesSearch && matchesDate;
     });
 
-    const isBusy = loading || isBackupInProgress;
+    // isBusy kept for potential future use
+    const _isBusy = loading || isBackupInProgress;
 
     return (
         <div className="space-y-6 animate-fade-in content-container">

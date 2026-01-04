@@ -1,6 +1,6 @@
 # 🌑 Obsidian Panel
 
-**Obsidian Panel** is a modern, high-performance Minecraft Server Management Panel built with **Rust** and **React**. Designed to manage a single server with maximum efficiency and elegance, it provides a powerful web interface to control your Minecraft server, manage files, schedule backups, and monitor performance in real-time.
+**Obsidian Panel** is a modern, high-performance Minecraft Server Management Panel built with **Node.js** and **React**. Designed to manage a single server with maximum efficiency and elegance, it provides a powerful web interface to control your Minecraft server, manage files, schedule backups, and monitor performance in real-time.
 
 ![Obsidian Panel Interface](images/dashboard.png)
 
@@ -73,30 +73,31 @@
   - **Authentication**: Bcrypt password hashing with secure sessions
   - **CORS Protection**: Configurable cross-origin policies
   - **Path Validation**: Directory traversal prevention
-  - **Session Management**: MongoDB-backed sessions with 5-day expiry
+  - **Session Management**: MongoDB-backed sessions with secure cookies
 
 ## 🛠️ Tech Stack
 
-### Backend (Rust)
-- **Framework**: Axum 0.7 (async web framework)
-- **Database**: MongoDB 2.8 with BSON support
-- **Real-time**: Socket.IO via socketioxide 0.14
-- **Sessions**: Tower Sessions with MongoDB store
-- **Security**: Bcrypt, rate limiting (governor), CORS
-- **System**: Tokio async runtime, sysinfo for monitoring
+### Backend (Node.js)
+- **Runtime**: Node.js 20+
+- **Framework**: Express.js
+- **Database**: MongoDB (Mongoose ODM)
+- **Real-time**: Socket.IO
+- **Sessions**: express-session with connect-mongo
+- **Security**: Helmet, Rate Limit, Bcrypt, CORS
+- **System**: Child Process for Java management
 
 ### Frontend (React)
-- **Build Tool**: Vite (Rolldown)
-- **Framework**: React 19
-- **Styling**: Tailwind CSS 4
+- **Build Tool**: Vite
+- **Framework**: React 18+
+- **Styling**: Tailwind CSS
 - **Icons**: Lucide React
 - **Editor**: Monaco Editor (VS Code editor)
-- **Routing**: React Router 7
+- **Routing**: React Router 6
 - **Toast**: React Hot Toast
 - **Real-time**: Socket.IO Client
 
 ### Infrastructure
-- **Containerization**: Docker multi-stage builds (Alpine Linux)
+- **Containerization**: Docker multi-stage builds (Node.js Alpine)
 - **Java**: OpenJDK 8, 17, and 21 support
 - **Database**: MongoDB
 - **Reverse Proxy Compatible**: Nginx, Caddy, Traefik
@@ -161,14 +162,12 @@ MONGO_DB_NAME=obsidian_panel
 PORT=5000
 MC_SERVER_BASE_PATH=/minecraft_server
 TEMP_BACKUP_PATH=/tmp/obsidian_backups
+SESSION_SECRET=change_this_to_a_secure_random_string
 
 # Optional: Custom Java paths (if needed)
 # JAVA_8_HOME=/usr/lib/jvm/java-1.8-openjdk
 # JAVA_17_HOME=/usr/lib/jvm/java-17-openjdk
 # JAVA_21_HOME=/usr/lib/jvm/java-21-openjdk
-
-# Logging Level
-RUST_LOG=info
 ```
 
 > **Note**: If you're using an external MongoDB, replace `MONGO_URI` with your connection string (e.g., `mongodb://username:password@host:27017`)
@@ -192,7 +191,7 @@ docker-compose down
 docker-compose logs -f obsidian-panel
 ```
 
-### � Updating the Panel
+### 🔄 Updating the Panel
 
 To update to the latest version, simply run the installation script again:
 
@@ -211,13 +210,13 @@ docker-compose pull
 docker-compose up -d
 ```
 
-### �🔧 Development Setup
+### 🛠️ Development Setup
 
-**Backend (Rust)**
+**Backend (Node.js)**
 ```bash
-cd backend-rust
-cargo build
-cargo run
+cd backend
+npm install
+npm run dev
 ```
 
 **Frontend (React)**
@@ -228,6 +227,7 @@ npm run dev
 ```
 
 Frontend dev server runs on http://localhost:5173
+Backend dev server runs on http://localhost:5000
 
 ## ⚙️ Configuration
 
@@ -238,19 +238,19 @@ Frontend dev server runs on http://localhost:5173
 | `PORT` | `5000` | Backend server port |
 | `MONGO_URI` | `mongodb://localhost:27017` | MongoDB connection string |
 | `MONGO_DB_NAME` | `obsidian_panel` | Database name |
+| `SESSION_SECRET` | `secret` | Secret key for session signing |
 | `MC_SERVER_BASE_PATH` | `/minecraft_server` | Minecraft server files location |
 | `TEMP_BACKUP_PATH` | `/tmp/obsidian_backups` | Temporary backup storage |
 | `JAVA_8_HOME` | Auto-detected | Override Java 8 location |
 | `JAVA_17_HOME` | Auto-detected | Override Java 17 location |
 | `JAVA_21_HOME` | Auto-detected | Override Java 21 location |
-| `RUST_LOG` | `info` | Logging level (debug/info/warn/error) |
 
 ### Java Detection
 
 The backend automatically detects Java installations in `/usr/lib/jvm/`. You can override with environment variables:
 
 ```bash
-JAVA_17_HOME=/opt/java/jdk-17 cargo run
+JAVA_17_HOME=/opt/java/jdk-17 npm start
 ```
 
 Detection order:
@@ -260,7 +260,7 @@ Detection order:
 
 All candidates are verified with `java -version` to ensure correct version.
 
-## � Usage Guide
+## 📖 Usage Guide
 
 ### Initial Setup
 1. **Register Admin Account**: First user becomes administrator
@@ -287,7 +287,7 @@ All candidates are verified with `java -version` to ensure correct version.
 - **Check Java**: Ensure correct Java version installed
 - **Verify Logs**: Check console for error messages
 - **Toast Notifications**: Error details shown in UI
-- **Backend Logs**: `docker logs obsidian-panel-backend`
+- **Backend Logs**: `docker logs obsidian-panel`
 
 ### Memory Issues
 - **Insufficient RAM**: Increase Docker memory limit
@@ -307,6 +307,7 @@ docker run -d \
   -p 5000:5000 \
   -p 25565:25565 \
   -e MONGO_URI=mongodb://host:27017 \
+  -e SESSION_SECRET=mysecuresecret \
   -v minecraft_data:/minecraft_server \
   --name obsidian-panel \
   alexbhai/obsidian-panel:latest
@@ -325,6 +326,7 @@ services:
     environment:
       - MONGO_URI=mongodb://mongo:27017
       - MONGO_DB_NAME=obsidian_panel
+      - SESSION_SECRET=mysecuresecret
     volumes:
       - minecraft_data:/minecraft_server
     depends_on:
@@ -346,7 +348,7 @@ The backend provides RESTful API endpoints:
 
 - **Authentication**: `/api/auth` (login, register, logout)
 - **Server Control**: `/api/control` (start, stop, restart, kill)
-- **File Management**: `/api/control/files` (list, read, write, upload)
+- **File Management**: `/files/*` (list, read, write, upload)
 - **Backups**: `/api/backups` (create, restore, delete, configure)
 - **Plugins**: `/api/plugins` (search, install)
 - **Users**: `/api/users` (CRUD operations)
@@ -369,9 +371,9 @@ Contributions are welcome! Please:
 
 MIT License - feel free to use for personal or commercial projects.
 
-## � Acknowledgments
+## 🙏 Acknowledgments
 
-- Built with ❤️ using Rust and React
+- Built with ❤️ using Node.js and React
 - Inspired by modern server management panels
 - Community feedback and contributions
 

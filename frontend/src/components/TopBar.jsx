@@ -3,7 +3,7 @@ import { useServer } from '../context/ServerContext';
 import { useAuth } from '../context/AuthContext';
 import { User, Server as ServerIcon, Menu } from 'lucide-react';
 const TopBar = ({ onMenuClick }) => {
-    const { server, updateServer } = useServer();
+    const { server } = useServer();
     const { user } = useAuth();
     return (
         <div className="h-16 bg-obsidian-surface/50 backdrop-blur-md border-b border-obsidian-border flex items-center justify-between px-4 md:px-6 sticky top-0 z-10">
