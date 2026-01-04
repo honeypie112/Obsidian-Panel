@@ -114,8 +114,8 @@ MC_SERVER_BASE_PATH=/minecraft_server
 TEMP_BACKUP_PATH=/tmp
 NODE_ENV=production
 
-# Optional
-RUST_LOG=debug
+# Security
+SESSION_SECRET=$(openssl rand -hex 32)
 EOF
 echo -e "${GREEN}✓ .env file created.${NC}"
 
