@@ -147,7 +147,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                             className="mb-3 flex items-center justify-center space-x-2 opacity-50 hover:opacity-100 transition-opacity cursor-pointer group"
                             title="Click to check for updates"
                         >
-                            <div className={`w-1.5 h-1.5 rounded-full ${updateInfo ? 'bg-green-500' : 'bg-obsidian-muted'} group-hover:scale-125 transition-transform`}></div>
+                            <div className={`w-1.5 h-1.5 rounded-full bg-green-500 group-hover:scale-125 transition-transform`}></div>
                             <span className="text-[10px] text-obsidian-muted font-mono group-hover:text-white transition-colors">
                                 {updateInfo ? 'System Up to Date' : 'System Online'}
                             </span>
