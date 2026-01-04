@@ -4,104 +4,6 @@
 
 ![Obsidian Panel Interface](images/dashboard.png)
 
-## ✨ Features
-
-### 🎮 Server Management
-- **Live Console**: Real-time log streaming via Socket.IO with 5000-line history buffer
-    <br>
-    ![Server Console](images/console.png)
-- **Multi-Version Support**: Native support for **Paper**, **Purpur**, and **Vanilla** Minecraft servers
-    <br>
-    ![Multi-Version Support](images/multi-version.png)
-- **Smart Java Detection**: Automatic discovery of Java 8, 17, and 21 installations with version verification
-- **Power Controls**: Start, Stop, Restart, and Force Kill with proper error handling
-
-### ⚙️ Configuration
-- **Server Settings**: Manage server properties, RAM allocation, and Java version through intuitive UI
-    <br>
-    ![Server Settings](images/server-settings.png)
-- **Environment Configuration**: Support for custom Java paths via `JAVA_X_HOME` environment variables
-- **Hot Reload**: Configuration changes apply immediately without container restarts
-
-### 📁 File Manager
-- **Full-featured File Browser**: Upload, download, edit, delete with drag-and-drop support
-- **Built-in Code Editor**: Monaco editor for direct file editing
-- **Archive Handling**: Extract ZIP/TAR archives and create compressed backups
-    <br>
-    ![File Manager](images/file-manager.png)
-    <br>
-    ![Drag and Drop](images/drag-and-drop.png)
-- **Chunked Uploads**: Large file support with resumable uploads
-
-### 💾 Backup System
-- **Unlimited Cloud Storage**: Seamless integration with **GoFile** for infinite backups
-- **Automated Scheduling**: Cron-based backup scheduler (minutely, hourly, daily, custom expressions)
-- **One-Click Restore**: Restore from any backup with safety safeguards
-- **Encrypted Archives**: Password-protected backup files
-    <br>
-    ![Backup System](images/backup-system.png)
-
-### 🔌 Plugin Management  
-- **Unified Plugin Store**: Search and install from **Modrinth**, **Hangar** (Paper), and **Spiget** (Spigot)
-- **One-Click Installation**: Automatic plugin download and installation
-    <br>
-    ![Plugin Store](images/plugin-store.png)
-    <br>
-    ![Plugin Store Installation](images/plugin-store-2.png)
-
-### 👥 User Management
-- **Role-Based Access Control (RBAC)**: Create sub-admin accounts with granular permissions
-- **Permissions**:
-  - **Files**: View, Edit, Upload/Create, Delete
-  - **Backups**: Create, Restore, Delete, Settings
-  - **Power**: Start/Stop/Restart
-  - **Console**: Command Execution
-    <br>
-    ![User Management](images/user-management.png)
-
-### 🎨 User Experience
-- **Responsive Design**: Fully optimized for desktop and mobile with collapsible sidebar
-- **Toast Notifications**: Real-time error and success messages
-- **Obsidian Dark Theme**: Glassmorphism effects with smooth animations
-- **Real-time Updates**: WebSocket-powered live status and statistics
-    <br>
-    ![Profile Settings](images/profile.png)
-
-### 🔒 Security
-- **Enterprise-Grade Security**:
-  - **Rate Limiting**: Global DDoS protection with per-IP limits
-  - **Authentication**: Bcrypt password hashing with secure sessions
-  - **CORS Protection**: Configurable cross-origin policies
-  - **Path Validation**: Directory traversal prevention
-  - **Session Management**: MongoDB-backed sessions with secure cookies
-
-## 🛠️ Tech Stack
-
-### Backend (Node.js)
-- **Runtime**: Node.js 20+
-- **Framework**: Express.js
-- **Database**: MongoDB (Mongoose ODM)
-- **Real-time**: Socket.IO
-- **Sessions**: express-session with connect-mongo
-- **Security**: Helmet, Rate Limit, Bcrypt, CORS
-- **System**: Child Process for Java management
-
-### Frontend (React)
-- **Build Tool**: Vite
-- **Framework**: React 18+
-- **Styling**: Tailwind CSS
-- **Icons**: Lucide React
-- **Editor**: Monaco Editor (VS Code editor)
-- **Routing**: React Router 6
-- **Toast**: React Hot Toast
-- **Real-time**: Socket.IO Client
-
-### Infrastructure
-- **Containerization**: Docker multi-stage builds (Node.js Alpine)
-- **Java**: OpenJDK 8, 17, and 21 support
-- **Database**: MongoDB
-- **Reverse Proxy Compatible**: Nginx, Caddy, Traefik
-
 ## 🚀 Installation
 
 ### Prerequisites
@@ -228,6 +130,104 @@ npm run dev
 
 Frontend dev server runs on http://localhost:5173
 Backend dev server runs on http://localhost:5000
+
+## ✨ Features
+
+### 🎮 Server Management
+- **Live Console**: Real-time log streaming via Socket.IO with 5000-line history buffer
+    <br>
+    ![Server Console](images/console.png)
+- **Multi-Version Support**: Native support for **Paper**, **Purpur**, and **Vanilla** Minecraft servers
+    <br>
+    ![Multi-Version Support](images/multi-version.png)
+- **Smart Java Detection**: Automatic discovery of Java 8, 17, and 21 installations with version verification
+- **Power Controls**: Start, Stop, Restart, and Force Kill with proper error handling
+
+### ⚙️ Configuration
+- **Server Settings**: Manage server properties, RAM allocation, and Java version through intuitive UI
+    <br>
+    ![Server Settings](images/server-settings.png)
+- **Environment Configuration**: Support for custom Java paths via `JAVA_X_HOME` environment variables
+- **Hot Reload**: Configuration changes apply immediately without container restarts
+
+### 📁 File Manager
+- **Full-featured File Browser**: Upload, download, edit, delete with drag-and-drop support
+- **Built-in Code Editor**: Monaco editor for direct file editing
+- **Archive Handling**: Extract ZIP/TAR archives and create compressed backups
+    <br>
+    ![File Manager](images/file-manager.png)
+    <br>
+    ![Drag and Drop](images/drag-and-drop.png)
+- **Chunked Uploads**: Large file support with resumable uploads
+
+### 💾 Backup System
+- **Unlimited Cloud Storage**: Seamless integration with **GoFile** for infinite backups
+- **Automated Scheduling**: Cron-based backup scheduler (minutely, hourly, daily, custom expressions)
+- **One-Click Restore**: Restore from any backup with safety safeguards
+- **Encrypted Archives**: Password-protected backup files
+    <br>
+    ![Backup System](images/backup-system.png)
+
+### 🔌 Plugin Management  
+- **Unified Plugin Store**: Search and install from **Modrinth**, **Hangar** (Paper), and **Spiget** (Spigot)
+- **One-Click Installation**: Automatic plugin download and installation
+    <br>
+    ![Plugin Store](images/plugin-store.png)
+    <br>
+    ![Plugin Store Installation](images/plugin-store-2.png)
+
+### 👥 User Management
+- **Role-Based Access Control (RBAC)**: Create sub-admin accounts with granular permissions
+- **Permissions**:
+  - **Files**: View, Edit, Upload/Create, Delete
+  - **Backups**: Create, Restore, Delete, Settings
+  - **Power**: Start/Stop/Restart
+  - **Console**: Command Execution
+    <br>
+    ![User Management](images/user-management.png)
+
+### 🎨 User Experience
+- **Responsive Design**: Fully optimized for desktop and mobile with collapsible sidebar
+- **Toast Notifications**: Real-time error and success messages
+- **Obsidian Dark Theme**: Glassmorphism effects with smooth animations
+- **Real-time Updates**: WebSocket-powered live status and statistics
+    <br>
+    ![Profile Settings](images/profile.png)
+
+### 🔒 Security
+- **Enterprise-Grade Security**:
+  - **Rate Limiting**: Global DDoS protection with per-IP limits
+  - **Authentication**: Bcrypt password hashing with secure sessions
+  - **CORS Protection**: Configurable cross-origin policies
+  - **Path Validation**: Directory traversal prevention
+  - **Session Management**: MongoDB-backed sessions with secure cookies
+
+## 🛠️ Tech Stack
+
+### Backend (Node.js)
+- **Runtime**: Node.js 20+
+- **Framework**: Express.js
+- **Database**: MongoDB (Mongoose ODM)
+- **Real-time**: Socket.IO
+- **Sessions**: express-session with connect-mongo
+- **Security**: Helmet, Rate Limit, Bcrypt, CORS
+- **System**: Child Process for Java management
+
+### Frontend (React)
+- **Build Tool**: Vite
+- **Framework**: React 18+
+- **Styling**: Tailwind CSS
+- **Icons**: Lucide React
+- **Editor**: Monaco Editor (VS Code editor)
+- **Routing**: React Router 6
+- **Toast**: React Hot Toast
+- **Real-time**: Socket.IO Client
+
+### Infrastructure
+- **Containerization**: Docker multi-stage builds (Node.js Alpine)
+- **Java**: OpenJDK 8, 17, and 21 support
+- **Database**: MongoDB
+- **Reverse Proxy Compatible**: Nginx, Caddy, Traefik
 
 ## ⚙️ Configuration
 
