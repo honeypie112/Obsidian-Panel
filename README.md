@@ -181,7 +181,7 @@ Backend dev server runs on http://localhost:5000
   
 ### Updater UI
     <br>
-    ![Updater UI](images/updater.png)
+    ![Updater UI](images/update.png)
 
 ### 👥 User Management
 - **Role-Based Access Control (RBAC)**: Create sub-admin accounts with granular permissions
