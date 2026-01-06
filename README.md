@@ -324,16 +324,23 @@ services:
       - "5000:5000"
       - "25565:25565"
     environment:
-      - MONGO_URI=mongodb://mongo:27017
+      # Updated URI to include username, password, and authSource
+      - MONGO_URI=mongodb://admin:secretpassword@mongo:27017/obsidian_panel?authSource=admin
       - MONGO_DB_NAME=obsidian_panel
       - SESSION_SECRET=mysecuresecret
     volumes:
       - minecraft_data:/minecraft_server
     depends_on:
       - mongo
-  
+
   mongo:
-    image: mongo:7
+    image: mongo:latest
+    container_name: mongo
+    restart: always
+    environment:
+      # These create the root user when the container starts for the first time
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=secretpassword
     volumes:
       - mongo_data:/data/db
 
