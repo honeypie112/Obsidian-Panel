@@ -178,7 +178,12 @@ const BackupService = {
         scheduledTask = cron.schedule(config.cronExpression, async () => {
             console.log('[BackupService] Triggering auto-backup...');
             try {
-                await BackupService.performBackup(false);
+                const now = new Date();
+                const date = now.toLocaleDateString('en-CA'); // YYYY-MM-DD
+                const time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                const note = `Auto backup - ${date} ${time}`;
+
+                await BackupService.performBackup(false, note);
             } catch (err) {
                 console.error('[BackupService] Auto-backup failure:', err.message);
             }
