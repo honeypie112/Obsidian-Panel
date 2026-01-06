@@ -158,6 +158,8 @@ Backend dev server runs on http://localhost:5000
     ![File Manager](images/file-manager.png)
     <br>
     ![Drag and Drop](images/drag-and-drop.png)
+  <br>
+    ![editor ui](images/editor.png)
 - **Chunked Uploads**: Large file support with resumable uploads
 
 ### 💾 Backup System
@@ -167,7 +169,8 @@ Backend dev server runs on http://localhost:5000
 - **Encrypted Archives**: Password-protected backup files
     <br>
     ![Backup System](images/backup-system.png)
-
+  <br>
+    ![backup-note-feature](images/backup-note-feature.png)
 ### 🔌 Plugin Management  
 - **Unified Plugin Store**: Search and install from **Modrinth**, **Hangar** (Paper), and **Spiget** (Spigot)
 - **One-Click Installation**: Automatic plugin download and installation
@@ -175,6 +178,10 @@ Backend dev server runs on http://localhost:5000
     ![Plugin Store](images/plugin-store.png)
     <br>
     ![Plugin Store Installation](images/plugin-store-2.png)
+  
+### Updater UI
+    <br>
+    ![Updater UI](images/updater.png)
 
 ### 👥 User Management
 - **Role-Based Access Control (RBAC)**: Create sub-admin accounts with granular permissions
