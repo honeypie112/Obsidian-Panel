@@ -178,8 +178,8 @@ Backend dev server runs on http://localhost:5000
     ![Plugin Store](images/plugin-store.png)
     <br>
     ![Plugin Store Installation](images/plugin-store-2.png)
-  
-### Updater UI
+
+- **Updater UI**: easy and simple panel update reminder
     <br>
     ![Updater UI](images/update.png)
 
