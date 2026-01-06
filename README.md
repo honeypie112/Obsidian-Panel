@@ -323,6 +323,7 @@ services:
     ports:
       - "5000:5000"
       - "25565:25565"
+      - "19132:19132/udp"  
     environment:
       # Updated URI to include username, password, and authSource
       - MONGO_URI=mongodb://admin:secretpassword@mongo:27017/obsidian_panel?authSource=admin
