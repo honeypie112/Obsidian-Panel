@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Terminal, Folder, Settings, Shield, HardDrive, Server, LogOut, Package, User, Github, Coffee, Download, CheckCircle, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, Terminal, Folder, Settings, Shield, HardDrive, Server, LogOut, Package, User, Github, Coffee, Download, CheckCircle, RefreshCw, AlertTriangle, Copy, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
+import Modal from './Modal';
 
 const Sidebar = ({ isOpen, onClose }) => {
     const { logout, user } = useAuth();
     const [updateInfo, setUpdateInfo] = useState(null);
+    const [showUpdateModal, setShowUpdateModal] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     const [checking, setChecking] = useState(false);
     const checkingRef = useRef(false);
@@ -32,6 +35,62 @@ const Sidebar = ({ isOpen, onClose }) => {
     useEffect(() => {
         checkUpdate();
     }, [checkUpdate]);
+
+    const handleUpdateClick = () => {
+        if (updateInfo && updateInfo.updateAvailable) {
+            setShowUpdateModal(true);
+        } else {
+            checkUpdate();
+        }
+    };
+
+    const handleCopyCommand = () => {
+        const command = "bash <(curl -s https://raw.githubusercontent.com/honeypie112/Obsidian-Panel/master/install.sh)";
+
+        // Try modern API first (requires HTTPS/localhost)
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(command)
+                .then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                })
+                .catch(err => {
+                    console.warn('Clipboard API failed, trying fallback...', err);
+                    fallbackCopyTextToClipboard(command);
+                });
+        } else {
+            // Fallback for HTTP/insecure contexts
+            fallbackCopyTextToClipboard(command);
+        }
+    };
+
+    const fallbackCopyTextToClipboard = (text) => {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+
+        // Ensure it's not visible but part of DOM
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+
+        textArea.focus();
+        textArea.select();
+
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            } else {
+                console.error('Fallback: Copying text command was unsuccessful');
+            }
+        } catch (err) {
+            console.error('Fallback: Oops, unable to copy', err);
+        }
+
+        document.body.removeChild(textArea);
+    };
 
     const allNavItems = [
         { icon: LayoutDashboard, label: 'Overview', path: '/', permission: 'overview.view' }, // Default for all usually, but can be explicit
@@ -133,7 +192,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                         </div>
                     ) : updateInfo && updateInfo.updateAvailable ? (
                         <div
-                            onClick={checkUpdate}
+                            onClick={handleUpdateClick}
                             className="mb-3 px-3 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-center justify-between group cursor-pointer hover:bg-yellow-500/20 transition-all"
                         >
                             <div className="flex items-center text-xs text-yellow-500 font-medium">
@@ -183,6 +242,45 @@ const Sidebar = ({ isOpen, onClose }) => {
                     </button>
                 </div>
             </div >
+
+            <Modal
+                isOpen={showUpdateModal}
+                onClose={() => setShowUpdateModal(false)}
+                title="Update Available"
+            >
+                <div className="space-y-4">
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 flex items-start">
+                        <AlertTriangle className="text-yellow-500 shrink-0 mt-0.5 mr-3" size={20} />
+                        <div className="text-sm">
+                            <h4 className="font-bold text-yellow-500 mb-1">Important: Stop Server First</h4>
+                            <p className="text-yellow-500/80">
+                                You must stop your Minecraft server from the console before proceeding with the update to prevent data corruption.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <p className="text-sm text-gray-400">
+                            Updates are applied by reinstalling the panel container. Your data (worlds, plugins, configs) will be preserved.
+                        </p>
+                        <p className="text-sm font-medium text-white">
+                            Run this command in your terminal:
+                        </p>
+                        <div className="relative group">
+                            <div className="bg-black/50 border border-white/10 rounded-lg p-3 pr-10 font-mono text-xs text-green-400 break-all">
+                                bash &lt;(curl -s https://raw.githubusercontent.com/honeypie112/Obsidian-Panel/master/install.sh)
+                            </div>
+                            <button
+                                onClick={handleCopyCommand}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-md transition-colors"
+                                title="Copy to clipboard"
+                            >
+                                {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Modal>
         </>
     );
 };
